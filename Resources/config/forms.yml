@@ -1,0 +1,8 @@
+services:
+    LSB\OrderBundle\Form\EntityType:
+        tags:
+            - { name: form.type }
+
+    LSB\OrderBundle\Form\EntityTranslationType:
+        tags:
+            - { name: form.type }

@@ -1,0 +1,1 @@
+C:37:"PHPUnit\Runner\DefaultTestResultCache":135:{a:2:{s:7:"defects";a:0:{}s:5:"times";a:1:{s:75:"LSB\OrderBundle\Tests\EntityManagerTest::testReturnedInterfaces";d:0.007;}}}

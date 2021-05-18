@@ -1,0 +1,5 @@
+services:
+    LSB\OrderBundle\Repository\EntityRepository:
+        arguments:
+            - '@doctrine'
+    LSB\OrderBundle\Repository\EntityRepositoryInterface: '@LSB\OrderBundle\Repository\EntityRepository'

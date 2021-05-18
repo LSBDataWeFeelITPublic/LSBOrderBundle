@@ -1,0 +1,4 @@
+services:
+    LSB\OrderBundle\Manager\EntityManager:
+        arguments:
+            - '@lsb_utility_object_manager'

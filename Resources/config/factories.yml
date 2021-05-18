@@ -1,0 +1,9 @@
+services:
+    LSB\OrderBundle\Factory\EntityFactory:
+        arguments:
+            - '%lsb_template.config.resources.entity.class.entity%'
+
+    lsb_template_factory_entity:
+        alias: 'LSB\OrderBundle\Factory\EntityFactory'
+
+    LSB\OrderBundle\Factory\EntityFactoryInterface: '@LSB\OrderBundle\Factory\EntityFactory'
