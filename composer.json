@@ -1,16 +1,16 @@
 {
-    "name": "lsb/template-bundle",
+    "name": "lsb/order-bundle",
     "type": "symfony-bundle",
-    "description": "LSB [name] bundle",
+    "description": "LSB order bundle",
     "license": "MIT",
     "keywords": [
         "symfony"
     ],
-    "homepage": "https://lsb.pl",
+    "homepage": "https://lsbdata.com",
     "authors": [
         {
             "name": "LSB DATA",
-            "email": "your-email@lsb.com.pl"
+            "email": "krzysztof.mazur@lsb.com.pl"
         }
     ],
     "require": {
@@ -31,7 +31,7 @@
     },
     "autoload": {
         "psr-4": {
-            "LSB\\TemplateVendorSF5Bundle\\": ""
+            "LSB\\OrderBundle\\": ""
         },
         "exclude-from-classmap": [
             "Tests/"
