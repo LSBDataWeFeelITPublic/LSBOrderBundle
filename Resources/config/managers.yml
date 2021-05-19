@@ -1,4 +1,16 @@
 services:
-    LSB\OrderBundle\Manager\EntityManager:
+    LSB\OrderBundle\Manager\OrderManager:
+        arguments:
+            - '@lsb_utility_object_manager'
+
+    LSB\OrderBundle\Manager\OrderPackageManager:
+        arguments:
+            - '@lsb_utility_object_manager'
+
+    LSB\OrderBundle\Manager\OrderPackageItemManager:
+        arguments:
+            - '@lsb_utility_object_manager'
+
+    LSB\OrderBundle\Manager\OrderNoteManager:
         arguments:
             - '@lsb_utility_object_manager'

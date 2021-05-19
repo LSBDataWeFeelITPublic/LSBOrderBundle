@@ -27,14 +27,14 @@ interface StatusInterface
     const STATUS_CANCELED = 210;
     const STATUS_REJECTED = 220;                     //odrzucone
 
-    /**
-     * @return mixed
-     */
-    public function getStatus();
-
-    /**
-     * @param $status
-     * @return mixed
-     */
-    public function setStatus($status);
+//    /**
+//     * @return mixed
+//     */
+//    public function getStatus();
+//
+//    /**
+//     * @param $status
+//     * @return mixed
+//     */
+//    public function setStatus($status);
 }

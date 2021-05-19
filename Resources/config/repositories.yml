@@ -1,5 +1,20 @@
 services:
-    LSB\OrderBundle\Repository\EntityRepository:
+    LSB\OrderBundle\Repository\OrderRepository:
         arguments:
             - '@doctrine'
-    LSB\OrderBundle\Repository\EntityRepositoryInterface: '@LSB\OrderBundle\Repository\EntityRepository'
+    LSB\OrderBundle\Repository\OrderRepositoryInterface: '@LSB\OrderBundle\Repository\OrderRepository'
+
+    LSB\OrderBundle\Repository\OrderPackageRepository:
+        arguments:
+            - '@doctrine'
+    LSB\OrderBundle\Repository\OrderPackageRepositoryInterface: '@LSB\OrderBundle\Repository\OrderPackageRepository'
+
+    LSB\OrderBundle\Repository\OrderPackageItemRepository:
+        arguments:
+            - '@doctrine'
+    LSB\OrderBundle\Repository\OrderPackageItemRepositoryInterface: '@LSB\OrderBundle\Repository\OrderPackageItemRepository'
+
+    LSB\OrderBundle\Repository\OrderNoteRepository:
+        arguments:
+            - '@doctrine'
+    LSB\OrderBundle\Repository\OrderNoteRepositoryInterface: '@LSB\OrderBundle\Repository\OrderNoteRepository'

@@ -30,20 +30,20 @@ interface OrderStatusInterface extends StatusInterface
     const STAGE_CLOSED = 100;
 
 
-    /**
-     * @return mixed
-     */
-    public function getPaymentStatus();
-
-
-    /**
-     * @param $state
-     * @return mixed
-     */
-    public function setState($state);
-
-    /**
-     * @return mixed
-     */
-    public function getState();
+//    /**
+//     * @return mixed
+//     */
+//    public function getPaymentStatus();
+//
+//
+//    /**
+//     * @param $state
+//     * @return mixed
+//     */
+//    public function setState($state);
+//
+//    /**
+//     * @return mixed
+//     */
+//    public function getState();
 }

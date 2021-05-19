@@ -6,16 +6,11 @@ namespace LSB\OrderBundle\Entity;
 use DateTime;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping\MappedSuperclass;
-use LSB\OrderBundle\Interfaces\OrderApplicationInterface;
-use LSB\OrderBundle\Interfaces\OrderCartInterface;
-use LSB\OrderBundle\Interfaces\OrderContractorInterface;
-use LSB\OrderBundle\Interfaces\OrderCurrencyInterface;
-use LSB\OrderBundle\Interfaces\OrderPaymentMethodInterface;
+use LSB\ContractorBundle\Entity\ContractorInterface;
+use LSB\LocaleBundle\Entity\CurrencyInterface;
 use LSB\OrderBundle\Interfaces\OrderStatusInterface;
 use LSB\UtilityBundle\Traits\CreatedUpdatedTrait;
 use LSB\UtilityBundle\Traits\UuidTrait;
-use LSB\UtilityBundle\Translatable\TranslatableTrait;
-use Gedmo\Mapping\Annotation as Gedmo;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\Common\Collections\ArrayCollection;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
@@ -32,7 +27,6 @@ abstract class Order implements OrderInterface, OrderStatusInterface
     use UuidTrait;
     use CreatedUpdatedTrait;
 
-
     /**
      * @var string|null
      * @ORM\Column(type="string", length=50, nullable=true)
@@ -41,27 +35,32 @@ abstract class Order implements OrderInterface, OrderStatusInterface
     protected ?string $number;
 
     /**
-     * @var OrderContractorInterface|null
-     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderContractorInterface")
+     * @var ContractorInterface|null
+     * @ORM\ManyToOne(targetEntity="LSB\ContractorBundle\Entity\ContractorInterface")
      * @ORM\JoinColumn(onDelete="SET NULL")
      */
-    protected ?OrderContractorInterface $payerContractor;
+    protected ?ContractorInterface $payerContractor;
 
     /**
-     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderContractorInterface")
+     * @var ContractorInterface|null
+     * @ORM\ManyToOne(targetEntity="LSB\ContractorBundle\Entity\ContractorInterface")
      * @ORM\JoinColumn(onDelete="SET NULL")
      */
-    protected ?OrderContractorInterface $suggestedPayerContractor;
+    protected ?ContractorInterface $suggestedPayerContractor;
 
+    /**
+     * @ORM\ManyToOne(targetEntity="LSB\ContractorBundle\Entity\ContractorInterface")
+     * @ORM\JoinColumn(nullable=true, onDelete="SET NULL")
+     */
+    protected ?ContractorInterface $recipientContractor;
 
     /**
      * @var ArrayCollection|Collection|OrderNoteInterface[]
-     * @ORM\OneToMany(targetEntity="OrderNoteInterface", mappedBy="order", cascade={"persist", "remove"}, orphanRemoval=true)
+     * @ORM\OneToMany(targetEntity="LSB\OrderBundle\Entity\OrderNoteInterface", mappedBy="order", cascade={"persist", "remove"}, orphanRemoval=true)
      * @ORM\OrderBy({"id" = "ASC"})
      * @Assert\Valid()
      */
     protected Collection $orderNotes;
-
 
     /**
      * @var DateTime|null
@@ -70,35 +69,16 @@ abstract class Order implements OrderInterface, OrderStatusInterface
     protected ?DateTime $realisationAt;
 
     /**
-     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Interfaces\OrderCurrencyInterface")
+     * @ORM\ManyToOne(targetEntity="LSB\LocaleBundle\Entity\CurrencyInterface")
      * @ORM\JoinColumn(onDelete="SET NULL")
      */
-    protected ?OrderCurrencyInterface $currency;
-
+    protected ?CurrencyInterface $currency;
 
     /**
      * @ORM\OneToMany(targetEntity="LSB\OrderBundle\Entity\OrderPackageInterface", mappedBy="order", orphanRemoval=true, cascade={"persist", "remove"})
      * @ORM\OrderBy({"id" = "ASC"})
-     * @GDPR\Anonymize(type="collection")
      */
     protected Collection $orderPackages;
-
-    /**
-     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Interfaces\OrderCartInterface", inversedBy="orders", cascade={"remove"})
-     */
-    protected ?OrderCartInterface $cart;
-
-    /**
-     * @Assert\Length(max=255)
-     * @ORM\Column(type="string", length=255, nullable=true)
-     */
-    protected ?string $invoiceEmail;
-
-    /**
-     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Interfaces\OrderPaymentMethodInterface")
-     * @ORM\JoinColumn()
-     */
-    protected ?OrderPaymentMethodInterface $paymentMethod;
 
     /**
      * @var string|null
@@ -119,7 +99,7 @@ abstract class Order implements OrderInterface, OrderStatusInterface
      * @ORM\Column(type="string", length=120, nullable=true)
      * @Assert\Length(max="120")
      */
-    protected $unmaskToken;
+    protected ?string $unmaskToken;
 
     /**
      * @var DateTime|null
@@ -144,17 +124,6 @@ abstract class Order implements OrderInterface, OrderStatusInterface
     /**
      * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?int $defferedPaymentDays;
-
-    /**
-     * @var OrderApplicationInterface
-     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderApplicationInterface")
-     */
-    protected OrderApplicationInterface $contextApplication;
-
-    /**
-     * @ORM\Column(type="integer", nullable=true)
-     */
     protected ?int $payerContractorVatStatus;
 
     /**
@@ -162,12 +131,6 @@ abstract class Order implements OrderInterface, OrderStatusInterface
      * @ORM\Column(type="integer")
      */
     protected int $vatCalculationType;
-
-    /**
-     * @var integer
-     * @ORM\Column(type="integer", nullable=false, options={"default": 1})
-     */
-    protected $orderVerificationStatus;
 
     /**
      * @var DateTime|null
@@ -179,14 +142,7 @@ abstract class Order implements OrderInterface, OrderStatusInterface
      * @var DateTime|null
      * @ORM\Column(type="datetime", nullable=true)
      */
-    protected $verifiedAt;
-
-//    /**
-//     * @var Collection
-//     * @ORM\OneToMany(targetEntity="LSB\OrderBundle\Interfaces\OrderProformaInvoiceInterface", mappedBy="order", cascade={"persist", "remove"}, orphanRemoval=true)
-//     * @ORM\OrderBy({"id" = "ASC"})
-//     */
-//    protected Collection $proformaInvoices;
+    protected ?DateTime $verifiedAt;
 
     /**
      * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderInterface")
@@ -194,24 +150,9 @@ abstract class Order implements OrderInterface, OrderStatusInterface
      */
     protected ?self $parentOrder;
 
-
-    /**
-     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Interfaces\OrderContractorInterface")
-     * @ORM\JoinColumn(nullable=true, onDelete="SET NULL")
-     */
-    protected ?OrderContractorInterface $recipientContractor;
-
-    /**
-     * @var Collection
-     * @ORM\OneToMany(targetEntity="LSB\OrderBundle\Interfaces\OrderNotificationInterface", mappedBy="order")
-     * @ORM\OrderBy({"id" = "ASC"})
-     */
-    protected Collection $notifications;
-
-
     /**
      * @var bool
-     * @ORM\Column(type="boolean", nullable=false, options={"default": false})
+     * @ORM\Column(type="boolean", options={"default": false})
      */
     protected bool $isComplaint = false;
 
@@ -222,24 +163,10 @@ abstract class Order implements OrderInterface, OrderStatusInterface
     protected int $calculationType = self::CALCULATION_TYPE_NETTO;
 
     /**
-     * Licznik paczek (wydzielona kolumna z uwagi na DT)
-     *
      * @var int
      * @ORM\Column(type="integer", nullable=false)
      */
     protected int $packagesCnt = 0;
-
-    /**
-     * @var int
-     * @ORM\Column(type="boolean", options={"default": false})
-     */
-    protected int $payerContractorDataChangesStatus;
-
-    /**
-     * @var DateTime|null
-     * @ORM\Column(type="datetime", nullable=true)
-     */
-    protected ?DateTime $payerContractorDataChangesIgnoredAt;
 
     /**
      * @var bool
@@ -251,15 +178,8 @@ abstract class Order implements OrderInterface, OrderStatusInterface
      */
     public function __construct()
     {
-        $this->status = self::STATUS_OPEN;
-        $realisationAt = new DateTime('NOW');
-        $realisationAt->add(new \DateInterval('P1D'));
-        $this->realisationAt = $realisationAt;
-
-        $this->proformaInvoices = new ArrayCollection();
         $this->orderNotes = new ArrayCollection();
         $this->orderPackages = new ArrayCollection();
-        $this->notifications = new ArrayCollection();
 
         $this->generateUuid();
     }
@@ -268,12 +188,7 @@ abstract class Order implements OrderInterface, OrderStatusInterface
     {
         $this->id = null;
         $this->number = null;
-        $this->notifications = new ArrayCollection();
 
-
-        if ($this->getState()) {
-            $this->setState(['open' => 1]);
-        }
 
 //        $packagesCloned = new ArrayCollection();
 //
@@ -298,5 +213,469 @@ abstract class Order implements OrderInterface, OrderStatusInterface
 //        }
     }
 
+    /**
+     * @return string|null
+     */
+    public function getNumber(): ?string
+    {
+        return $this->number;
+    }
 
+    /**
+     * @param string|null $number
+     * @return $this
+     */
+    public function setNumber(?string $number): self
+    {
+        $this->number = $number;
+        return $this;
+    }
+
+    /**
+     * @return ContractorInterface|null
+     */
+    public function getPayerContractor(): ?ContractorInterface
+    {
+        return $this->payerContractor;
+    }
+
+    /**
+     * @param ContractorInterface|null $payerContractor
+     * @return $this
+     */
+    public function setPayerContractor(?ContractorInterface $payerContractor): self
+    {
+        $this->payerContractor = $payerContractor;
+        return $this;
+    }
+
+    /**
+     * @return ContractorInterface|null
+     */
+    public function getSuggestedPayerContractor(): ?ContractorInterface
+    {
+        return $this->suggestedPayerContractor;
+    }
+
+    /**
+     * @param ContractorInterface|null $suggestedPayerContractor
+     * @return $this
+     */
+    public function setSuggestedPayerContractor(?ContractorInterface $suggestedPayerContractor): self
+    {
+        $this->suggestedPayerContractor = $suggestedPayerContractor;
+        return $this;
+    }
+
+    /**
+     * @return $thisContractorInterface|null
+     */
+    public function getRecipientContractor(): ?ContractorInterface
+    {
+        return $this->recipientContractor;
+    }
+
+    /**
+     * @param ContractorInterface|null $recipientContractor
+     * @return $this
+     */
+    public function setRecipientContractor(?ContractorInterface $recipientContractor): self
+    {
+        $this->recipientContractor = $recipientContractor;
+        return $this;
+    }
+
+    /**
+     * @return ArrayCollection|Collection|OrderNoteInterface[]
+     */
+    public function getOrderNotes()
+    {
+        return $this->orderNotes;
+    }
+
+    /**
+     * @param OrderNoteInterface $orderNote
+     *
+     * @return $this
+     */
+    public function addOrderNote(OrderNoteInterface $orderNote)
+    {
+        if (false === $this->orderNotes->contains($orderNote)) {
+            $this->orderNotes->add($orderNote);
+        }
+        return $this;
+    }
+
+    /**
+     * @param OrderNoteInterface $orderNote
+     *
+     * @return $this
+     */
+    public function removeOrderNote(OrderNoteInterface $orderNote)
+    {
+        if (true === $this->orderNotes->contains($orderNote)) {
+            $this->orderNotes->removeElement($orderNote);
+        }
+        return $this;
+    }
+
+    /**
+     * @param ArrayCollection|Collection|OrderNoteInterface[] $orderNotes
+     * @return $this
+     */
+    public function setOrderNotes($orderNotes)
+    {
+        $this->orderNotes = $orderNotes;
+        return $this;
+    }
+
+    /**
+     * @return DateTime|null
+     */
+    public function getRealisationAt(): ?DateTime
+    {
+        return $this->realisationAt;
+    }
+
+    /**
+     * @param DateTime|null $realisationAt
+     * @return $this
+     */
+    public function setRealisationAt(?DateTime $realisationAt): self
+    {
+        $this->realisationAt = $realisationAt;
+        return $this;
+    }
+
+    /**
+     * @return CurrencyInterface|null
+     */
+    public function getCurrency(): ?CurrencyInterface
+    {
+        return $this->currency;
+    }
+
+    /**
+     * @param CurrencyInterface|null $currency
+     * @return $this
+     */
+    public function setCurrency(?CurrencyInterface $currency): self
+    {
+        $this->currency = $currency;
+        return $this;
+    }
+
+    /**
+     * @return ArrayCollection|Collection
+     */
+    public function getOrderPackages()
+    {
+        return $this->orderPackages;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $orderPackage
+     *
+     * @return $this
+     */
+    public function addOrderPackage($orderPackage)
+    {
+        if (false === $this->orderPackages->contains($orderPackage)) {
+            $this->orderPackages->add($orderPackage);
+        }
+        return $this;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $orderPackage
+     *
+     * @return $this
+     */
+    public function removeOrderPackage($orderPackage)
+    {
+        if (true === $this->orderPackages->contains($orderPackage)) {
+            $this->orderPackages->removeElement($orderPackage);
+        }
+        return $this;
+    }
+
+    /**
+     * @param ArrayCollection|Collection $orderPackages
+     * @return $this
+     */
+    public function setOrderPackages($orderPackages)
+    {
+        $this->orderPackages = $orderPackages;
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getViewToken(): ?string
+    {
+        return $this->viewToken;
+    }
+
+    /**
+     * @param string|null $viewToken
+     * @return $this
+     */
+    public function setViewToken(?string $viewToken): self
+    {
+        $this->viewToken = $viewToken;
+        return $this;
+    }
+
+    /**
+     * @return DateTime|null
+     */
+    public function getViewTokenGeneratedAt(): ?DateTime
+    {
+        return $this->viewTokenGeneratedAt;
+    }
+
+    /**
+     * @param DateTime|null $viewTokenGeneratedAt
+     * @return $this
+     */
+    public function setViewTokenGeneratedAt(?DateTime $viewTokenGeneratedAt): self
+    {
+        $this->viewTokenGeneratedAt = $viewTokenGeneratedAt;
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getUnmaskToken(): ?string
+    {
+        return $this->unmaskToken;
+    }
+
+    /**
+     * @param string|null $unmaskToken
+     * @return $this
+     */
+    public function setUnmaskToken(?string $unmaskToken): self
+    {
+        $this->unmaskToken = $unmaskToken;
+        return $this;
+    }
+
+    /**
+     * @return DateTime|null
+     */
+    public function getUnmaskTokenGeneratedAt(): ?DateTime
+    {
+        return $this->unmaskTokenGeneratedAt;
+    }
+
+    /**
+     * @param DateTime|null $unmaskTokenGeneratedAt
+     * @return $this
+     */
+    public function setUnmaskTokenGeneratedAt(?DateTime $unmaskTokenGeneratedAt): self
+    {
+        $this->unmaskTokenGeneratedAt = $unmaskTokenGeneratedAt;
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getConfirmationToken(): ?string
+    {
+        return $this->confirmationToken;
+    }
+
+    /**
+     * @param string|null $confirmationToken
+     * @return $this
+     */
+    public function setConfirmationToken(?string $confirmationToken): self
+    {
+        $this->confirmationToken = $confirmationToken;
+        return $this;
+    }
+
+    /**
+     * @return DateTime|null
+     */
+    public function getConfirmationTokenGeneratedAt(): ?DateTime
+    {
+        return $this->confirmationTokenGeneratedAt;
+    }
+
+    /**
+     * @param DateTime|null $confirmationTokenGeneratedAt
+     * @return $this
+     */
+    public function setConfirmationTokenGeneratedAt(?DateTime $confirmationTokenGeneratedAt): self
+    {
+        $this->confirmationTokenGeneratedAt = $confirmationTokenGeneratedAt;
+        return $this;
+    }
+
+    /**
+     * @return int|null
+     */
+    public function getPayerContractorVatStatus(): ?int
+    {
+        return $this->payerContractorVatStatus;
+    }
+
+    /**
+     * @param int|null $payerContractorVatStatus
+     * @return $this
+     */
+    public function setPayerContractorVatStatus(?int $payerContractorVatStatus): self
+    {
+        $this->payerContractorVatStatus = $payerContractorVatStatus;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getVatCalculationType(): int
+    {
+        return $this->vatCalculationType;
+    }
+
+    /**
+     * @param int $vatCalculationType
+     * @return $this
+     */
+    public function setVatCalculationType(int $vatCalculationType): self
+    {
+        $this->vatCalculationType = $vatCalculationType;
+        return $this;
+    }
+
+    /**
+     * @return DateTime|null
+     */
+    public function getConfirmedAt(): ?DateTime
+    {
+        return $this->confirmedAt;
+    }
+
+    /**
+     * @param DateTime|null $confirmedAt
+     * @return $this
+     */
+    public function setConfirmedAt(?DateTime $confirmedAt): self
+    {
+        $this->confirmedAt = $confirmedAt;
+        return $this;
+    }
+
+    /**
+     * @return DateTime|null
+     */
+    public function getVerifiedAt(): ?DateTime
+    {
+        return $this->verifiedAt;
+    }
+
+    /**
+     * @param DateTime|null $verifiedAt
+     * @return $this
+     */
+    public function setVerifiedAt(?DateTime $verifiedAt): self
+    {
+        $this->verifiedAt = $verifiedAt;
+        return $this;
+    }
+
+    /**
+     * @return $this|null
+     */
+    public function getParentOrder(): ?Order
+    {
+        return $this->parentOrder;
+    }
+
+    /**
+     * @param Order|null $parentOrder
+     * @return $this
+     */
+    public function setParentOrder(?Order $parentOrder): self
+    {
+        $this->parentOrder = $parentOrder;
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isComplaint(): bool
+    {
+        return $this->isComplaint;
+    }
+
+    /**
+     * @param bool $isComplaint
+     * @return $this
+     */
+    public function setIsComplaint(bool $isComplaint): self
+    {
+        $this->isComplaint = $isComplaint;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getCalculationType(): int
+    {
+        return $this->calculationType;
+    }
+
+    /**
+     * @param int $calculationType
+     * @return $this
+     */
+    public function setCalculationType(int $calculationType): self
+    {
+        $this->calculationType = $calculationType;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getPackagesCnt(): int
+    {
+        return $this->packagesCnt;
+    }
+
+    /**
+     * @param int $packagesCnt
+     * @return $this
+     */
+    public function setPackagesCnt(int $packagesCnt): self
+    {
+        $this->packagesCnt = $packagesCnt;
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isDataMasked(): bool
+    {
+        return $this->isDataMasked;
+    }
+
+    /**
+     * @param bool $isDataMasked
+     * @return $this
+     */
+    public function setIsDataMasked(bool $isDataMasked): self
+    {
+        $this->isDataMasked = $isDataMasked;
+        return $this;
+    }
 }

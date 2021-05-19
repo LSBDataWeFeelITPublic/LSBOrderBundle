@@ -7,3 +7,31 @@ services:
         alias: 'LSB\OrderBundle\Factory\EntityFactory'
 
     LSB\OrderBundle\Factory\EntityFactoryInterface: '@LSB\OrderBundle\Factory\EntityFactory'
+
+    LSB\OrderBundle\Factory\OrderFactory:
+        arguments:
+            - '%lsb_order.config.resources.order.class.entity%'
+    lsb_order_factory_order:
+        alias: LSB\OrderBundle\Factory\OrderFactory
+    LSB\OrderBundle\Factory\OrderFactoryInterface: '@LSB\OrderBundle\Factory\OrderFactory'
+
+    LSB\OrderBundle\Factory\OrderPackageFactory:
+        arguments:
+            - '%lsb_order.config.resources.order_package.class.entity%'
+    lsb_order_factory_order_package:
+        alias: LSB\OrderBundle\Factory\OrderPackageFactory
+    LSB\OrderBundle\Factory\OrderPackageFactoryInterface: '@LSB\OrderBundle\Factory\OrderPackageFactory'
+
+    LSB\OrderBundle\Factory\OrderPackageItemFactory:
+        arguments:
+            - '%lsb_order.config.resources.order_package_item.class.entity%'
+    lsb_order_factory_order_package_item:
+        alias: LSB\OrderBundle\Factory\OrderPackageItemFactory
+    LSB\OrderBundle\Factory\OrderPackageItemFactoryInterface: '@LSB\OrderBundle\Factory\OrderPackageItemFactory'
+
+    LSB\OrderBundle\Factory\OrderNoteFactory:
+        arguments:
+            - '%lsb_order.config.resources.order_note.class.entity%'
+    lsb_order_factory_order_note:
+        alias: LSB\OrderBundle\Factory\OrderNoteFactory
+    LSB\OrderBundle\Factory\OrderNoteFactoryInterface: '@LSB\OrderBundle\Factory\OrderNoteFactory'

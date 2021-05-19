@@ -1,8 +1,29 @@
 services:
-    LSB\OrderBundle\Form\EntityType:
-        tags:
-            - { name: form.type }
 
-    LSB\OrderBundle\Form\EntityTranslationType:
+    LSB\OrderBundle\Form\OrderType:
         tags:
-            - { name: form.type }
+            -
+                name: form.type
+
+    LSB\OrderBundle\Form\OrderPackageType:
+        tags:
+            -
+                name: form.type
+
+    LSB\OrderBundle\Form\OrderPackageItemType:
+        tags:
+            -
+                name: form.type
+
+    LSB\OrderBundle\Form\OrderNoteType:
+        tags:
+            -
+                name: form.type
+        #   FIXME: Poprawna forma zapisu:
+        #  - {name: form.type}
+        #   FIXME: Poprawna forma zapisu:
+        #  - {name: form.type}
+        #   FIXME: Poprawna forma zapisu:
+        #  - {name: form.type}
+        #   FIXME: Poprawna forma zapisu:
+        #  - {name: form.type}

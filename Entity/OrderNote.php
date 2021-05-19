@@ -45,7 +45,7 @@ abstract class OrderNote implements OrderNoteInterface
 
     /**
      * @var OrderPackageInterface|null
-     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderPackageIntface", inversedBy="notes")
+     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderPackageInterface", inversedBy="notes")
      */
     protected ?OrderPackageInterface $orderPackage;
 
@@ -57,7 +57,6 @@ abstract class OrderNote implements OrderNoteInterface
 
     /**
      * @var integer
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
      * @ORM\Column(type="integer", nullable=true)
      */
     protected int $type = self::TYPE_USER_NOTE;
@@ -70,12 +69,6 @@ abstract class OrderNote implements OrderNoteInterface
     public function __construct($type = null)
     {
         $this->generateUuid();
-
-        if ($type && array_key_exists($type, self::$typeList)) {
-            $this->setType($type);
-        }
-
-        return $this;
     }
 
     /**
@@ -87,4 +80,91 @@ abstract class OrderNote implements OrderNoteInterface
         $this->generateUuid(true);
     }
 
+    /**
+     * @return string[]
+     */
+    public static function getTypeList(): array
+    {
+        return self::$typeList;
+    }
+
+    /**
+     * @param string[] $typeList
+     */
+    public static function setTypeList(array $typeList): void
+    {
+        self::$typeList = $typeList;
+    }
+
+    /**
+     * @return OrderInterface
+     */
+    public function getOrder(): OrderInterface
+    {
+        return $this->order;
+    }
+
+    /**
+     * @param OrderInterface $order
+     * @return $this
+     */
+    public function setOrder(OrderInterface $order): self
+    {
+        $this->order = $order;
+        return $this;
+    }
+
+    /**
+     * @return OrderPackageInterface|null
+     */
+    public function getOrderPackage(): ?OrderPackageInterface
+    {
+        return $this->orderPackage;
+    }
+
+    /**
+     * @param OrderPackageInterface|null $orderPackage
+     * @return $this
+     */
+    public function setOrderPackage(?OrderPackageInterface $orderPackage): self
+    {
+        $this->orderPackage = $orderPackage;
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getContent(): ?string
+    {
+        return $this->content;
+    }
+
+    /**
+     * @param string|null $content
+     * @return $this
+     */
+    public function setContent(?string $content): self
+    {
+        $this->content = $content;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getType(): int
+    {
+        return $this->type;
+    }
+
+    /**
+     * @param int $type
+     * @return $this
+     */
+    public function setType(int $type): self
+    {
+        $this->type = $type;
+        return $this;
+    }
 }

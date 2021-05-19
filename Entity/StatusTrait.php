@@ -1,6 +1,6 @@
 <?php
 
-namespace LSB\OrderBundle\Traits;
+namespace LSB\OrderBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use LSB\OrderBundle\Interfaces\OrderStatusInterface;
