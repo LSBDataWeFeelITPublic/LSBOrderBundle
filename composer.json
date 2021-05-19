@@ -22,7 +22,8 @@
         "lsb/utility-bundle": "dev-master",
         "knplabs/doctrine-behaviors": "^2.0",
         "stof/doctrine-extensions-bundle": "^1.4",
-        "lsb/contractor-bundle": "dev-master"
+        "lsb/contractor-bundle": "dev-master",
+        "lsb/locale-bundle": "dev-master"
     },
     "require-dev": {
         "phpunit/phpunit": "^8.0",
@@ -53,6 +54,10 @@
         {
             "type": "git",
             "url": "https://github.com/LSBDataWeFeelITPublic/LSBContractorBundle.git"
+        },
+        {
+            "type": "git",
+            "url": "https://github.com/LSBDataWeFeelITPublic/LSBLocaleBundle.git"
         }
     ]
 }
