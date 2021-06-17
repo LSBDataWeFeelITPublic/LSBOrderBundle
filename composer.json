@@ -19,11 +19,11 @@
         "doctrine/orm": "2.*",
         "doctrine/doctrine-bundle": "2.*",
         "symfony/validator": "^5.0",
-        "lsb/utility-bundle": "dev-master",
+        "lsb/utility-bundle": "^0.4",
         "knplabs/doctrine-behaviors": "^2.0",
         "stof/doctrine-extensions-bundle": "^1.4",
-        "lsb/contractor-bundle": "dev-master",
-        "lsb/locale-bundle": "dev-master"
+        "lsb/contractor-bundle": "^0.3",
+        "lsb/locale-bundle": "^0.1"
     },
     "require-dev": {
         "phpunit/phpunit": "^8.0",
