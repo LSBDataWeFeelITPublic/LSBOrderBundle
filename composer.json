@@ -41,47 +41,47 @@
     "repositories": [
         {
             "type": "git",
-            "url": "git@github.com:LSBDataWeFeelITPublic/LSBLocaleBundle.git"
+            "url": "https://github.com/LSBDataWeFeelITPublic/LSBLocaleBundle.git"
         },
         {
             "type": "git",
-            "url": "git@github.com:LSBDataWeFeelITPublic/TranslationFormBundle.git"
+            "url": "https://github.com/LSBDataWeFeelITPublic/TranslationFormBundle.git"
         },
         {
             "type": "git",
-            "url": "git@github.com:LSBDataWeFeelITPublic/LSBUtilityBundle.git"
+            "url": "https://github.com/LSBDataWeFeelITPublic/LSBUtilityBundle.git"
         },
         {
             "type": "git",
-            "url": "git@github.com:LSBDataWeFeelITPublic/LSBUserBundle.git"
+            "url": "https://github.com/LSBDataWeFeelITPublic/LSBUserBundle.git"
         },
         {
             "type": "git",
-            "url": "git@github.com:LSBDataWeFeelITPublic/LSBContractorBundle.git"
+            "url": "https://github.com/LSBDataWeFeelITPublic/LSBContractorBundle.git"
         },
         {
             "type": "git",
-            "url": "git@github.com:LSBDataWeFeelITPublic/LSBProductBundle.git"
+            "url": "https://github.com/LSBDataWeFeelITPublic/LSBProductBundle.git"
         },
         {
             "type": "git",
-            "url": "git@github.com:LSBDataWeFeelITPublic/LSBPricelistBundle.git"
+            "url": "https://github.com/LSBDataWeFeelITPublic/LSBPricelistBundle.git"
         },
         {
             "type": "git",
-            "url": "git@github.com:LSBDataWeFeelITPublic/LSBMessengerBundle.git"
+            "url": "https://github.com/LSBDataWeFeelITPublic/LSBMessengerBundle.git"
         },
         {
             "type": "git",
-            "url": "git@github.com:LSBDataWeFeelITPublic/LSBPaymentBundle.git"
+            "url": "https://github.com/LSBDataWeFeelITPublic/LSBPaymentBundle.git"
         },
         {
             "type": "git",
-            "url": "git@github.com:LSBDataWeFeelITPublic/LSBOrderBundle.git"
+            "url": "https://github.com/LSBDataWeFeelITPublic/LSBOrderBundle.git"
         },
         {
             "type": "git",
-            "url": "git@github.com:LSBDataWeFeelITPublic/LSBNotificationBundle.git"
+            "url": "https://github.com/LSBDataWeFeelITPublic/LSBNotificationBundle.git"
         }
     ]
 }
