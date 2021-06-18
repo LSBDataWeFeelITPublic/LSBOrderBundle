@@ -19,11 +19,11 @@
         "doctrine/orm": "2.*",
         "doctrine/doctrine-bundle": "2.*",
         "symfony/validator": "^5.0",
-        "lsb/utility-bundle": "^0.4",
+        "lsb/utility-bundle": ">=0.1",
         "knplabs/doctrine-behaviors": "^2.0",
         "stof/doctrine-extensions-bundle": "^1.4",
-        "lsb/contractor-bundle": "^0.3",
-        "lsb/locale-bundle": "^0.1"
+        "lsb/contractor-bundle": ">=0.1",
+        "lsb/locale-bundle": ">=0.1"
     },
     "require-dev": {
         "phpunit/phpunit": "^8.0",
@@ -41,23 +41,47 @@
     "repositories": [
         {
             "type": "git",
-            "url": "https://github.com/LSBDataWeFeelITPublic/TranslationFormBundle.git"
+            "url": "git@github.com:LSBDataWeFeelITPublic/LSBLocaleBundle.git"
         },
         {
             "type": "git",
-            "url": "https://github.com/LSBDataWeFeelITPublic/LSBUtilityBundle.git"
+            "url": "git@github.com:LSBDataWeFeelITPublic/TranslationFormBundle.git"
         },
         {
             "type": "git",
-            "url": "https://github.com/LSBDataWeFeelITPublic/LSBUserBundle.git"
+            "url": "git@github.com:LSBDataWeFeelITPublic/LSBUtilityBundle.git"
         },
         {
             "type": "git",
-            "url": "https://github.com/LSBDataWeFeelITPublic/LSBContractorBundle.git"
+            "url": "git@github.com:LSBDataWeFeelITPublic/LSBUserBundle.git"
         },
         {
             "type": "git",
-            "url": "https://github.com/LSBDataWeFeelITPublic/LSBLocaleBundle.git"
+            "url": "git@github.com:LSBDataWeFeelITPublic/LSBContractorBundle.git"
+        },
+        {
+            "type": "git",
+            "url": "git@github.com:LSBDataWeFeelITPublic/LSBProductBundle.git"
+        },
+        {
+            "type": "git",
+            "url": "git@github.com:LSBDataWeFeelITPublic/LSBPricelistBundle.git"
+        },
+        {
+            "type": "git",
+            "url": "git@github.com:LSBDataWeFeelITPublic/LSBMessengerBundle.git"
+        },
+        {
+            "type": "git",
+            "url": "git@github.com:LSBDataWeFeelITPublic/LSBPaymentBundle.git"
+        },
+        {
+            "type": "git",
+            "url": "git@github.com:LSBDataWeFeelITPublic/LSBOrderBundle.git"
+        },
+        {
+            "type": "git",
+            "url": "git@github.com:LSBDataWeFeelITPublic/LSBNotificationBundle.git"
         }
     ]
 }
