@@ -6,14 +6,13 @@ namespace LSB\OrderBundle\Repository;
 use Doctrine\Persistence\ManagerRegistry;
 use LSB\OrderBundle\Entity\OrderPackageItem;
 use LSB\UtilityBundle\Repository\BaseRepository;
-use LSB\UtilityBundle\Repository\PaginationInterface;
 use LSB\UtilityBundle\Repository\PaginationRepositoryTrait;
 
 /**
  * Class OrderPackageItemRepository
  * @package LSB\OrderBundle\Repository
  */
-class OrderPackageItemRepository extends BaseRepository implements OrderPackageItemRepositoryInterface, PaginationInterface
+class OrderPackageItemRepository extends BaseRepository implements OrderPackageItemRepositoryInterface
 {
     use PaginationRepositoryTrait;
 
