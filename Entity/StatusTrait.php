@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace LSB\OrderBundle\Entity;
 
@@ -8,7 +9,7 @@ use JMS\Serializer\Annotation\Groups;
 
 /**
  * Trait StatusTrait
- * @package LSB\OrderBundle\Traits
+ * @package LSB\OrderBundle\Entity
  */
 trait StatusTrait
 {
@@ -16,7 +17,7 @@ trait StatusTrait
      * Pełna lista statusów mapowanych na nazwy
      * @var array
      */
-    public static $statusList = [
+    public static array $statusList = [
         OrderStatusInterface::STATUS_CANCELED => 'Order.Status.Canceled',
         OrderStatusInterface::STATUS_OPEN => 'Order.Status.Open',
         OrderStatusInterface::STATUS_WAITING_FOR_CONFIRMATION => 'Order.Status.WaitingForConfirmation',
@@ -36,7 +37,7 @@ trait StatusTrait
     /**
      * @var array
      */
-    public static $paymentStatusList = [
+    public static array $paymentStatusList = [
         OrderStatusInterface::PAYMENT_STATUS_OPEN => 'Order.PaymentStatus.Open',
         OrderStatusInterface::PAYMENT_STATUS_ON_DELIVERY => 'Order.PaymentStatus.OnDelivery',
         OrderStatusInterface::PAYMENT_STATUS_UNPAID => 'Order.PaymentStatus.Unpaid',
@@ -53,7 +54,7 @@ trait StatusTrait
      * @var integer
      * @ORM\Column(type="integer", nullable=false)
      */
-    protected $status = self::STATUS_OPEN;
+    protected int $status = self::STATUS_OPEN;
 
     /**
      * @Groups({"Default", "SHOP_Public"})
@@ -61,69 +62,30 @@ trait StatusTrait
      * @var integer|null
      * @ORM\Column(type="integer", nullable=true)
      */
-    protected $paymentStatus;
+    protected ?int $paymentStatus = null;
 
     /**
-     * State - postęp workflow
-     * @ORM\Column(type="json_array", nullable=true)
+     * @var array|null
+     * @ORM\Column(type="json", nullable=true)
      */
-    protected $state;
+    protected ?array $state = null;
 
     /**
      * @var int
      *
      * @ORM\Column(type="integer", nullable=true)
      */
-    protected $stage;
+    protected ?int $stage = null;
 
     /**
-     * @var string
+     * @var string|null
      */
-    protected $translatedStatus;
+    protected ?string $translatedStatus;
 
     /**
-     * @var string
+     * @var string|null
      */
-    protected $translatedPaymentStatus;
-
-    /**
-     * @return int
-     */
-    public function getStatus()
-    {
-        return $this->status;
-    }
-
-    /**
-     * @param $status
-     * @return $this
-     */
-    public function setStatus($status)
-    {
-
-        $this->status = $status;
-
-        return $this;
-    }
-
-    /**
-     * @param $state
-     * @return $this
-     */
-    public function setState($state)
-    {
-        $this->state = $state;
-
-        return $this;
-    }
-
-    /**
-     * @return array
-     */
-    public function getState()
-    {
-        return $this->state;
-    }
+    protected ?string $translatedPaymentStatus;
 
     /**
      * @return string|null
@@ -150,53 +112,52 @@ trait StatusTrait
     }
 
     /**
-     * @param $stage
-     * @return $this
+     * @return array
      */
-    public function setStage($stage)
+    public static function getStatusList(): array
     {
-        $this->stage = $stage;
+        return self::$statusList;
+    }
 
-        return $this;
+    /**
+     * @param array $statusList
+     */
+    public static function setStatusList(array $statusList): void
+    {
+        self::$statusList = $statusList;
+    }
+
+    /**
+     * @return array
+     */
+    public static function getPaymentStatusList(): array
+    {
+        return self::$paymentStatusList;
+    }
+
+    /**
+     * @param array $paymentStatusList
+     */
+    public static function setPaymentStatusList(array $paymentStatusList): void
+    {
+        self::$paymentStatusList = $paymentStatusList;
     }
 
     /**
      * @return int
      */
-    public function getStage()
+    public function getStatus(): int
     {
-        return $this->stage;
+        return $this->status;
     }
 
     /**
-     * @return |null
-     */
-    public function getMappedStage()
-    {
-        if (isset(self::$stageList[$this->stage])) {
-            return self::$stageList[$this->stage];
-        } else {
-            return null;
-        }
-    }
-
-
-    /**
-     * @return string|null
-     */
-    public function getTranslatedStatus(): ?string
-    {
-        return $this->translatedStatus;
-    }
-
-    /**
-     * @param string $translatedStatus
+     * @param int $status
      * @return $this
      */
-    public function setTranslatedStatus(string $translatedStatus)
+    public function setStatus(int $status): static
     {
-        $this->translatedStatus = $translatedStatus;
-
+        $this->status = $status;
         return $this;
     }
 
@@ -212,27 +173,110 @@ trait StatusTrait
      * @param int|null $paymentStatus
      * @return $this
      */
-    public function setPaymentStatus(?int $paymentStatus)
+    public function setPaymentStatus(?int $paymentStatus): static
     {
         $this->paymentStatus = $paymentStatus;
         return $this;
     }
 
     /**
-     * @return string
+     * @return array|null
      */
-    public function getTranslatedPaymentStatus(): string
+    public function getState(): ?array
+    {
+        return $this->state;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $state
+     *
+     * @return $this
+     */
+    public function addState($state): static
+    {
+        if (false === in_array($state, $this->state, true)) {
+            $this->state[] = $state;
+        }
+        return $this;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $state
+     *
+     * @return $this
+     */
+    public function removeState($state): static
+    {
+        if (true === in_array($state, $this->state, true)) {
+            $index = array_search($state, $this->state);
+            array_splice($this->state, $index, 1);
+        }
+        return $this;
+    }
+
+    /**
+     * @param array|null $state
+     * @return $this
+     */
+    public function setState(?array $state): static
+    {
+        $this->state = $state;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getStage(): ?int
+    {
+        return $this->stage;
+    }
+
+    /**
+     * @param int $stage
+     * @return $this
+     */
+    public function setStage(?int $stage): static
+    {
+        $this->stage = $stage;
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getTranslatedStatus(): ?string
+    {
+        return $this->translatedStatus;
+    }
+
+    /**
+     * @param string|null $translatedStatus
+     * @return $this
+     */
+    public function setTranslatedStatus(?string $translatedStatus): static
+    {
+        $this->translatedStatus = $translatedStatus;
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getTranslatedPaymentStatus(): ?string
     {
         return $this->translatedPaymentStatus;
     }
 
     /**
-     * @param string $translatedPaymentStatus
+     * @param string|null $translatedPaymentStatus
      * @return $this
      */
-    public function setTranslatedPaymentStatus(string $translatedPaymentStatus)
+    public function setTranslatedPaymentStatus(?string $translatedPaymentStatus): static
     {
         $this->translatedPaymentStatus = $translatedPaymentStatus;
         return $this;
     }
+
+
 }

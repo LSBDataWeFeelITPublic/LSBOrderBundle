@@ -16,14 +16,13 @@ use Symfony\Component\Validator\Constraints as Assert;
  */
 abstract class OrderNote implements OrderNoteInterface
 {
-
     use UuidTrait;
     use CreatedUpdatedTrait;
 
     /**
-     * @var string[]
+     * @var array|string[]
      */
-    public static $typeList = [
+    public static array $typeList = [
         self::TYPE_USER_NOTE => 'Order.Note.Type.UserNote',
         self::TYPE_USER_DELIVERY_NOTE => 'Order.Note.Type.UserDeliveryNote',
         self::TYPE_USER_VERIFICATION_REQUEST_NOTE => 'Order.Note.Type.UserVerificationRequestNote',
@@ -38,22 +37,22 @@ abstract class OrderNote implements OrderNoteInterface
     ];
 
     /**
-     * @var OrderInterface
+     * @var OrderInterface|null
      * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderInterface", inversedBy="notes")
      */
-    protected OrderInterface $order;
+    protected ?OrderInterface $order = null;
 
     /**
      * @var OrderPackageInterface|null
      * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderPackageInterface", inversedBy="notes")
      */
-    protected ?OrderPackageInterface $orderPackage;
+    protected ?OrderPackageInterface $orderPackage = null;
 
     /**
      * @var string|null
      * @ORM\Column(type="text", nullable=true)
      */
-    protected ?string $content;
+    protected ?string $content = null;
 
     /**
      * @var integer
@@ -66,7 +65,7 @@ abstract class OrderNote implements OrderNoteInterface
      * @param null $type
      * @throws \Exception
      */
-    public function __construct($type = null)
+    public function __construct()
     {
         $this->generateUuid();
     }
@@ -81,7 +80,7 @@ abstract class OrderNote implements OrderNoteInterface
     }
 
     /**
-     * @return string[]
+     * @return array|string[]
      */
     public static function getTypeList(): array
     {
@@ -89,7 +88,7 @@ abstract class OrderNote implements OrderNoteInterface
     }
 
     /**
-     * @param string[] $typeList
+     * @param array|string[] $typeList
      */
     public static function setTypeList(array $typeList): void
     {
@@ -97,18 +96,18 @@ abstract class OrderNote implements OrderNoteInterface
     }
 
     /**
-     * @return OrderInterface
+     * @return OrderInterface|null
      */
-    public function getOrder(): OrderInterface
+    public function getOrder(): ?OrderInterface
     {
         return $this->order;
     }
 
     /**
-     * @param OrderInterface $order
-     * @return $this
+     * @param OrderInterface|null $order
+     * @return OrderNote
      */
-    public function setOrder(OrderInterface $order): self
+    public function setOrder(?OrderInterface $order): OrderNote
     {
         $this->order = $order;
         return $this;
@@ -124,9 +123,9 @@ abstract class OrderNote implements OrderNoteInterface
 
     /**
      * @param OrderPackageInterface|null $orderPackage
-     * @return $this
+     * @return OrderNote
      */
-    public function setOrderPackage(?OrderPackageInterface $orderPackage): self
+    public function setOrderPackage(?OrderPackageInterface $orderPackage): OrderNote
     {
         $this->orderPackage = $orderPackage;
         return $this;
@@ -142,9 +141,9 @@ abstract class OrderNote implements OrderNoteInterface
 
     /**
      * @param string|null $content
-     * @return $this
+     * @return OrderNote
      */
-    public function setContent(?string $content): self
+    public function setContent(?string $content): OrderNote
     {
         $this->content = $content;
         return $this;
@@ -160,9 +159,9 @@ abstract class OrderNote implements OrderNoteInterface
 
     /**
      * @param int $type
-     * @return $this
+     * @return OrderNote
      */
-    public function setType(int $type): self
+    public function setType(int $type): OrderNote
     {
         $this->type = $type;
         return $this;

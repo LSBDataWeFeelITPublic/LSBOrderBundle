@@ -4,6 +4,8 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use LSB\UtilityBundle\Calculation\CalculationTypeTrait;
+use LSB\UtilityBundle\Helper\ValueHelper;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -12,30 +14,32 @@ use Symfony\Component\Validator\Constraints as Assert;
  */
 trait ValueCostTrait
 {
+    use CalculationTypeTrait;
+
     /**
-     * @var float|string
+     * @var string|null
      * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
      * @Assert\Type(type="numeric")
      */
-    protected $totalValueNet = 0;
+    protected ?string $totalValueNet = "0";
 
     /**
-     * @var float|string
+     * @var string|null
      * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
      */
-    protected $totalValueGross = 0;
+    protected ?string $totalValueGross = "0";
 
     /**
-     * @var float|string|null
+     * @var string|null
      * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
      */
-    protected $shippingCostNet = 0;
+    protected ?string $shippingCostNet = "0";
 
     /**
-     * @var float|string|null
+     * @var string|null
      * @ORM\Column(type="decimal", precision=18, scale=2, options={"default": 0})
      */
-    protected $shippingCostGross = 0;
+    protected ?string $shippingCostGross = "0";
 
     /**
      * @var integer|null
@@ -50,98 +54,98 @@ trait ValueCostTrait
     protected ?int $paymentCostTaxRate;
 
     /**
-     * @var float|string|null
+     * @var string|null
      * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
      */
-    protected $paymentCostNet = 0;
+    protected ?string $paymentCostNet = "0";
 
     /**
-     * @var float|string|null
+     * @var string|null
      * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
      */
-    protected $paymentCostGross = 0;
+    protected ?string $paymentCostGross = "0";
 
     /**
-     * @var float|string|null
+     * @var string|null
      * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
      */
-    protected $productsValueNet = 0;
+    protected ?string $productsValueNet = "0";
 
     /**
-     * @var float|string|null
+     * @var string|null
      * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
      */
-    protected $productsValueGross = 0;
+    protected ?string $productsValueGross = "0";
 
     /**
-     * @return float|string
+     * @return float|null
      */
-    public function getTotalValueNet()
+    public function getTotalValueNet(): ?float
     {
-        return $this->totalValueNet;
+        return ValueHelper::toFloat($this->totalValueNet);
     }
 
     /**
-     * @param float|string $totalValueNet
+     * @param float|string|null $totalValueNet
      * @return $this
      */
-    public function setTotalValueNet($totalValueNet): self
+    public function setTotalValueNet(float|string|null $totalValueNet): static
     {
-        $this->totalValueNet = $totalValueNet;
+        $this->totalValueNet = ValueHelper::toString($totalValueNet);
         return $this;
     }
 
     /**
-     * @return float|string
+     * @return float|null
      */
-    public function getTotalValueGross()
+    public function getTotalValueGross(): ?float
     {
-        return $this->totalValueGross;
+        return ValueHelper::toFloat($this->totalValueGross);
     }
 
     /**
-     * @param float|string $totalValueGross
+     * @param float|string|null $totalValueGross
      * @return $this
      */
-    public function setTotalValueGross($totalValueGross): self
+    public function setTotalValueGross(float|string|null $totalValueGross): static
     {
-        $this->totalValueGross = $totalValueGross;
+        $this->totalValueGross = ValueHelper::toString($totalValueGross);
         return $this;
     }
 
     /**
-     * @return float|string|null
+     * @return float|null
      */
-    public function getShippingCostNet()
+    public function getShippingCostNet(): ?float
     {
-        return $this->shippingCostNet;
+        return ValueHelper::toFloat($this->shippingCostNet);
     }
 
     /**
      * @param float|string|null $shippingCostNet
      * @return $this
      */
-    public function setShippingCostNet($shippingCostNet): self
+    public function setShippingCostNet(float|string|null $shippingCostNet): static
     {
-        $this->shippingCostNet = $shippingCostNet;
+        $this->shippingCostNet = ValueHelper::toString($shippingCostNet);
         return $this;
     }
 
     /**
-     * @return float|string|null
+     * @return float|null
      */
-    public function getShippingCostGross()
+    public function getShippingCostGross(): ?float
     {
-        return $this->shippingCostGross;
+        return ValueHelper::toFloat($this->shippingCostGross);
     }
 
     /**
      * @param float|string|null $shippingCostGross
      * @return $this
      */
-    public function setShippingCostGross($shippingCostGross): self
+    public function setShippingCostGross(float|string|null $shippingCostGross): static
     {
-        $this->shippingCostGross = $shippingCostGross;
+        $this->shippingCostGross = ValueHelper::toString($shippingCostGross);
         return $this;
     }
 
@@ -157,7 +161,7 @@ trait ValueCostTrait
      * @param int|null $shippingCostTaxRate
      * @return $this
      */
-    public function setShippingCostTaxRate(?int $shippingCostTaxRate): self
+    public function setShippingCostTaxRate(?int $shippingCostTaxRate): static
     {
         $this->shippingCostTaxRate = $shippingCostTaxRate;
         return $this;
@@ -175,81 +179,81 @@ trait ValueCostTrait
      * @param int|null $paymentCostTaxRate
      * @return $this
      */
-    public function setPaymentCostTaxRate(?int $paymentCostTaxRate): self
+    public function setPaymentCostTaxRate(?int $paymentCostTaxRate): static
     {
         $this->paymentCostTaxRate = $paymentCostTaxRate;
         return $this;
     }
 
     /**
-     * @return float|string|null
+     * @return float|null
      */
-    public function getPaymentCostNet()
+    public function getPaymentCostNet(): ?float
     {
-        return $this->paymentCostNet;
+        return ValueHelper::toFloat($this->paymentCostNet);
     }
 
     /**
      * @param float|string|null $paymentCostNet
      * @return $this
      */
-    public function setPaymentCostNet($paymentCostNet): self
+    public function setPaymentCostNet(float|string|null $paymentCostNet): static
     {
-        $this->paymentCostNet = $paymentCostNet;
+        $this->paymentCostNet = ValueHelper::toString($paymentCostNet);
         return $this;
     }
 
     /**
-     * @return float|string|null
+     * @return float|null
      */
-    public function getPaymentCostGross()
+    public function getPaymentCostGross(): ?float
     {
-        return $this->paymentCostGross;
+        return ValueHelper::toFloat($this->paymentCostGross);
     }
 
     /**
      * @param float|string|null $paymentCostGross
      * @return $this
      */
-    public function setPaymentCostGross($paymentCostGross): self
+    public function setPaymentCostGross(float|string|null $paymentCostGross): static
     {
-        $this->paymentCostGross = $paymentCostGross;
+        $this->paymentCostGross = ValueHelper::toString($paymentCostGross);
         return $this;
     }
 
     /**
-     * @return float|string|null
+     * @return float|null
      */
-    public function getProductsValueNet()
+    public function getProductsValueNet(): ?float
     {
-        return $this->productsValueNet;
+        return ValueHelper::toFloat($this->productsValueNet);
     }
 
     /**
      * @param float|string|null $productsValueNet
      * @return $this
      */
-    public function setProductsValueNet($productsValueNet): self
+    public function setProductsValueNet(float|string|null $productsValueNet): static
     {
-        $this->productsValueNet = $productsValueNet;
+        $this->productsValueNet = ValueHelper::toString($productsValueNet);
         return $this;
     }
 
     /**
-     * @return float|string|null
+     * @return float|null
      */
-    public function getProductsValueGross()
+    public function getProductsValueGross(): ?float
     {
-        return $this->productsValueGross;
+        return ValueHelper::toFloat($this->productsValueGross);
     }
 
     /**
      * @param float|string|null $productsValueGross
      * @return $this
      */
-    public function setProductsValueGross($productsValueGross): self
+    public function setProductsValueGross(float|string|null $productsValueGross): static
     {
-        $this->productsValueGross = $productsValueGross;
+        $this->productsValueGross = ValueHelper::toString($productsValueGross);
         return $this;
     }
 

@@ -1,14 +1,15 @@
 <?php
+declare(strict_types=1);
 
 namespace LSB\OrderBundle\Calculator;
 
-use LSB\CustomerBundle\Service\TaxManager;
+use LSB\LocaleBundle\Manager\TaxManager;
 use LSB\OrderBundle\Entity\Order;
+use LSB\OrderBundle\Entity\OrderInterface;
 use LSB\OrderBundle\Entity\OrderPackage;
-use LSB\OrderBundle\Entity\PackageItem;
-use LSB\UtilBundle\Calculator\BaseTotalCalculator;
-use LSB\UtilBundle\Calculator\CalculatorResult;
-use LSB\UtilBundle\Entity\Application;
+use LSB\OrderBundle\Entity\OrderPackageInterface;
+use LSB\PricelistBundle\Calculator\BaseTotalCalculator;
+use LSB\PricelistBundle\Calculator\Result;
 
 /**
  * Class OrderTotalCalculator
@@ -18,26 +19,20 @@ class OrderTotalCalculator extends BaseTotalCalculator
 {
     protected const SUPPORTED_CLASS = Order::class;
 
-    protected const SUPPORTED_POSITION_CLASS = PackageItem::class;
+    protected const SUPPORTED_POSITION_CLASS = OrderPackage::class;
 
     /**
-     * @param $subject
+     * @param Order $subject
      * @param array $options
-     * @param Application $application
+     * @param string|null $applicationCode
      * @param bool $updateSubject
      * @param bool $updatePositions
      * @param array $calculationRes
-     * @return CalculatorResult
+     * @return Result
      * @throws \Exception
      */
-    public function calculateTotal(
-        $subject,
-        array $options,
-        Application $application,
-        bool $updateSubject = true,
-        bool $updatePositions = true,
-        array &$calculationRes = []
-    ): CalculatorResult {
+    public function calculateTotal($subject, array $options, ?string $applicationCode, bool $updateSubject = true, bool $updatePositions = true, array &$calculationRes = []): Result
+    {
         if (!$subject instanceof Order) {
             throw new \Exception('Subject must be Order');
         }
@@ -47,15 +42,14 @@ class OrderTotalCalculator extends BaseTotalCalculator
         $calculationShippingRes = [];
         $calculationPaymentCostRest = [];
 
-        $nettoCalculation = $subject->getCalculationType() === Order::CALCULATION_TYPE_GROSS ? false : true;
+        $nettoCalculation = $subject->getCalculationType() === OrderInterface::CALCULATION_TYPE_NET;
         $canRecalculateTotal = true;
 
         /**
-         * @var OrderPackage $orderPackage
+         * @var OrderPackageInterface $orderPackage
          */
-        foreach ($subject->getPackages() as $orderPackage) {
-            //Po przeliczeniu wartości pozycji
-            $result = $this->totalCalculatorManager->calculateTotal($orderPackage, $options, $application, BaseTotalCalculator::NAME);
+        foreach ($subject->getOrderPackages() as $orderPackage) {
+            $result = $this->totalCalculatorManager->calculateTotal($orderPackage, $options, 'admin', BaseTotalCalculator::NAME);
             $calculationRes = TaxManager::mergeRes($calculationRes, $result->getCalculationRes());
             $calculationProductRes = TaxManager::mergeRes($calculationProductRes, $result->getCalculationProductRes());
             $calculationShippingRes = TaxManager::mergeRes($calculationShippingRes, $result->getCalculationShippingRes());
@@ -66,65 +60,51 @@ class OrderTotalCalculator extends BaseTotalCalculator
             }
         }
 
-        //Wyliczamy wartość produktów
-
         if ($nettoCalculation) {
-            list($totalProductsNet, $totalProductsGross) = TaxManager::calculateTotalNettoAndGrossFromNettoRes($calculationProductRes);
-            list($totalShippingNet, $totalShippingGross) = TaxManager::calculateTotalNettoAndGrossFromNettoRes($calculationShippingRes);
-            list($totalPaymentCostNet, $totalPaymentCostGross) = TaxManager::calculateTotalNettoAndGrossFromNettoRes($calculationPaymentCostRest);
+            [$totalProductsNet, $totalProductsGross] = TaxManager::calculateTotalNettoAndGrossFromNettoRes($calculationProductRes);
+            [$totalShippingNet, $totalShippingGross] = TaxManager::calculateTotalNettoAndGrossFromNettoRes($calculationShippingRes);
+            [$totalPaymentCostNet, $totalPaymentCostGross] = TaxManager::calculateTotalNettoAndGrossFromNettoRes($calculationPaymentCostRest);
         } else {
-            list($totalProductsNet, $totalProductsGross) = TaxManager::calculateTotalNettoAndGrossFromGrossRes($calculationProductRes);
-            list($totalShippingNet, $totalShippingGross) = TaxManager::calculateTotalNettoAndGrossFromGrossRes($calculationShippingRes);
-            list($totalPaymentCostNet, $totalPaymentCostGross) = TaxManager::calculateTotalNettoAndGrossFromGrossRes($calculationPaymentCostRest);
-        }
-
-        //Doliczamy koszt wysyłki i dodatkowe opłaty
-        //Koszt dostawy na orderze to suma kosztow dostawy z paczek
-        //W związku z tym usuwam uzupełnianie kosztu dostawy z paczki o koszt dostawy z zamówienia
-        //Zostaje naliczanie zbiorcze dopłaty za wybór metody płatności
-        if ($nettoCalculation) {
-            TaxManager::addValueToNettoRes($this->ps->getParameter('default.tax'), (float)$subject->getTotalPaymentPrice(), $calculationRes);
-        } else {
-            TaxManager::addValueToNettoRes($this->ps->getParameter('default.tax'), (float)$subject->getTotalPaymentPriceGross(), $calculationRes);
+            [$totalProductsNet, $totalProductsGross] = TaxManager::calculateTotalNettoAndGrossFromGrossRes($calculationProductRes);
+            [$totalShippingNet, $totalShippingGross] = TaxManager::calculateTotalNettoAndGrossFromGrossRes($calculationShippingRes);
+            [$totalPaymentCostNet, $totalPaymentCostGross] = TaxManager::calculateTotalNettoAndGrossFromGrossRes($calculationPaymentCostRest);
         }
 
         if ($nettoCalculation) {
-            list($totalNet, $totalGross) = TaxManager::calculateTotalNettoAndGrossFromNettoRes($calculationRes);
+            [$totalNet, $totalGross] = TaxManager::calculateTotalNettoAndGrossFromNettoRes($calculationRes);
         } else {
-            list($totalNet, $totalGross) = TaxManager::calculateTotalNettoAndGrossFromGrossRes($calculationRes);
+            [$totalNet, $totalGross] = TaxManager::calculateTotalNettoAndGrossFromGrossRes($calculationRes);
         }
 
         if ($updateSubject) {
             $subject
-                ->setTotalPaymentCost($totalPaymentCostNet)
-                ->setTotalPaymentCostGross($totalPaymentCostGross)
-                ->setTotalShipping($totalShippingNet)
-                ->setTotalShippingGross($totalShippingGross)
-                ->setTotal($totalNet)
-                ->setTotalGross($totalGross)
-                ->setTotalProducts($totalProductsNet)
-                ->setTotalProductsGross($totalProductsGross);
+                //Products values
+                ->setProductsValueNet($totalProductsNet)
+                ->setProductsValueGross($totalProductsGross)
+                //Shipping cost values
+                ->setShippingCostNet($totalShippingNet)
+                ->setShippingCostGross($totalShippingGross)
+                //Payment cost values
+                ->setPaymentCostNet($totalPaymentCostNet)
+                ->setPaymentCostGross($totalPaymentCostGross)
+                //Order package total values
+                ->setTotalValueNet($totalNet)
+                ->setTotalValueGross($totalGross);
         }
 
-        return new CalculatorResult($canRecalculateTotal, $subject->getCurrencyRelation(), $totalNet, $totalGross, $subject, $calculationRes);
+        return new Result($canRecalculateTotal, $subject->getCurrency(), $totalNet, $totalGross, $subject, $calculationRes);
     }
 
     /**
-     * Zamówienie nie posiada pozycji, należy skorzystać z kalkulatora orderPackage
-     *
-     * @param $subject
+     * @param Order $subject
      * @param array $options
-     * @param Application $application
+     * @param string|null $applicationCode
      * @param bool $updatePositions
-     * @return CalculatorResult
-     * @throws \Exception
+     * @return Result
      */
-    public function calculatePositions(
-        $subject,
-        array $options,
-        Application $application,
-        bool $updatePositions = true
-    ): CalculatorResult {
-        throw new \Exception('Not supported');
+    public function calculatePositions($subject, array $options, ?string $applicationCode, bool $updatePositions = true): Result
+    {
+        $res = [];
+        return new Result(false, $subject->getCurrency(), 0, 0, $subject, $res);
     }
 }

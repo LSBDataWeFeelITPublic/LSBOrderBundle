@@ -5,12 +5,12 @@ namespace LSB\OrderBundle\Entity;
 
 use DateTime;
 use Doctrine\Common\Collections\Collection;
+use Doctrine\Common\Collections\Criteria;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\ORM\Mapping\MappedSuperclass;
 use LSB\UtilityBundle\Traits\CreatedUpdatedTrait;
 use LSB\UtilityBundle\Traits\UuidTrait;
-use Symfony\Component\Validator\Constraints as Assert;
 
 /**
  * Class OrderPackage
@@ -23,18 +23,21 @@ abstract class OrderPackage implements OrderPackageInterface
     use CreatedUpdatedTrait;
     use StatusTrait;
     use ValueCostTrait;
+    use WeightTrait;
+    use ProcessDateTrait;
 
     /**
-     * @var string
+     * @var string|null
      * @ORM\Column(type="string", length=50)
      */
-    protected string $number;
+    protected ?string $number = null;
 
     /**
+     * @var OrderInterface|null
      * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderInterface", inversedBy="orderPackages")
      * @ORM\JoinColumn()
      */
-    protected OrderInterface $order;
+    protected ?OrderInterface $order = null;
 
     /**
      * @var ArrayCollection|Collection|OrderPackageItemInterface
@@ -43,60 +46,141 @@ abstract class OrderPackage implements OrderPackageInterface
      * @ORM\JoinColumn(onDelete="CASCADE")
      * @ORM\OrderBy({"position" = "ASC", "id" = "ASC"})
      */
-    protected $orderPackageItems;
+    protected Collection $orderPackageItems;
 
     /**
-     * @var DateTime|null
-     * @ORM\Column(type="datetime", nullable=true)
-     * @Assert\DateTime()
+     * OrderPackage constructor.
+     * @throws \Exception
      */
-    protected ?DateTime $deliveredAt;
+    public function __construct()
+    {
+        $this->generateUuid();
+        $this->orderPackageItems = new ArrayCollection();
+    }
 
     /**
-     * @var float|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
+     * @return Collection
      */
-    protected $totalPaymentCostNet;
+    public function getShippingTypeOrderPackageItems(): Collection
+    {
+        return $this->getTypeOrderPackageItems(OrderPackageItemInterface::TYPE_SHIPPING);
+    }
 
     /**
-     * @var float|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
+     * @return Collection
      */
-    protected $totalPaymentCostGross;
+    public function getPaymentTypeOrderPackageItems(): Collection
+    {
+        return $this->getTypeOrderPackageItems(OrderPackageItemInterface::TYPE_PAYMENT);
+    }
 
     /**
-     * @var float|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
+     * @return Collection
      */
-    protected $totalShippingNet;
+    public function getDefaultTypeOrderPackageItems(): Collection
+    {
+        return $this->getTypeOrderPackageItems(OrderPackageItemInterface::TYPE_DEFAULT);
+    }
 
     /**
-     * @var float|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
+     * @param int $type
+     * @return Collection
      */
-    protected $totalShippingGross;
+    protected function getTypeOrderPackageItems(int $type): Collection
+    {
+        $criteria = Criteria::create()
+            ->where(Criteria::expr()->eq("type", $type))
+            ->orderBy(['id' => Criteria::ASC]);
+
+        return $this->orderPackageItems->matching($criteria);
+    }
 
     /**
-     * @var float|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
+     * @throws \Exception
      */
-    protected $totalProductsNet;
+    public function __clone()
+    {
+        $this->id = null;
+        $this->generateUuid(true);
+    }
 
     /**
-     * @var float|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
+     * @return string|null
      */
-    protected $totalProductsGross;
+    public function getNumber(): string|null
+    {
+        return $this->number;
+    }
 
     /**
-     * @var float|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
+     * @param string|null $number
+     * @return OrderPackage
      */
-    protected $weight;
+    public function setNumber(?string $number): OrderPackage
+    {
+        $this->number = $number;
+        return $this;
+    }
 
     /**
-     * @var float|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
+     * @return OrderInterface|null
      */
-    protected $totalProductWeightGross;
+    public function getOrder(): OrderInterface|null
+    {
+        return $this->order;
+    }
+
+    /**
+     * @param OrderInterface|null $order
+     * @return OrderPackage
+     */
+    public function setOrder(?OrderInterface $order): OrderPackage
+    {
+        $this->order = $order;
+        return $this;
+    }
+
+    /**
+     * @return ArrayCollection|Collection|OrderPackageItemInterface
+     */
+    public function getOrderPackageItems(): ArrayCollection|Collection|OrderPackageItemInterface
+    {
+        return $this->orderPackageItems;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $orderPackageItem
+     *
+     * @return OrderPackage
+     */
+    public function addOrderPackageItem($orderPackageItem): OrderPackage
+    {
+        if (false === $this->orderPackageItems->contains($orderPackageItem)) {
+            $this->orderPackageItems->add($orderPackageItem);
+        }
+        return $this;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $orderPackageItem
+     *
+     * @return OrderPackage
+     */
+    public function removeOrderPackageItem($orderPackageItem): OrderPackage
+    {
+        if (true === $this->orderPackageItems->contains($orderPackageItem)) {
+            $this->orderPackageItems->removeElement($orderPackageItem);
+        }
+        return $this;
+    }
+
+    /**
+     * @param ArrayCollection|Collection|OrderPackageItemInterface $orderPackageItems
+     * @return OrderPackage
+     */
+    public function setOrderPackageItems(ArrayCollection|Collection|OrderPackageItemInterface $orderPackageItems): OrderPackage
+    {
+        $this->orderPackageItems = $orderPackageItems;
+        return $this;
+    }
 }

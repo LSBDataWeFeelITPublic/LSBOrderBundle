@@ -11,5 +11,9 @@ use LSB\UtilityBundle\Interfaces\PositionInterface;
  */
 interface PackageItemInterface extends PositionInterface
 {
+    const TYPE_DEFAULT = 10;
+    const TYPE_SHIPPING = 100;
+    const TYPE_PAYMENT = 110;
 
+    const PRODUCT_TYPE_DEFAULT = 10;
 }

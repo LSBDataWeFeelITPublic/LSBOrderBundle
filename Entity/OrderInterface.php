@@ -3,12 +3,30 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Entity;
 
+use LSB\OrderBundle\Interfaces\OrderStatusInterface;
+use LSB\OrderBundle\Interfaces\ProcessDateInterface;
+use LSB\OrderBundle\Interfaces\ValueCostInterface;
+use LSB\OrderBundle\Interfaces\WeightInterface;
+use LSB\UtilityBundle\Calculation\CalculationTypeInterface;
+use LSB\UtilityBundle\Interfaces\UuidInterface;
+use LSB\UtilityBundle\Token\ConfirmationTokenInterface;
+use LSB\UtilityBundle\Token\UnmaskTokenInterface;
+use LSB\UtilityBundle\Token\ViewTokenInterface;
+
 /**
  * Interface OrderInterface
  * @package LSB\OrderBundle\Entity
  */
-interface OrderInterface
+interface OrderInterface extends
+    UuidInterface,
+    ValueCostInterface,
+    OrderStatusInterface,
+    WeightInterface,
+    ConfirmationTokenInterface,
+    UnmaskTokenInterface,
+    ViewTokenInterface,
+    ProcessDateInterface,
+    CalculationTypeInterface
 {
-    const CALCULATION_TYPE_NETTO = 10;
-    const CALCULATION_TYPE_GROSS = 20;
+
 }

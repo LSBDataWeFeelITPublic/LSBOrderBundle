@@ -4,11 +4,6 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use LSB\ProductBundle\Entity\ProductInterface;
-use LSB\UtilityBundle\Traits\CreatedUpdatedTrait;
-use LSB\UtilityBundle\Traits\PositionTrait;
-use LSB\UtilityBundle\Traits\UuidTrait;
-use Symfony\Component\Validator\Constraints as Assert;
 use Doctrine\ORM\Mapping\MappedSuperclass;
 
 /**

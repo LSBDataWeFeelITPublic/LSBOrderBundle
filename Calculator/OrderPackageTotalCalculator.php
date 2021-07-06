@@ -1,15 +1,16 @@
 <?php
+declare(strict_types=1);
 
 namespace LSB\OrderBundle\Calculator;
 
-use LSB\CustomerBundle\Service\TaxManager;
-use LSB\OrderBundle\Entity\Order;
+use LSB\LocaleBundle\Manager\TaxManager;
+use LSB\OrderBundle\Entity\OrderInterface;
 use LSB\OrderBundle\Entity\OrderPackage;
+use LSB\OrderBundle\Entity\OrderPackageInterface;
+use LSB\OrderBundle\Entity\OrderPackageItem;
 use LSB\OrderBundle\Entity\PackageItem;
-use LSB\ProductBundle\Interfaces\ProductTypeInterface;
-use LSB\UtilBundle\Calculator\BaseTotalCalculator;
-use LSB\UtilBundle\Calculator\CalculatorResult;
-use LSB\UtilBundle\Entity\Application;
+use LSB\PricelistBundle\Calculator\BaseTotalCalculator;
+use LSB\PricelistBundle\Calculator\Result;
 
 /**
  * Class OrderPackageTotalCalculator
@@ -19,37 +20,37 @@ class OrderPackageTotalCalculator extends BaseTotalCalculator
 {
     protected const SUPPORTED_CLASS = OrderPackage::class;
 
-    protected const SUPPORTED_POSITION_CLASS = PackageItem::class;
+    protected const SUPPORTED_POSITION_CLASS = OrderPackageItem::class;
 
     /**
-     * @param OrderPackage|null $subject
+     * @param OrderPackage $subject
      * @param array $options
-     * @param Application $application
+     * @param string|null $applicationCode
      * @param bool $updateSubject
      * @param bool $updatePositions
      * @param array $calculationRes
-     * @return CalculatorResult
+     * @return Result
      * @throws \Exception
      */
     public function calculateTotal(
         $subject,
         array $options,
-        Application $application,
+        ?string $applicationCode,
         bool $updateSubject = true,
         bool $updatePositions = true,
         array &$calculationRes = []
-    ): CalculatorResult {
+    ): Result {
         if (!$subject instanceof OrderPackage) {
             throw new \Exception('Subject must be OrderPackage');
         }
 
-        $nettoCalculation = $subject->getOrder() && $subject->getOrder()->getCalculationType() === Order::CALCULATION_TYPE_GROSS ? false : true;
+        $nettoCalculation = $subject->getOrder() && $subject->getOrder()->getCalculationType() === OrderInterface::CALCULATION_TYPE_GROSS ? false : true;
 
         $calculationProductsRes = [];
         $calculationShippingRes = [];
         $calculationPaymentCostRes = [];
 
-        $positionCalculationResult = $this->calculatePositions($subject, $options, $application, $updatePositions);
+        $positionCalculationResult = $this->calculatePositions($subject, $options, $applicationCode, $updatePositions);
 
         if ($positionCalculationResult->isSuccess()) {
             $calculationProductsRes = TaxManager::mergeRes($positionCalculationResult->getCalculationRes(), $calculationProductsRes);
@@ -66,6 +67,9 @@ class OrderPackageTotalCalculator extends BaseTotalCalculator
         //Doliczamy koszt wysyłki
         $this->calculateShippingCost($subject, $calculationShippingRes, $calculationRes, $nettoCalculation, $updateSubject);
 
+        //Doliczamy koszt wysyłki
+        $this->calculatePaymentCost($subject, $calculationPaymentCostRes, $calculationRes, $nettoCalculation, $updateSubject);
+
         if ($nettoCalculation) {
             [$totalNet, $totalGross] = TaxManager::calculateTotalNettoAndGrossFromNettoRes($calculationRes);
         } else {
@@ -74,15 +78,15 @@ class OrderPackageTotalCalculator extends BaseTotalCalculator
 
         if ($updateSubject) {
             $subject
-                ->setTotalNetto($totalNet)
-                ->setTotalGross($totalGross)
-                ->setTotalProducts($totalProductsNet)
-                ->setTotalProductsGross($totalProductsGross);
+                ->setTotalValueNet($totalNet)
+                ->setTotalValueGross($totalGross)
+                ->setProductsValueNet($totalProductsNet)
+                ->setProductsValueGross($totalProductsGross);
         }
 
-        $result = new CalculatorResult(
+        return new Result(
             true,
-            $subject->getOrder()->getCurrencyRelation(),
+            $subject->getOrder()->getCurrency(),
             $totalProductsNet,
             $totalProductsGross,
             $subject,
@@ -91,8 +95,6 @@ class OrderPackageTotalCalculator extends BaseTotalCalculator
             $calculationShippingRes,
             $calculationPaymentCostRes
         );
-
-        return $result;
     }
 
     /**
@@ -109,31 +111,21 @@ class OrderPackageTotalCalculator extends BaseTotalCalculator
         bool $nettoCalculation = true,
         bool $updateSubject = true
     ): void {
-        //Dokonujemy aktualizacji wartości kosztu przesyłki w nagłówku
-        $shippingPackageItems = $orderPackage->getShippingServicePackageItems();
-
-        $addTax = $orderPackage->getOrder() ? $orderPackage->getOrder()->getAddVat() : true;
+        $addTax = $this->addTax($orderPackage);
 
         /**
-         * @var PackageItem $shippingPackageItem
+         * @var OrderPackageItem $orderPackageItem
          */
-        foreach ($shippingPackageItems as $shippingPackageItem) {
-            if ($addTax) {
-                $taxPercentage = $shippingPackageItem->getTaxPercentage();
-            } else {
-                $taxPercentage = null;
-            }
-
-            if ($shippingPackageItem->getTaxPercentage() !== $taxPercentage) {
-                $shippingPackageItem->setTaxPercentage($taxPercentage);
-            }
+        foreach ($orderPackage->getShippingTypeOrderPackageItems() as $orderPackageItem) {
+            $taxPercentage = $this->calculateTaxPercentage($orderPackageItem, $addTax);
+            $this->recalculatePackageItemValues($orderPackageItem, $nettoCalculation);
 
             if ($nettoCalculation) {
-                TaxManager::addValueToNettoRes($taxPercentage, (float)$shippingPackageItem->getNettoValue(), $shippingCostRes);
-                TaxManager::addValueToNettoRes($taxPercentage, (float)$shippingPackageItem->getNettoValue(), $calculationRes);
+                TaxManager::addValueToNettoRes($taxPercentage, (float)$orderPackageItem->getValueNet(), $shippingCostRes);
+                TaxManager::addValueToNettoRes($taxPercentage, (float)$orderPackageItem->getValueNet(), $calculationRes);
             } else {
-                TaxManager::addValueToGrossRes($taxPercentage, (float)$shippingPackageItem->getGrossValue(), $shippingCostRes);
-                TaxManager::addValueToGrossRes($taxPercentage, (float)$shippingPackageItem->getGrossValue(), $calculationRes);
+                TaxManager::addValueToGrossRes($taxPercentage, (float)$orderPackageItem->getValueGross(), $shippingCostRes);
+                TaxManager::addValueToGrossRes($taxPercentage, (float)$orderPackageItem->getValueGross(), $calculationRes);
             }
         }
 
@@ -145,101 +137,127 @@ class OrderPackageTotalCalculator extends BaseTotalCalculator
 
         if ($updateSubject) {
             $orderPackage
-                ->setTotalShipping($totalShippingNetto)
-                ->setTotalShippingGross($totalShippingGross)
-                ->setTotalPaymentCost((float) 0) //Aktualnie brak wsparcia, koszt płatności doliczany jest do wartości usługi wysyłki
-                ->setTotalPaymentCostGross((float) 0);
+                ->setShippingCostNet($totalShippingNetto)
+                ->setShippingCostGross($totalShippingGross);
         }
     }
 
     /**
-     * @param OrderPackage|null $subject
+     * @param OrderPackage $orderPackage
+     * @param array $paymentCostRes
+     * @param array $calculationRes
+     * @param bool $nettoCalculation
+     * @param bool $updateSubject
+     */
+    protected function calculatePaymentCost(
+        OrderPackage $orderPackage,
+        array &$paymentCostRes,
+        array &$calculationRes,
+        bool $nettoCalculation = true,
+        bool $updateSubject = true
+    ): void {
+        $addTax = $this->addTax($orderPackage);
+
+        /**
+         * @var OrderPackageItem $orderPackageItem
+         */
+        foreach ($orderPackage->getPaymentTypeOrderPackageItems() as $orderPackageItem) {
+            $taxPercentage = $this->calculateTaxPercentage($orderPackageItem, $addTax);
+            $this->recalculatePackageItemValues($orderPackageItem, $nettoCalculation);
+
+            if ($nettoCalculation) {
+                TaxManager::addValueToNettoRes($taxPercentage, (float)$orderPackageItem->getValueNet(), $paymentCostRes);
+                TaxManager::addValueToNettoRes($taxPercentage, (float)$orderPackageItem->getValueNet(), $calculationRes);
+            } else {
+                TaxManager::addValueToGrossRes($taxPercentage, (float)$orderPackageItem->getValueGross(), $paymentCostRes);
+                TaxManager::addValueToGrossRes($taxPercentage, (float)$orderPackageItem->getValueGross(), $calculationRes);
+            }
+        }
+
+        if ($nettoCalculation) {
+            [$totalPaymentNetto, $totalPaymentGross] = TaxManager::calculateTotalNettoAndGrossFromNettoRes($paymentCostRes);
+        } else {
+            [$totalPaymentNetto, $totalPaymentGross] = TaxManager::calculateTotalNettoAndGrossFromGrossRes($paymentCostRes);
+        }
+
+        if ($updateSubject) {
+            $orderPackage
+                ->setPaymentCostNet($totalPaymentNetto)
+                ->setPaymentCostGross($totalPaymentGross);
+        }
+    }
+
+    /**
+     * @param OrderPackage $subject
      * @param array $options
-     * @param Application $application
+     * @param string|null $applicationCode
      * @param bool $updatePositions
-     * @return CalculatorResult
+     * @return Result
      * @throws \Exception
      */
     public function calculatePositions(
         $subject,
         array $options,
-        Application $application,
+        ?string $applicationCode,
         bool $updatePositions = true
-    ): CalculatorResult {
+    ): Result {
         if (!$subject instanceof OrderPackage) {
             throw new \Exception('Wrong calculation subject');
         }
 
-        $nettoCalculation = $subject->getOrder() && $subject->getOrder()->getCalculationType() === Order::CALCULATION_TYPE_GROSS ? false : true;
+        $nettoCalculation = $this->isNettoCalculation($subject);
         $calculationRes = [];
 
-        $addTax = $subject->getOrder() ? $subject->getOrder()->getAddVat() : true;
+        $addTax = $this->addTax($subject);
 
-
-        if ($subject->getItems()->count()) {
+        if ($subject->getDefaultTypeOrderPackageItems()->count()) {
 
             /**
-             * @var PackageItem $packageItem
+             * @var OrderPackageItem $packageItem
              */
-            foreach ($subject->getItems() as $packageItem) {
-                $packageItem->recalculateValues($nettoCalculation);
+            foreach ($subject->getDefaultTypeOrderPackageItems() as $packageItem) {
 
                 $this->recalculatePackageItemValues($packageItem, $nettoCalculation);
 
-                $calculatedTax = $packageItem->calculateTaxFromPrices();
-
-                if (!$addTax) {
-                    $taxPercentage = 0;
-                } elseif ($packageItem->getTaxPercentage() !== null) {
-                    $taxPercentage = round($packageItem->getTaxPercentage(), 2);
-                } elseif ($packageItem->getTaxPercentage() === null && $calculatedTax !== null) {
-                    $taxPercentage = $calculatedTax;
-                } else {
-                    $taxPercentage = $this->ps->getParameter('default.tax');
-                }
-
-                //Jeżeli mamy do czynienia z pozycją typu SHIPPING_SERVICE dokonujemy pominięcia przy zliczaniu wartości pozycji jako produktów
-                if ($packageItem->getProductType() === ProductTypeInterface::TYPE_SERVICE_SHIPPING) {
-                    continue;
-                }
+                $taxPercentage = $this->calculateTaxPercentage($packageItem, $addTax);
 
                 if ($nettoCalculation) {
-                    TaxManager::addValueToNettoRes($taxPercentage, $packageItem->getQuantity() * $packageItem->getNettoPrice(), $calculationRes);
+                    TaxManager::addValueToNettoRes($taxPercentage, $packageItem->getQuantity() * $packageItem->getPriceNet(), $calculationRes);
                 } else {
-                    TaxManager::addValueToGrossRes($taxPercentage, $packageItem->getQuantity() * $packageItem->getGrossPrice(), $calculationRes);
+                    TaxManager::addValueToGrossRes($taxPercentage, $packageItem->getQuantity() * $packageItem->getPriceGross(), $calculationRes);
                 }
             }
         }
 
-        return new CalculatorResult(true, $subject->getOrder()->getCurrencyRelation(), 0, 0, $subject, $calculationRes, $calculationRes);
+        return new Result(true, $subject->getOrder()->getCurrency(), 0, 0, $subject, $calculationRes, $calculationRes);
     }
 
     /**
-     * @param PackageItem $packageItem
+     * @param OrderPackageItem $orderPackageItem
      * @param bool $nettoCalculation
      * @param bool|null $addTax
      * @return PackageItem
      */
-    public function recalculatePackageItemValues(PackageItem $packageItem, bool $nettoCalculation = true, ?bool $addTax = null): PackageItem
+    public function recalculatePackageItemValues(OrderPackageItem $orderPackageItem, bool $nettoCalculation = true, ?bool $addTax = null): PackageItem
     {
-        //Dla pewności zaokrąglamy wartości netto lub brutto
-        if ($nettoCalculation && $packageItem->getNettoPrice() !== null) {
-            $packageItem->setNettoPrice(round($packageItem->getNettoPrice(), 2));
-        } elseif (!$nettoCalculation && $packageItem->getGrossPrice() !== null) {
-            $packageItem->setGrossPrice(round($packageItem->getGrossPrice(), 2));
+        if ($nettoCalculation && $orderPackageItem->getPriceNet() !== null) {
+            $orderPackageItem->setPriceNet(round($orderPackageItem->getPriceNet(), 2));
+        } elseif (!$nettoCalculation && $orderPackageItem->getPriceGross() !== null) {
+            $orderPackageItem->setPriceGross(round($orderPackageItem->getPriceGross(), 2));
         }
 
-        $defaultTax = $this->ps->getParameter('default.tax');
-        //uwzględnianie stawki vat
+        $defaultTax = 23; //Fixed for tests
+
         if ($addTax === null) {
-            $addTax = $packageItem->getOrderPackage() && $packageItem->getOrderPackage()->getOrder() ? $packageItem->getOrderPackage()->getOrder()->getAddVat() : true;
+            $addTax = $orderPackageItem->getOrderPackage() && $orderPackageItem->getOrderPackage()->getOrder() ? $orderPackageItem->getOrderPackage()->getOrder()->getVatCalculationType() === OrderInterface::VAT_CALCULATION_TYPE_ADD : true;
         }
+
 
         if (!$addTax) {
             $taxPercentage = 0;
-        } elseif ($packageItem->getTaxPercentage() !== null) {
-            $taxPercentage = $packageItem->getTaxPercentage();
-        } elseif ($packageItem->getTaxPercentage() === null && ($calculatedTax = $packageItem->calculateTaxFromPrices()) !== null) {
+        } elseif ($orderPackageItem->getTaxPercentage() !== null) {
+            $taxPercentage = $orderPackageItem->getTaxPercentage();
+        } elseif ($orderPackageItem->getTaxPercentage() === null && ($calculatedTax = $this->calculateTaxFromPrices($orderPackageItem) !== null)) {
             $taxPercentage = $calculatedTax;
         } elseif ($defaultTax) {
             $taxPercentage = $defaultTax;
@@ -248,19 +266,112 @@ class OrderPackageTotalCalculator extends BaseTotalCalculator
         }
 
         if ($nettoCalculation) {
-            if ($packageItem->getNettoPrice() !== null && $packageItem->getQuantity() !== null) {
-                $packageItem->setNettoValue(round($packageItem->getQuantity() * $packageItem->getNettoPrice(), 2));
+            if ($orderPackageItem->getPriceNet() !== null && $orderPackageItem->getQuantity() !== null) {
+                $orderPackageItem->setValueNet(round($orderPackageItem->getQuantity() * $orderPackageItem->getPriceNet(), 2));
             }
 
-            $packageItem->setGrossValue(TaxManager::calculateGrossValue($packageItem->getNettoValue(), $taxPercentage, true));
+            if ($orderPackageItem->getValueNet() !== null && $orderPackageItem->getQuantity() !== null) {
+                $orderPackageItem->setValueGross(TaxManager::calculateGrossValue($orderPackageItem->getValueNet(), $taxPercentage, true));
+            }
         } else {
-            if ($packageItem->getGrossPrice() !== null && $packageItem->getQuantity() !== null) {
-                $packageItem->setGrossValue(round($packageItem->getQuantity() * $packageItem->getGrossPrice(), 2));
+            if ($orderPackageItem->getPriceGross() !== null && $orderPackageItem->getQuantity() !== null) {
+                $orderPackageItem->setValueGross(round($orderPackageItem->getQuantity() * $orderPackageItem->getPriceGross(), 2));
             }
 
-            $packageItem->setNettoValue(TaxManager::calculateNettoValue($packageItem->getGrossValue(), $taxPercentage, true));
+            if ($orderPackageItem->getValueGross() !== null && $orderPackageItem->getQuantity() !== null) {
+                $orderPackageItem->setValueNet(TaxManager::calculateNettoValue($orderPackageItem->getValueGross(), $taxPercentage, true));
+            }
         }
 
-        return $packageItem;
+        return $orderPackageItem;
+    }
+
+    /**
+     * @param OrderPackageItem $orderPackageItem
+     * @param bool $nettoCalculation
+     * @return void
+     */
+    public function recalculateOrderPackageItemValues(OrderPackageItem $orderPackageItem, bool $nettoCalculation = true): void
+    {
+        if ($orderPackageItem->getPriceNet() !== null) {
+            $orderPackageItem->setPriceNet(round($orderPackageItem->getPriceNet(), 2));
+        }
+
+        if ($orderPackageItem->getPriceGross() !== null) {
+            $orderPackageItem->setPriceGross(round($orderPackageItem->getPriceGross(), 2));
+        }
+
+        if ($orderPackageItem->isUpdateValues()) {
+            if ($orderPackageItem->getPriceNet() !== null && $orderPackageItem->getQuantity() !== null) {
+                $orderPackageItem->setValueNet(round($orderPackageItem->getQuantity() * $orderPackageItem->getPriceNet(), 2));
+                if ($nettoCalculation || $orderPackageItem->getPriceGross() === null) {
+                    $orderPackageItem->setPriceGross(round($orderPackageItem->getPriceNet() * ((100 + (int)$orderPackageItem->getTaxPercentage()) / 100), 2));
+                }
+            }
+
+            if ($orderPackageItem->getPriceGross() !== null && $orderPackageItem->getQuantity() !== null) {
+                $orderPackageItem->setValueGross(round($orderPackageItem->getQuantity() * $orderPackageItem->getGrossPrice(), 2));
+            }
+        }
+    }
+
+    /**
+     * @param OrderPackageItem $orderPackageItem
+     * @param bool $updateItem
+     * @return int|null
+     */
+    public function calculateTaxFromPrices(
+        OrderPackageItem $orderPackageItem,
+        bool $updateItem = false
+    ): ?int {
+        if ($orderPackageItem->getPriceGross() && $orderPackageItem->getPriceNet() && $orderPackageItem->getPriceGross() >= $orderPackageItem->getPriceNet()) {
+            $tax = (int)round((100 * $orderPackageItem->getPriceNet()) / $orderPackageItem->getPriceNet() - 100, 0);
+
+            if ($updateItem) {
+                $orderPackageItem->setTaxPercentage($tax);
+            }
+
+            return $tax;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param OrderPackageItem $orderPackageItem
+     * @param bool $addTax
+     * @return float|int
+     */
+    protected function calculateTaxPercentage(OrderPackageItem $orderPackageItem, bool $addTax): float|int
+    {
+        if (!$addTax) {
+            $taxPercentage = 0;
+        } elseif ($orderPackageItem->getTaxPercentage() !== null) {
+            $taxPercentage = round($orderPackageItem->getTaxPercentage(), 2);
+        } elseif ($orderPackageItem->getTaxPercentage() === null && ($calculatedTax = $this->calculateTaxFromPrices($orderPackageItem))) {
+            $taxPercentage = $calculatedTax;
+        } else {
+            $taxPercentage = 23;
+        }
+
+        return $taxPercentage;
+    }
+
+    /**
+     * @param OrderPackageInterface $orderPackage
+     * @return bool
+     */
+    protected function addTax(OrderPackageInterface $orderPackage): bool
+    {
+        return !$orderPackage->getOrder() || $orderPackage->getOrder()->getVatCalculationType() === OrderInterface::VAT_CALCULATION_TYPE_ADD;
+    }
+
+    /**
+     * @param OrderPackageInterface $orderPackage
+     * @return bool
+     */
+    protected function isNettoCalculation(OrderPackageInterface $orderPackage): bool
+    {
+        return !($orderPackage->getOrder() && $orderPackage->getOrder()->getCalculationType() === OrderInterface::CALCULATION_TYPE_GROSS);
     }
 }

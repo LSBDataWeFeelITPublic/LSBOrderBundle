@@ -9,6 +9,10 @@ use Doctrine\ORM\Mapping\MappedSuperclass;
 use LSB\ContractorBundle\Entity\ContractorInterface;
 use LSB\LocaleBundle\Entity\CurrencyInterface;
 use LSB\OrderBundle\Interfaces\OrderStatusInterface;
+use LSB\UtilityBundle\Calculation\CalculationTypeTrait;
+use LSB\UtilityBundle\Token\ConfirmationTokenTrait;
+use LSB\UtilityBundle\Token\UnmaskTokenTrait;
+use LSB\UtilityBundle\Token\ViewTokenTrait;
 use LSB\UtilityBundle\Traits\CreatedUpdatedTrait;
 use LSB\UtilityBundle\Traits\UuidTrait;
 use Doctrine\ORM\Mapping as ORM;
@@ -22,10 +26,17 @@ use Symfony\Component\Validator\Constraints as Assert;
  * @UniqueEntity("number")
  * @MappedSuperclass
  */
-abstract class Order implements OrderInterface, OrderStatusInterface
+abstract class Order implements OrderInterface
 {
     use UuidTrait;
     use CreatedUpdatedTrait;
+    use ValueCostTrait;
+    use WeightTrait;
+    use ViewTokenTrait;
+    use ConfirmationTokenTrait;
+    use UnmaskTokenTrait;
+    use ProcessDateTrait;
+    use CalculationTypeTrait;
 
     /**
      * @var string|null
@@ -63,16 +74,11 @@ abstract class Order implements OrderInterface, OrderStatusInterface
     protected Collection $orderNotes;
 
     /**
-     * @var DateTime|null
-     * @ORM\Column(type="datetime", nullable=true)
-     */
-    protected ?DateTime $realisationAt;
-
-    /**
+     * @var CurrencyInterface|null
      * @ORM\ManyToOne(targetEntity="LSB\LocaleBundle\Entity\CurrencyInterface")
      * @ORM\JoinColumn(onDelete="SET NULL")
      */
-    protected ?CurrencyInterface $currency;
+    protected ?CurrencyInterface $currency = null;
 
     /**
      * @ORM\OneToMany(targetEntity="LSB\OrderBundle\Entity\OrderPackageInterface", mappedBy="order", orphanRemoval=true, cascade={"persist", "remove"})
@@ -81,68 +87,9 @@ abstract class Order implements OrderInterface, OrderStatusInterface
     protected Collection $orderPackages;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="string", length=120, nullable=true)
-     * @Assert\Length(max="120")
-     */
-    protected ?string $viewToken;
-
-    /**
-     * @var DateTime|null
-     * @ORM\Column(type="datetime", nullable=true)
-     * @Assert\DateTime
-     */
-    protected ?DateTime $viewTokenGeneratedAt;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="string", length=120, nullable=true)
-     * @Assert\Length(max="120")
-     */
-    protected ?string $unmaskToken;
-
-    /**
-     * @var DateTime|null
-     * @ORM\Column(type="datetime", nullable=true)
-     * @Assert\DateTime
-     */
-    protected ?DateTime $unmaskTokenGeneratedAt;
-
-    /**
-     * @ORM\Column(type="string", length=120, nullable=true)
-     * @Assert\Length(max="120")
-     */
-    protected ?string $confirmationToken;
-
-    /**
-     * @var DateTime|null
-     * @ORM\Column(type="datetime", nullable=true)
-     * @Assert\DateTime
-     */
-    protected ?DateTime $confirmationTokenGeneratedAt;
-
-    /**
      * @ORM\Column(type="integer", nullable=true)
      */
     protected ?int $payerContractorVatStatus;
-
-    /**
-     * @var int
-     * @ORM\Column(type="integer")
-     */
-    protected int $vatCalculationType;
-
-    /**
-     * @var DateTime|null
-     * @ORM\Column(type="datetime", nullable=true)
-     */
-    protected ?DateTime $confirmedAt;
-
-    /**
-     * @var DateTime|null
-     * @ORM\Column(type="datetime", nullable=true)
-     */
-    protected ?DateTime $verifiedAt;
 
     /**
      * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderInterface")
@@ -158,20 +105,9 @@ abstract class Order implements OrderInterface, OrderStatusInterface
 
     /**
      * @var int
-     * @ORM\Column(type="integer", nullable=false, options={"default": 10})
-     */
-    protected int $calculationType = self::CALCULATION_TYPE_NETTO;
-
-    /**
-     * @var int
      * @ORM\Column(type="integer", nullable=false)
      */
     protected int $packagesCnt = 0;
-
-    /**
-     * @var bool
-     */
-    protected bool $isDataMasked = false;
 
     /**
      * Constructor
@@ -184,33 +120,14 @@ abstract class Order implements OrderInterface, OrderStatusInterface
         $this->generateUuid();
     }
 
+    /**
+     * @throws \Exception
+     */
     public function __clone()
     {
         $this->id = null;
         $this->number = null;
-
-
-//        $packagesCloned = new ArrayCollection();
-//
-//        /**
-//         * @var OrderPackage $package
-//         */
-//        foreach ($this->getOrderPackages() as $package) {
-//            $packageClone = clone $package;
-//            $packageClone->setOrder($this);
-//            $packagesCloned->add($packageClone);
-//        }
-//        $this->packages = $packagesCloned;
-//
-//        if ($this->getNotes()->count()) {
-//            $orderNotesCloned = new ArrayCollection();
-//            foreach ($this->getNotes() as $note) {
-//                $noteClone = clone $note;
-//                $noteClone->setOrder($this);
-//                $orderNotesCloned->add($noteClone);
-//            }
-//            $this->notes = $orderNotesCloned;
-//        }
+        $this->generateUuid(true);
     }
 
     /**
@@ -410,114 +327,6 @@ abstract class Order implements OrderInterface, OrderStatusInterface
     }
 
     /**
-     * @return string|null
-     */
-    public function getViewToken(): ?string
-    {
-        return $this->viewToken;
-    }
-
-    /**
-     * @param string|null $viewToken
-     * @return $this
-     */
-    public function setViewToken(?string $viewToken): self
-    {
-        $this->viewToken = $viewToken;
-        return $this;
-    }
-
-    /**
-     * @return DateTime|null
-     */
-    public function getViewTokenGeneratedAt(): ?DateTime
-    {
-        return $this->viewTokenGeneratedAt;
-    }
-
-    /**
-     * @param DateTime|null $viewTokenGeneratedAt
-     * @return $this
-     */
-    public function setViewTokenGeneratedAt(?DateTime $viewTokenGeneratedAt): self
-    {
-        $this->viewTokenGeneratedAt = $viewTokenGeneratedAt;
-        return $this;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getUnmaskToken(): ?string
-    {
-        return $this->unmaskToken;
-    }
-
-    /**
-     * @param string|null $unmaskToken
-     * @return $this
-     */
-    public function setUnmaskToken(?string $unmaskToken): self
-    {
-        $this->unmaskToken = $unmaskToken;
-        return $this;
-    }
-
-    /**
-     * @return DateTime|null
-     */
-    public function getUnmaskTokenGeneratedAt(): ?DateTime
-    {
-        return $this->unmaskTokenGeneratedAt;
-    }
-
-    /**
-     * @param DateTime|null $unmaskTokenGeneratedAt
-     * @return $this
-     */
-    public function setUnmaskTokenGeneratedAt(?DateTime $unmaskTokenGeneratedAt): self
-    {
-        $this->unmaskTokenGeneratedAt = $unmaskTokenGeneratedAt;
-        return $this;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getConfirmationToken(): ?string
-    {
-        return $this->confirmationToken;
-    }
-
-    /**
-     * @param string|null $confirmationToken
-     * @return $this
-     */
-    public function setConfirmationToken(?string $confirmationToken): self
-    {
-        $this->confirmationToken = $confirmationToken;
-        return $this;
-    }
-
-    /**
-     * @return DateTime|null
-     */
-    public function getConfirmationTokenGeneratedAt(): ?DateTime
-    {
-        return $this->confirmationTokenGeneratedAt;
-    }
-
-    /**
-     * @param DateTime|null $confirmationTokenGeneratedAt
-     * @return $this
-     */
-    public function setConfirmationTokenGeneratedAt(?DateTime $confirmationTokenGeneratedAt): self
-    {
-        $this->confirmationTokenGeneratedAt = $confirmationTokenGeneratedAt;
-        return $this;
-    }
-
-    /**
      * @return int|null
      */
     public function getPayerContractorVatStatus(): ?int
@@ -532,42 +341,6 @@ abstract class Order implements OrderInterface, OrderStatusInterface
     public function setPayerContractorVatStatus(?int $payerContractorVatStatus): self
     {
         $this->payerContractorVatStatus = $payerContractorVatStatus;
-        return $this;
-    }
-
-    /**
-     * @return int
-     */
-    public function getVatCalculationType(): int
-    {
-        return $this->vatCalculationType;
-    }
-
-    /**
-     * @param int $vatCalculationType
-     * @return $this
-     */
-    public function setVatCalculationType(int $vatCalculationType): self
-    {
-        $this->vatCalculationType = $vatCalculationType;
-        return $this;
-    }
-
-    /**
-     * @return DateTime|null
-     */
-    public function getConfirmedAt(): ?DateTime
-    {
-        return $this->confirmedAt;
-    }
-
-    /**
-     * @param DateTime|null $confirmedAt
-     * @return $this
-     */
-    public function setConfirmedAt(?DateTime $confirmedAt): self
-    {
-        $this->confirmedAt = $confirmedAt;
         return $this;
     }
 
@@ -658,24 +431,6 @@ abstract class Order implements OrderInterface, OrderStatusInterface
     public function setPackagesCnt(int $packagesCnt): self
     {
         $this->packagesCnt = $packagesCnt;
-        return $this;
-    }
-
-    /**
-     * @return bool
-     */
-    public function isDataMasked(): bool
-    {
-        return $this->isDataMasked;
-    }
-
-    /**
-     * @param bool $isDataMasked
-     * @return $this
-     */
-    public function setIsDataMasked(bool $isDataMasked): self
-    {
-        $this->isDataMasked = $isDataMasked;
         return $this;
     }
 }

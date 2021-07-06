@@ -1,1 +1,16 @@
 services:
+    LSB\OrderBundle\Calculator\OrderTotalCalculator:
+        arguments:
+            - '@doctrine.orm.entity_manager'
+            - '@event_dispatcher'
+            - '@security.token_storage'
+        tags:
+            - { name: calculator.total }
+
+    LSB\OrderBundle\Calculator\OrderPackageTotalCalculator:
+        arguments:
+            - '@doctrine.orm.entity_manager'
+            - '@event_dispatcher'
+            - '@security.token_storage'
+        tags:
+            - { name: calculator.total }
