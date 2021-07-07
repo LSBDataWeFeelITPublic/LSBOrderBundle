@@ -26,7 +26,7 @@
         "lsb/locale-bundle": ">=0.1"
     },
     "require-dev": {
-        "phpunit/phpunit": "^8.0",
+        "phpunit/phpunit": "^9.0",
         "symfony/phpunit-bridge": "^5.0",
         "php-coveralls/php-coveralls": "^2.2",
         "scrutinizer/ocular": "dev-master"
