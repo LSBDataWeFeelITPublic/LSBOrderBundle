@@ -28,6 +28,7 @@ use LSB\OrderBundle\Repository\OrderNoteRepository;
 use LSB\OrderBundle\Repository\OrderPackageItemRepository;
 use LSB\OrderBundle\Repository\OrderPackageRepository;
 use LSB\OrderBundle\Repository\OrderRepository;
+use LSB\UtilityBundle\Config\Definition\Service\ServicesConfiguration;
 use LSB\UtilityBundle\DependencyInjection\BaseExtension as BE;
 use LSB\UtilityBundle\Config\Definition\Builder\TreeBuilder;
 use Symfony\Component\Config\Definition\ConfigurationInterface;
@@ -51,7 +52,19 @@ class Configuration implements ConfigurationInterface
         $treeBuilder
             ->getRootNode()
             ->children()
-            ->scalarNode(BE::CONFIG_KEY_TRANSLATION_DOMAIN)->defaultValue((new \ReflectionClass(LSBOrderBundle::class))->getShortName())->end()
+            //poczatek zmiany
+//            ->arrayNode('services')
+//                ->useAttributeAsKey('code')
+//                ->prototype('scalar')->end()
+//                ->defaultValue(['xxx' => 'yyy'])
+//            ->end()
+
+            ->addServicesNodeConfiguration(
+                (new ServicesConfiguration)
+                    ->add(OrderInterface::class, OrderManager::class)
+            )
+            //koniec zmiany
+            ->bundleTranslationDomainScalar(LSBOrderBundle::class)->end()
             ->arrayNode(BE::CONFIG_KEY_RESOURCES)
             ->children()
             ->resourceNode(

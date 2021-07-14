@@ -95,7 +95,7 @@ interface ValueCostInterface
      * @param float|string|null $paymentCostGross
      * @return $this
      */
-    public function setPaymentCostGross(float|string|null $paymentCostGross): static;
+    public function setPaymentCostGross(float|string|null $paymentCostGross): self;
 
     /**
      * @return float|null
@@ -117,5 +117,5 @@ interface ValueCostInterface
      * @param float|string|null $productsValueGross
      * @return $this
      */
-    public function setProductsValueGross(float|string|null $productsValueGross): static;
+    public function setProductsValueGross(float|string|null $productsValueGross): self;
 }

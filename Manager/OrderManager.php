@@ -16,7 +16,7 @@ use LSB\UtilityBundle\Repository\RepositoryInterface;
 * Class OrderManager
 * @package LSB\OrderBundle\Manager
 */
-class OrderManager extends BaseManager
+class OrderManager extends BaseManager implements OrderManagerInterface
 {
 
     /**

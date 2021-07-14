@@ -44,7 +44,7 @@ abstract class OrderNote implements OrderNoteInterface
 
     /**
      * @var OrderPackageInterface|null
-     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderPackageInterface", inversedBy="notes")
+     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderPackageInterface")
      */
     protected ?OrderPackageInterface $orderPackage = null;
 

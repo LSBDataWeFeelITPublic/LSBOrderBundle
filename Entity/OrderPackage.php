@@ -49,12 +49,19 @@ abstract class OrderPackage implements OrderPackageInterface
     protected Collection $orderPackageItems;
 
     /**
+     * @var Address
+     * @ORM\Embedded(class="LSB\OrderBundle\Entity\Address", columnPrefix="delivery_address_")
+     */
+    protected Address $deliveryAddress;
+
+    /**
      * OrderPackage constructor.
      * @throws \Exception
      */
     public function __construct()
     {
         $this->generateUuid();
+        $this->deliveryAddress = new Address();
         $this->orderPackageItems = new ArrayCollection();
     }
 

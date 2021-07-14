@@ -110,12 +110,19 @@ abstract class Order implements OrderInterface
     protected int $packagesCnt = 0;
 
     /**
+     * @var BillingData
+     * @ORM\Embedded(class="LSB\OrderBundle\Entity\BillingData", columnPrefix="billing_data_")
+     */
+    protected BillingData $billingData;
+
+    /**
      * Constructor
      */
     public function __construct()
     {
         $this->orderNotes = new ArrayCollection();
         $this->orderPackages = new ArrayCollection();
+        $this->billingData = new BillingData();
 
         $this->generateUuid();
     }
@@ -431,6 +438,24 @@ abstract class Order implements OrderInterface
     public function setPackagesCnt(int $packagesCnt): self
     {
         $this->packagesCnt = $packagesCnt;
+        return $this;
+    }
+
+    /**
+     * @return BillingData
+     */
+    public function getBillingData(): BillingData
+    {
+        return $this->billingData;
+    }
+
+    /**
+     * @param BillingData $billingData
+     * @return Order
+     */
+    public function setBillingData(BillingData $billingData): static
+    {
+        $this->billingData = $billingData;
         return $this;
     }
 }
