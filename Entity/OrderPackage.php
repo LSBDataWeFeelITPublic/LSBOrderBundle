@@ -3,7 +3,6 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Entity;
 
-use DateTime;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\ORM\Mapping as ORM;
@@ -17,20 +16,9 @@ use LSB\UtilityBundle\Traits\UuidTrait;
  * @package LSB\OrderBundle\Entity
  * @MappedSuperclass
  */
-abstract class OrderPackage implements OrderPackageInterface
+abstract class OrderPackage extends Package implements OrderPackageInterface
 {
-    use UuidTrait;
-    use CreatedUpdatedTrait;
-    use StatusTrait;
-    use ValueCostTrait;
-    use WeightTrait;
     use ProcessDateTrait;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="string", length=50)
-     */
-    protected ?string $number = null;
 
     /**
      * @var OrderInterface|null
@@ -49,19 +37,14 @@ abstract class OrderPackage implements OrderPackageInterface
     protected Collection $orderPackageItems;
 
     /**
-     * @var Address
-     * @ORM\Embedded(class="LSB\OrderBundle\Entity\Address", columnPrefix="delivery_address_")
-     */
-    protected Address $deliveryAddress;
-
-    /**
      * OrderPackage constructor.
      * @throws \Exception
      */
     public function __construct()
     {
+        parent::__construct();
+
         $this->generateUuid();
-        $this->deliveryAddress = new Address();
         $this->orderPackageItems = new ArrayCollection();
     }
 
@@ -109,24 +92,6 @@ abstract class OrderPackage implements OrderPackageInterface
     {
         $this->id = null;
         $this->generateUuid(true);
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getNumber(): string|null
-    {
-        return $this->number;
-    }
-
-    /**
-     * @param string|null $number
-     * @return OrderPackage
-     */
-    public function setNumber(?string $number): OrderPackage
-    {
-        $this->number = $number;
-        return $this;
     }
 
     /**

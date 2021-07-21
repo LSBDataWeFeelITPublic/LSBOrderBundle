@@ -22,6 +22,7 @@ abstract class PackageItem implements PackageItemInterface
     use UuidTrait;
     use CreatedUpdatedTrait;
     use PositionTrait;
+    use ItemValueTrait;
 
     /**
      * @var integer|null
@@ -85,30 +86,6 @@ abstract class PackageItem implements PackageItemInterface
      * @var string|null
      * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
      */
-    protected ?string $priceNet = null;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
-     */
-    protected ?string $valueNet = null;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
-     */
-    protected ?string $priceGross = null;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
-     */
-    protected ?string $valueGross = null;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
-     */
     protected ?string $catalogPriceNet = null;
 
     /**
@@ -136,18 +113,6 @@ abstract class PackageItem implements PackageItemInterface
      * @ORM\JoinColumn(onDelete="SET NULL", nullable=true)
      */
     protected ?ProductInterface $productSet = null;
-
-    /**
-     * @var integer|null
-     * @ORM\Column(type="integer", nullable=true)
-     */
-    protected ?int $taxPercentage = null;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
-     */
-    protected ?string $taxValue = null;
 
     /**
      * @var string|null

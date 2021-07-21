@@ -30,13 +30,15 @@ abstract class Order implements OrderInterface
 {
     use UuidTrait;
     use CreatedUpdatedTrait;
-    use ValueCostTrait;
+    use TotalValueCostTrait;
     use WeightTrait;
     use ViewTokenTrait;
     use ConfirmationTokenTrait;
     use UnmaskTokenTrait;
     use ProcessDateTrait;
     use CalculationTypeTrait;
+    use AddressTrait;
+    use TermsTrait;
 
     /**
      * @var string|null
@@ -110,21 +112,25 @@ abstract class Order implements OrderInterface
     protected int $packagesCnt = 0;
 
     /**
-     * @var BillingData
-     * @ORM\Embedded(class="LSB\OrderBundle\Entity\BillingData", columnPrefix="billing_data_")
+     * Sposób przetwarzania
+     *
+     * @var integer
+     * @ORM\Column(type="integer", nullable=true, options={"default": 1})
+     * @Assert\NotBlank(groups={"EdiCartProcessing"})
      */
-    protected BillingData $billingData;
+    protected int $processingType = self::PROCESSING_TYPE_DEFAULT;
 
     /**
      * Constructor
      */
     public function __construct()
     {
+        $this->generateUuid();
         $this->orderNotes = new ArrayCollection();
         $this->orderPackages = new ArrayCollection();
-        $this->billingData = new BillingData();
 
-        $this->generateUuid();
+        $this->addressConstruct();
+        $this->termsConstruct();
     }
 
     /**
@@ -149,7 +155,7 @@ abstract class Order implements OrderInterface
      * @param string|null $number
      * @return $this
      */
-    public function setNumber(?string $number): self
+    public function setNumber(?string $number): static
     {
         $this->number = $number;
         return $this;
@@ -167,7 +173,7 @@ abstract class Order implements OrderInterface
      * @param ContractorInterface|null $payerContractor
      * @return $this
      */
-    public function setPayerContractor(?ContractorInterface $payerContractor): self
+    public function setPayerContractor(?ContractorInterface $payerContractor): static
     {
         $this->payerContractor = $payerContractor;
         return $this;
@@ -185,7 +191,7 @@ abstract class Order implements OrderInterface
      * @param ContractorInterface|null $suggestedPayerContractor
      * @return $this
      */
-    public function setSuggestedPayerContractor(?ContractorInterface $suggestedPayerContractor): self
+    public function setSuggestedPayerContractor(?ContractorInterface $suggestedPayerContractor): static
     {
         $this->suggestedPayerContractor = $suggestedPayerContractor;
         return $this;
@@ -203,7 +209,7 @@ abstract class Order implements OrderInterface
      * @param ContractorInterface|null $recipientContractor
      * @return $this
      */
-    public function setRecipientContractor(?ContractorInterface $recipientContractor): self
+    public function setRecipientContractor(?ContractorInterface $recipientContractor): static
     {
         $this->recipientContractor = $recipientContractor;
         return $this;
@@ -265,7 +271,7 @@ abstract class Order implements OrderInterface
      * @param DateTime|null $realisationAt
      * @return $this
      */
-    public function setRealisationAt(?DateTime $realisationAt): self
+    public function setRealisationAt(?DateTime $realisationAt): static
     {
         $this->realisationAt = $realisationAt;
         return $this;
@@ -283,7 +289,7 @@ abstract class Order implements OrderInterface
      * @param CurrencyInterface|null $currency
      * @return $this
      */
-    public function setCurrency(?CurrencyInterface $currency): self
+    public function setCurrency(?CurrencyInterface $currency): static
     {
         $this->currency = $currency;
         return $this;
@@ -345,7 +351,7 @@ abstract class Order implements OrderInterface
      * @param int|null $payerContractorVatStatus
      * @return $this
      */
-    public function setPayerContractorVatStatus(?int $payerContractorVatStatus): self
+    public function setPayerContractorVatStatus(?int $payerContractorVatStatus): static
     {
         $this->payerContractorVatStatus = $payerContractorVatStatus;
         return $this;
@@ -363,7 +369,7 @@ abstract class Order implements OrderInterface
      * @param DateTime|null $verifiedAt
      * @return $this
      */
-    public function setVerifiedAt(?DateTime $verifiedAt): self
+    public function setVerifiedAt(?DateTime $verifiedAt): static
     {
         $this->verifiedAt = $verifiedAt;
         return $this;
@@ -381,7 +387,7 @@ abstract class Order implements OrderInterface
      * @param Order|null $parentOrder
      * @return $this
      */
-    public function setParentOrder(?Order $parentOrder): self
+    public function setParentOrder(?Order $parentOrder): static
     {
         $this->parentOrder = $parentOrder;
         return $this;
@@ -399,7 +405,7 @@ abstract class Order implements OrderInterface
      * @param bool $isComplaint
      * @return $this
      */
-    public function setIsComplaint(bool $isComplaint): self
+    public function setIsComplaint(bool $isComplaint): static
     {
         $this->isComplaint = $isComplaint;
         return $this;
@@ -417,7 +423,7 @@ abstract class Order implements OrderInterface
      * @param int $calculationType
      * @return $this
      */
-    public function setCalculationType(int $calculationType): self
+    public function setCalculationType(int $calculationType): static
     {
         $this->calculationType = $calculationType;
         return $this;
@@ -435,7 +441,7 @@ abstract class Order implements OrderInterface
      * @param int $packagesCnt
      * @return $this
      */
-    public function setPackagesCnt(int $packagesCnt): self
+    public function setPackagesCnt(int $packagesCnt): static
     {
         $this->packagesCnt = $packagesCnt;
         return $this;

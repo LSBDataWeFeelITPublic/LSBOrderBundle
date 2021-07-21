@@ -2,28 +2,32 @@ services:
 
     LSB\OrderBundle\Form\OrderType:
         tags:
-            -
-                name: form.type
+            - name: form.type
 
     LSB\OrderBundle\Form\OrderPackageType:
         tags:
-            -
-                name: form.type
+            - name: form.type
 
     LSB\OrderBundle\Form\OrderPackageItemType:
         tags:
-            -
-                name: form.type
+            - name: form.type
 
     LSB\OrderBundle\Form\OrderNoteType:
         tags:
-            -
-                name: form.type
-        #   FIXME: Poprawna forma zapisu:
-        #  - {name: form.type}
-        #   FIXME: Poprawna forma zapisu:
-        #  - {name: form.type}
-        #   FIXME: Poprawna forma zapisu:
-        #  - {name: form.type}
-        #   FIXME: Poprawna forma zapisu:
-        #  - {name: form.type}
+            - name: form.type
+
+    LSB\OrderBundle\Form\CartType:
+        tags:
+            - name: form.type
+
+    LSB\OrderBundle\Form\CartItemType:
+        tags:
+            - name: form.type
+
+    LSB\OrderBundle\Form\CartPackageItemType:
+        tags:
+            - name: form.type
+
+    LSB\OrderBundle\Form\CartPackageType:
+        tags:
+            - name: form.type

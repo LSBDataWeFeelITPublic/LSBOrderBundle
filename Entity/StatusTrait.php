@@ -54,7 +54,7 @@ trait StatusTrait
      * @var integer
      * @ORM\Column(type="integer", nullable=false)
      */
-    protected int $status = self::STATUS_OPEN;
+    protected int $status = OrderStatusInterface::STATUS_OPEN;
 
     /**
      * @Groups({"Default", "SHOP_Public"})

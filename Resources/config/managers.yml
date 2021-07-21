@@ -14,3 +14,19 @@ services:
     LSB\OrderBundle\Manager\OrderNoteManager:
         arguments:
             - '@lsb_utility_object_manager'
+
+    LSB\OrderBundle\Manager\CartManager:
+        arguments:
+            - '@lsb_utility_object_manager'
+
+    LSB\OrderBundle\Manager\CartItemManager:
+        arguments:
+            - '@lsb_utility_object_manager'
+
+    LSB\OrderBundle\Manager\CartPackageItemManager:
+        arguments:
+            - '@lsb_utility_object_manager'
+
+    LSB\OrderBundle\Manager\CartPackageManager:
+        arguments:
+            - '@lsb_utility_object_manager'

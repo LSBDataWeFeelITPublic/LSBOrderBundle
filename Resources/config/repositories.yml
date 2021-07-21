@@ -18,3 +18,23 @@ services:
         arguments:
             - '@doctrine'
     LSB\OrderBundle\Repository\OrderNoteRepositoryInterface: '@LSB\OrderBundle\Repository\OrderNoteRepository'
+
+    LSB\OrderBundle\Repository\CartRepository:
+        arguments:
+            - '@doctrine'
+    LSB\OrderBundle\Repository\CartRepositoryInterface: '@LSB\OrderBundle\Repository\CartRepository'
+
+    LSB\OrderBundle\Repository\CartItemRepository:
+        arguments:
+            - '@doctrine'
+    LSB\OrderBundle\Repository\CartItemRepositoryInterface: '@LSB\OrderBundle\Repository\CartItemRepository'
+
+    LSB\OrderBundle\Repository\CartPackageItemRepository:
+        arguments:
+            - '@doctrine'
+    LSB\OrderBundle\Repository\CartPackageItemRepositoryInterface: '@LSB\OrderBundle\Repository\CartPackageItemRepository'
+
+    LSB\OrderBundle\Repository\CartPackageRepository:
+        arguments:
+            - '@doctrine'
+    LSB\OrderBundle\Repository\CartPackageRepositoryInterface: '@LSB\OrderBundle\Repository\CartPackageRepository'

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use LSB\LocaleBundle\Entity\CurrencyInterface;
 use LSB\UtilityBundle\Calculation\CalculationTypeTrait;
 use LSB\UtilityBundle\Helper\ValueHelper;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -12,7 +13,7 @@ use Symfony\Component\Validator\Constraints as Assert;
  * Trait ValueCostTrait
  * @package LSB\OrderBundle\Entity
  */
-trait ValueCostTrait
+trait TotalValueCostTrait
 {
     use CalculationTypeTrait;
 
@@ -76,6 +77,13 @@ trait ValueCostTrait
      * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
      */
     protected ?string $productsValueGross = "0";
+
+    /**
+     * @var CurrencyInterface|null
+     * @ORM\ManyToOne(targetEntity="LSB\LocaleBundle\Entity\CurrencyInterface")
+     * @ORM\JoinColumn(onDelete="SET NULL")
+     */
+    protected ?CurrencyInterface $currency = null;
 
     /**
      * @return float|null
@@ -257,5 +265,22 @@ trait ValueCostTrait
         return $this;
     }
 
+    /**
+     * @return CurrencyInterface|null
+     */
+    public function getCurrency(): ?CurrencyInterface
+    {
+        return $this->currency;
+    }
+
+    /**
+     * @param CurrencyInterface|null $currency
+     * @return $this
+     */
+    public function setCurrency(?CurrencyInterface $currency): static
+    {
+        $this->currency = $currency;
+        return $this;
+    }
 
 }

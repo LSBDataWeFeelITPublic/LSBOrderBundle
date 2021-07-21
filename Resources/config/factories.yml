@@ -35,3 +35,23 @@ services:
     lsb_order_factory_order_note:
         alias: LSB\OrderBundle\Factory\OrderNoteFactory
     LSB\OrderBundle\Factory\OrderNoteFactoryInterface: '@LSB\OrderBundle\Factory\OrderNoteFactory'
+
+    LSB\OrderBundle\Factory\CartFactory: null
+    lsb_order_factory_cart:
+        alias: LSB\OrderBundle\Factory\CartFactory
+    LSB\OrderBundle\Factory\CartFactoryInterface: '@LSB\OrderBundle\Factory\CartFactory'
+
+    LSB\OrderBundle\Factory\CartItemFactory: null
+    lsb_order_factory_cart_item:
+        alias: LSB\OrderBundle\Factory\CartItemFactory
+    LSB\OrderBundle\Factory\CartItemFactoryInterface: '@LSB\OrderBundle\Factory\CartItemFactory'
+
+    LSB\OrderBundle\Factory\CartPackageItemFactory: null
+    lsb_order_factory_cart_package_item:
+        alias: LSB\OrderBundle\Factory\CartPackageItemFactory
+    LSB\OrderBundle\Factory\CartPackageItemFactoryInterface: '@LSB\OrderBundle\Factory\CartPackageItemFactory'
+
+    LSB\OrderBundle\Factory\CartPackageFactory: null
+    lsb_order_factory_cart_package:
+        alias: LSB\OrderBundle\Factory\CartPackageFactory
+    LSB\OrderBundle\Factory\CartPackageFactoryInterface: '@LSB\OrderBundle\Factory\CartPackageFactory'

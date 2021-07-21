@@ -1,3 +1,5 @@
+parameters:
+    choice_list.cart.auth:
 services:
     LSB\OrderBundle\Calculator\OrderTotalCalculator:
         arguments:

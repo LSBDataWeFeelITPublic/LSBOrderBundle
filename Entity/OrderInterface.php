@@ -28,5 +28,5 @@ interface OrderInterface extends
     ProcessDateInterface,
     CalculationTypeInterface
 {
-
+    const PROCESSING_TYPE_DEFAULT = 10; //Domyślny sposób obsługi zamówienia - poprzez
 }
