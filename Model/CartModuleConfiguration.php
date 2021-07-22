@@ -9,45 +9,35 @@ use JMS\Serializer\Annotation\Groups;
 
 /**
  * Class CartModuleConfiguration
- * @package LSB\CartBundle\Model
+ * @package LSB\OrderBundle\Model
  */
 class CartModuleConfiguration
 {
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var bool
      */
-    protected $isLiveModeRequired;
+    protected bool $isLiveModeRequired;
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var bool
      */
-    protected $isViewable;
+    protected bool $isViewable;
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var array
      */
-    protected $formSchema;
+    protected array $formSchema;
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var boolean
      */
-    protected $isSticky;
+    protected bool $isSticky;
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var bool
      */
-    protected $isFrontLiveModeRequired;
+    protected bool $isFrontLiveModeRequired;
 
     /**
      * CartModuleConfiguration constructor.
@@ -114,6 +104,33 @@ class CartModuleConfiguration
     public function getFormSchema(): array
     {
         return $this->formSchema;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $formSchema
+     *
+     * @return CartModuleConfiguration
+     */
+    public function addFormSchema($formSchema): CartModuleConfiguration
+    {
+        if (false === in_array($formSchema, $this->formSchema, true)) {
+            $this->formSchema[] = $formSchema;
+        }
+        return $this;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $formSchema
+     *
+     * @return CartModuleConfiguration
+     */
+    public function removeFormSchema($formSchema): CartModuleConfiguration
+    {
+        if (true === in_array($formSchema, $this->formSchema, true)) {
+            $index = array_search($formSchema, $this->formSchema);
+            array_splice($this->formSchema, $index, 1);
+        }
+        return $this;
     }
 
     /**

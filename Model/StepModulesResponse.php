@@ -14,63 +14,43 @@ class StepModulesResponse
 {
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     * @SerializedName("redirectTo")
-     *
      * @var null|string
      */
-    protected $redirectTo;
+    protected ?string $redirectTo;
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     * @SerializedName("currentStep")
-     *
-     * @var null|integer
+     * @var null|int
      */
-    protected $currentStep;
+    protected ?int $currentStep;
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     * @SerializedName("currentStepCode")
-     *
      * @var null|string
      */
-    protected $currentStepCode;
+    protected ?string $currentStepCode;
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     * @SerializedName("goToStep")
-     *
-     * @var null|integer
+     * @var null|int
      */
-    protected $goToStep;
+    protected ?int $goToStep;
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     *
      * @var mixed
      */
-    protected $navigation;
+    protected mixed $navigation;
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     * @SerializedName("isViewable")
-     *
      * @var bool
      */
-    protected $isViewable;
+    protected bool $isViewable;
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     * @SerializedName("renderedModules")
-     *
      * @var array
      */
-    protected $renderedModules = [];
+    protected array $renderedModules = [];
 
     /**
      * StepModulesResponse constructor.
-     * @param int|null $currentStep
+     * @param int $currentStep
      * @param string|null $currentStepCode
      * @param int|null $goToStep
      * @param string|null $redirectTo
@@ -83,7 +63,7 @@ class StepModulesResponse
         ?string $currentStepCode,
         ?int $goToStep,
         ?string $redirectTo,
-        $navigation,
+        mixed $navigation,
         bool $isViewable,
         array $renderedModules = []
     ) {
@@ -171,7 +151,7 @@ class StepModulesResponse
     /**
      * @return mixed
      */
-    public function getNavigation()
+    public function getNavigation(): mixed
     {
         return $this->navigation;
     }
@@ -180,7 +160,7 @@ class StepModulesResponse
      * @param mixed $navigation
      * @return StepModulesResponse
      */
-    public function setNavigation($navigation)
+    public function setNavigation(mixed $navigation): StepModulesResponse
     {
         $this->navigation = $navigation;
         return $this;
@@ -213,6 +193,33 @@ class StepModulesResponse
     }
 
     /**
+     * @param ${ENTRY_HINT} $renderedModule
+     *
+     * @return StepModulesResponse
+     */
+    public function addRenderedModule($renderedModule): StepModulesResponse
+    {
+        if (false === in_array($renderedModule, $this->renderedModules, true)) {
+            $this->renderedModules[] = $renderedModule;
+        }
+        return $this;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $renderedModule
+     *
+     * @return StepModulesResponse
+     */
+    public function removeRenderedModule($renderedModule): StepModulesResponse
+    {
+        if (true === in_array($renderedModule, $this->renderedModules, true)) {
+            $index = array_search($renderedModule, $this->renderedModules);
+            array_splice($this->renderedModules, $index, 1);
+        }
+        return $this;
+    }
+
+    /**
      * @param array $renderedModules
      * @return StepModulesResponse
      */
@@ -221,5 +228,4 @@ class StepModulesResponse
         $this->renderedModules = $renderedModules;
         return $this;
     }
-
 }

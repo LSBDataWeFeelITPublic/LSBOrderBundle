@@ -3,45 +3,31 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Model;
 
-use JMS\Serializer\Annotation\Groups;
-
 /**
- * Class CartShippingFormCalulatorResult
- * @package LSB\CartBundle\Model
+ * Class CartShippingFormCalculatorResult
+ * @package LSB\OrderBundle\Model
  */
 class CartShippingFormCalculatorResult extends CartCalculatorResult
 {
     /**
-     * Wartość progu darmowej dostawy (netto)
-     *
-     * @Groups({"Default", "EDI_Price", "SHOP_Public"})
      * @var null|float
      */
-    protected $freeDeliveryThresholdValueNetto;
+    protected ?float $freeDeliveryThresholdValueNetto;
 
     /**
-     * Wartość progu darmowe dostawy (brutto)
-     *
-     * @Groups({"Default", "EDI_Price", "SHOP_Public"})
      * @var null|float
      */
-    protected $freeDeliveryThresholdValueGross;
+    protected ?float $freeDeliveryThresholdValueGross;
 
     /**
-     * Średni koszt jednostkowy (netto)
-     *
-     * @Groups({"Default", "EDI_Price", "SHOP_Public"})
      * @var null|float
      */
-    protected $averageUnitPriceNetto;
+    protected ?float $averageUnitPriceNetto;
 
     /**
-     * Średni koszt jednostkowy (brutto)
-     *
-     * @Groups({"Default", "EDI_Price", "SHOP_Public"})
      * @var null|float
      */
-    protected $averageUnitPriceGross;
+    protected ?float $averageUnitPriceGross;
 
     /**
      * CartShippingFormCalulatorResult constructor.
@@ -80,32 +66,74 @@ class CartShippingFormCalculatorResult extends CartCalculatorResult
     /**
      * @return float|null
      */
-    public function getFreeDeliveryThresholdValueNetto(): ?float
+    public function getPriceNet(): ?float
     {
-        return $this->freeDeliveryThresholdValueNetto;
+        return $this->priceNet;
+    }
+
+    /**
+     * @param float|null $priceNet
+     * @return CartShippingFormCalculatorResult
+     */
+    public function setPriceNet(?float $priceNet): CartShippingFormCalculatorResult
+    {
+        $this->priceNet = $priceNet;
+        return $this;
     }
 
     /**
      * @return float|null
      */
-    public function getFreeDeliveryThresholdValueGross(): ?float
+    public function getPriceGross(): ?float
     {
-        return $this->freeDeliveryThresholdValueGross;
+        return $this->priceGross;
+    }
+
+    /**
+     * @param float|null $priceGross
+     * @return CartShippingFormCalculatorResult
+     */
+    public function setPriceGross(?float $priceGross): CartShippingFormCalculatorResult
+    {
+        $this->priceGross = $priceGross;
+        return $this;
+    }
+
+    /**
+     * @return int|null
+     */
+    public function getTaxPercentage(): ?int
+    {
+        return $this->taxPercentage;
+    }
+
+    /**
+     * @param int|null $taxPercentage
+     * @return CartShippingFormCalculatorResult
+     */
+    public function setTaxPercentage(?int $taxPercentage): CartShippingFormCalculatorResult
+    {
+        $this->taxPercentage = $taxPercentage;
+        return $this;
     }
 
     /**
      * @return float|null
      */
-    public function getAverageUnitPriceNetto(): ?float
+    public function getCalculationQuantity(): ?float
     {
-        return $this->averageUnitPriceNetto;
+        return $this->calculationQuantity;
     }
 
     /**
-     * @return float|null
+     * @param float|null $calculationQuantity
+     * @return CartShippingFormCalculatorResult
      */
-    public function getAverageUnitPriceGross(): ?float
+    public function setCalculationQuantity(?float $calculationQuantity): CartShippingFormCalculatorResult
     {
-        return $this->averageUnitPriceGross;
+        $this->calculationQuantity = $calculationQuantity;
+        return $this;
     }
+
+
 }

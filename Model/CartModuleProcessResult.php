@@ -12,29 +12,24 @@ use Symfony\Component\HttpFoundation\Response;
  */
 class CartModuleProcessResult
 {
-
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var mixed
      */
     protected $content;
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
-     * @var mixed
+     * @var int|null
      */
-    protected $status;
+    protected ?int $status = null;
 
     /**
      * CartModuleProcessResult constructor.
      * @param $content
-     * @param int $status
+     * @param int|null $status
      */
     public function __construct(
         $content,
-        int $status = Response::HTTP_OK
+        ?int $status = Response::HTTP_OK
     ) {
         $this->content = $content;
         $this->status = $status;
@@ -43,7 +38,7 @@ class CartModuleProcessResult
     /**
      * @return mixed
      */
-    public function getContent()
+    public function getContent(): mixed
     {
         return $this->content;
     }
@@ -52,25 +47,25 @@ class CartModuleProcessResult
      * @param mixed $content
      * @return CartModuleProcessResult
      */
-    public function setContent($content)
+    public function setContent(mixed $content): CartModuleProcessResult
     {
         $this->content = $content;
         return $this;
     }
 
     /**
-     * @return mixed
+     * @return int|null
      */
-    public function getStatus()
+    public function getStatus(): ?int
     {
         return $this->status;
     }
 
     /**
-     * @param mixed $status
+     * @param int|null $status
      * @return CartModuleProcessResult
      */
-    public function setStatus($status)
+    public function setStatus(?int $status): CartModuleProcessResult
     {
         $this->status = $status;
         return $this;

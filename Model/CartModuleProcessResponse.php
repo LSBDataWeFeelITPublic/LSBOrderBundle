@@ -16,42 +16,34 @@ class CartModuleProcessResponse
 {
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var mixed
      */
     protected $moduleResponse;
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var CartModuleConfiguration
      */
-    protected $moduleConfiguration;
+    protected CartModuleConfiguration $moduleConfiguration;
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var array
      */
-    protected $modulesToRefresh;
+    protected array $modulesToRefresh = [];
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var array
      */
-    protected $renderedModules;
+    protected array $renderedModules = [];
 
     /**
      * @var integer
      */
-    protected $status;
+    protected ?int $status = null;
 
     /**
      * @var array
      */
-    protected $serializationGroups;
+    protected array $serializationGroups = [];
 
     /**
      * CartModuleProcessResponse constructor.
@@ -67,7 +59,7 @@ class CartModuleProcessResponse
         CartModuleConfiguration $configuration,
         array $modulesToRefresh = [],
         array $renderedModules = [],
-        int $status = Response::HTTP_OK,
+        ?int $status = Response::HTTP_OK,
         array $serializationGroups = []
     ) {
         $this->moduleResponse = $moduleResponse;
@@ -81,9 +73,17 @@ class CartModuleProcessResponse
     /**
      * @return mixed
      */
-    public function getModuleResponse()
+    public function getModuleResponse(): mixed
     {
         return $this->moduleResponse;
+    }
+
+    /**
+     * @return CartModuleConfiguration
+     */
+    public function getModuleConfiguration(): CartModuleConfiguration
+    {
+        return $this->moduleConfiguration;
     }
 
     /**
@@ -105,17 +105,9 @@ class CartModuleProcessResponse
     /**
      * @return int
      */
-    public function getStatus(): int
+    public function getStatus(): ?int
     {
         return $this->status;
-    }
-
-    /**
-     * @return CartModuleConfiguration
-     */
-    public function getModuleConfiguration(): CartModuleConfiguration
-    {
-        return $this->moduleConfiguration;
     }
 
     /**

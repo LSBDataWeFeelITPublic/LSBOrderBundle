@@ -16,27 +16,19 @@ class StepModulesListResponse
 {
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     * @SerializedName("currentStep")
-     *
      * @var int
      */
-    protected $currentStep;
+    protected int $currentStep;
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     * @SerializedName("currentStepCode")
-     *
      * @var string|null
      */
-    protected $currentStepCode;
+    protected ?string $currentStepCode;
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     *
      * @var array
      */
-    protected $modules;
+    protected array $modules;
 
     /**
      * StepModulesListResponse constructor.
@@ -96,6 +88,33 @@ class StepModulesListResponse
     }
 
     /**
+     * @param ${ENTRY_HINT} $module
+     *
+     * @return StepModulesListResponse
+     */
+    public function addModule($module): StepModulesListResponse
+    {
+        if (false === in_array($module, $this->modules, true)) {
+            $this->modules[] = $module;
+        }
+        return $this;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $module
+     *
+     * @return StepModulesListResponse
+     */
+    public function removeModule($module): StepModulesListResponse
+    {
+        if (true === in_array($module, $this->modules, true)) {
+            $index = array_search($module, $this->modules);
+            array_splice($this->modules, $index, 1);
+        }
+        return $this;
+    }
+
+    /**
      * @param array $modules
      * @return StepModulesListResponse
      */
@@ -104,6 +123,4 @@ class StepModulesListResponse
         $this->modules = $modules;
         return $this;
     }
-
-
 }

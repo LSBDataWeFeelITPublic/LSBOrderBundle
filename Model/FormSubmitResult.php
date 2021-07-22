@@ -4,41 +4,32 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\Model;
 
 use Symfony\Component\Form\FormInterface;
-use JMS\Serializer\Annotation\Groups;
 
 /**
  * Class FormSubmitResult
- * @package LSB\CartBundle\Model
+ * @package LSB\OrderBundle\Model
  */
 class FormSubmitResult
 {
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var bool
      */
-    protected $isSuccess;
+    protected bool $isSuccess;
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var FormInterface
      */
-    protected $form;
+    protected FormInterface $form;
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var string|null
      */
-    protected $message;
+    protected ?string $message;
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
      * @var string|null
      */
-    protected $data;
+    protected ?string $data;
 
     /**
      * FormSubmitResult constructor.
@@ -68,31 +59,11 @@ class FormSubmitResult
     }
 
     /**
-     * @param bool $isSuccess
-     * @return FormSubmitResult
-     */
-    public function setIsSuccess(bool $isSuccess): FormSubmitResult
-    {
-        $this->isSuccess = $isSuccess;
-        return $this;
-    }
-
-    /**
      * @return FormInterface
      */
     public function getForm(): FormInterface
     {
         return $this->form;
-    }
-
-    /**
-     * @param FormInterface $form
-     * @return FormSubmitResult
-     */
-    public function setForm(FormInterface $form): FormSubmitResult
-    {
-        $this->form = $form;
-        return $this;
     }
 
     /**
@@ -104,30 +75,10 @@ class FormSubmitResult
     }
 
     /**
-     * @param string|null $message
-     * @return FormSubmitResult
-     */
-    public function setMessage(?string $message): FormSubmitResult
-    {
-        $this->message = $message;
-        return $this;
-    }
-
-    /**
      * @return string|null
      */
     public function getData(): ?string
     {
         return $this->data;
-    }
-
-    /**
-     * @param string|null $data
-     * @return FormSubmitResult
-     */
-    public function setData(?string $data): FormSubmitResult
-    {
-        $this->data = $data;
-        return $this;
     }
 }

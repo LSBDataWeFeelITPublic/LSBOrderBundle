@@ -3,9 +3,6 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Model;
 
-use JMS\Serializer\Annotation\Groups;
-use JMS\Serializer\Annotation\SerializedName;
-
 /**
  * Class StepNavigationResult
  * @package LSB\CartBundle\Model\
@@ -13,43 +10,31 @@ use JMS\Serializer\Annotation\SerializedName;
 class StepNavigationResult
 {
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     * @SerializedName("previousStep")
-     *
-     * @var int
+     * @var int|null
      */
-    protected $previousStep;
+    protected ?int $previousStep;
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     * @SerializedName("previousStepCode")
-     *
-     * @var string
+     * @var string|null
      */
-    protected $previousStepCode;
+    protected ?string $previousStepCode;
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     * @SerializedName("nextStep")
-     *
-     * @var int
+     * @var int|null
      */
-    protected $nextStep;
+    protected ?int $nextStep;
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     * @SerializedName("nextStepCode")
-     *
-     * @var string
+     * @var string|null
      */
-    protected $nextStepCode;
+    protected ?string $nextStepCode;
 
     /**
      * StepNavigationResult constructor.
-     * @param int $previousStep
-     * @param string $previousStepCode
-     * @param int $nextStep
-     * @param string $nextStepCode
+     * @param int|null $previousStep
+     * @param string|null $previousStepCode
+     * @param int|null $nextStep
+     * @param string|null $nextStepCode
      */
     public function __construct(
         ?int $previousStep,
@@ -64,72 +49,72 @@ class StepNavigationResult
     }
 
     /**
-     * @return int
+     * @return int|null
      */
-    public function getPreviousStep(): int
+    public function getPreviousStep(): ?int
     {
         return $this->previousStep;
     }
 
     /**
-     * @param int $previousStep
+     * @param int|null $previousStep
      * @return StepNavigationResult
      */
-    public function setPreviousStep(int $previousStep): StepNavigationResult
+    public function setPreviousStep(?int $previousStep): StepNavigationResult
     {
         $this->previousStep = $previousStep;
         return $this;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getPreviousStepCode(): string
+    public function getPreviousStepCode(): ?string
     {
         return $this->previousStepCode;
     }
 
     /**
-     * @param string $previousStepCode
+     * @param string|null $previousStepCode
      * @return StepNavigationResult
      */
-    public function setPreviousStepCode(string $previousStepCode): StepNavigationResult
+    public function setPreviousStepCode(?string $previousStepCode): StepNavigationResult
     {
         $this->previousStepCode = $previousStepCode;
         return $this;
     }
 
     /**
-     * @return int
+     * @return int|null
      */
-    public function getNextStep(): int
+    public function getNextStep(): ?int
     {
         return $this->nextStep;
     }
 
     /**
-     * @param int $nextStep
+     * @param int|null $nextStep
      * @return StepNavigationResult
      */
-    public function setNextStep(int $nextStep): StepNavigationResult
+    public function setNextStep(?int $nextStep): StepNavigationResult
     {
         $this->nextStep = $nextStep;
         return $this;
     }
 
     /**
-     * @return string
+     * @return string|null
      */
-    public function getNextStepCode(): string
+    public function getNextStepCode(): ?string
     {
         return $this->nextStepCode;
     }
 
     /**
-     * @param string $nextStepCode
+     * @param string|null $nextStepCode
      * @return StepNavigationResult
      */
-    public function setNextStepCode(string $nextStepCode): StepNavigationResult
+    public function setNextStepCode(?string $nextStepCode): StepNavigationResult
     {
         $this->nextStepCode = $nextStepCode;
         return $this;

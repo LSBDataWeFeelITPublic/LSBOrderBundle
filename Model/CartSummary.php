@@ -3,168 +3,129 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Model;
 
-use JMS\Serializer\Annotation\SerializedName;
-use JMS\Serializer\Annotation\VirtualProperty;
-use LSB\CustomerBundle\Interfaces\PriceTypeInterface;
+use DateTime;
 use JMS\Serializer\Annotation\Groups;
+use LSB\UtilityBundle\Calculation\CalculationTypeInterface;
 
 /**
  * Class CartSummary
- * @package LSB\CartBundle\Model
+ * @package LSB\OrderBundle\Model
  */
 class CartSummary
 {
 
     /**
-     * @var integer
-     *
-     * @Groups({"Default", "EDI_User", "EDI_CartSummary", "EDI_CartHeaderSummary", "SHOP_Public", "SHOP_CartSummary"})
+     * @var int
      */
-    protected $cnt = 0;
-
-    /**
-     * @var integer
-     *
-     * @Groups({"Default", "EDI_User", "EDI_CartSummary", "EDI_CartHeaderSummary", "SHOP_Public", "SHOP_CartSummary"})
-     *
-     */
-    protected $selectedCnt = 0;
-
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_Price", "SHOP_Public"})
-     */
-    protected $totalProductsNetto = 0;
-
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
-     */
-    protected $totalProductsGross = 0;
-
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
-     */
-    protected $shippingCostNetto = 0;
-
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
-     */
-    protected $shippingCostGross = 0;
-
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
-     */
-    protected $shippingCostFromNetto = 0;
-
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
-     */
-    protected $shippingCostFromGross = 0;
-
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
-     */
-    protected $freeShippingThresholdNetto = 0;
-
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
-     */
-    protected $freeShippingThresholdGross = 0;
-
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
-     */
-    protected $paymentCostNetto = 0;
-
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
-     */
-    protected $paymentCostGross = 0;
-
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
-     */
-    protected $totalNetto = 0;
-
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
-     */
-    protected $totalGross = 0;
-
-    /**
-     * @var float
-     */
-    protected $spreadNetto = 0;
-
-    /**
-     * @var float
-     */
-    protected $spreadGross = 0;
-
-    /**
-     * @var \DateTime|null
-     *
-     * @Groups({"Default", "EDI_User", "EDI_CartSummary", "EDI_CartHeaderSummary", "SHOP_Public", "SHOP_CartSummary"})
-     */
-    protected $calculatedAt = null;
-
-    /**
-     * @var bool
-     *
-     * @Groups({"Default", "EDI_User", "EDI_CartSummary", "EDI_CartHeaderSummary", "SHOP_Public", "SHOP_CartSummary"})
-     */
-    protected $showVatViesWarning = false;
+    protected int $cnt = 0;
 
     /**
      * @var int
+     */
+    protected int $selectedCnt = 0;
+
+    /**
+     * @var float
+     */
+    protected float $totalProductsNetto = 0;
+
+    /**
+     * @var float
+     */
+    protected float $totalProductsGross = 0;
+
+    /**
+     * @var float
+     */
+    protected float $shippingCostNetto = 0;
+
+    /**
+     * @var float
      *
      * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
      */
-    protected $calculationType = PriceTypeInterface::PRICE_TYPE_NETTO;
+    protected float $shippingCostGross = 0;
+
+    /**
+     * @var float
+     */
+    protected float $shippingCostFromNetto = 0;
+
+    /**
+     * @var float
+     */
+    protected float $shippingCostFromGross = 0;
+
+    /**
+     * @var float
+     */
+    protected float $freeShippingThresholdNetto = 0;
+
+    /**
+     * @var float
+     */
+    protected float $freeShippingThresholdGross = 0;
+
+    /**
+     * @var float
+     */
+    protected float $paymentCostNetto = 0;
+
+    /**
+     * @var float
+     */
+    protected float $paymentCostGross = 0;
+
+    /**
+     * @var float
+     */
+    protected float $totalNetto = 0;
+
+    /**
+     * @var float
+     */
+    protected float $totalGross = 0;
+
+    /**
+     * @var float
+     */
+    protected float $spreadNetto = 0;
+
+    /**
+     * @var float
+     */
+    protected float $spreadGross = 0;
+
+    /**
+     * @var DateTime|null
+     */
+    protected ?DateTime $calculatedAt = null;
+
+    /**
+     * @var bool
+     */
+    protected bool $showVatViesWarning = false;
+
+    /**
+     * @var int
+     */
+    protected int $calculationType = CalculationTypeInterface::CALCULATION_TYPE_NET;
 
     /**
      * Oznaczenie waluty
      *
      * @var string|null
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
      */
-    protected $currencyCode;
+    protected ?string $currencyCode;
 
     /**
      * Wyświetlanie cen w koszyku
      *
      * @var boolean
      */
-    protected $showPrices = true;
+    protected bool $showPrices = true;
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     *
-     * Metoda określa, czy wartości zawarte w tym obiekcie mogą być brane pod uwagę
-     *
      * @return bool
      */
     public function isCalculated(): bool
@@ -177,17 +138,11 @@ class CartSummary
     }
 
     /**
-     * Metoda wylicza sumę kosztów nie będących związanymi z produktami (netto)
-     *
-     * @VirtualProperty()
-     * @SerializedName("totalAdditionalCostsNetto")
-     * @Groups({"Default", "SHOP_Public"})
-     *
      * @param bool $round
      * @param int $precision
      * @return float
      */
-    public function getTotalAdditionalCostsNetto(bool $round = true, int $precision = 2): float
+    public function getTotalAdditionalCostsNet(bool $round = true, int $precision = 2): float
     {
         $additionalCosts = $this->totalNetto - $this->totalProductsNetto;
 
@@ -199,12 +154,6 @@ class CartSummary
     }
 
     /**
-     * Metoda wylicza sumę kosztów nie będących związanymi z produktami (brutto)
-     *
-     * @VirtualProperty()
-     * @SerializedName("totalAdditionalCostsGross")
-     * @Groups({"Default", "SHOP_Public"})
-     *
      * @param bool $round
      * @param int $precision
      * @return float
@@ -221,17 +170,11 @@ class CartSummary
     }
 
     /**
-     * Pozostała kwota do darmowej dostawy (netto)
-     *
-     * @VirtualProperty()
-     * @SerializedName("leftToFreeShippingNetto")
-     * @Groups({"Default", "SHOP_Public"})
-     *
      * @param bool $round
      * @param int $precision
      * @return float|null
      */
-    public function getLeftToFreeShippingNetto(bool $round = true, int $precision = 2): ?float
+    public function getLeftToFreeShippingNet(bool $round = true, int $precision = 2): ?float
     {
         if ($this->freeShippingThresholdNetto) {
             $leftToFreeShipping = max($this->freeShippingThresholdNetto - $this->totalProductsNetto, 0);
@@ -243,12 +186,6 @@ class CartSummary
     }
 
     /**
-     * Pozostała kwota do darmowej dostawy (brutto)
-     *
-     * @VirtualProperty()
-     * @SerializedName("leftToFreeShippingGross")
-     * @Groups({"Default", "SHOP_Public"})
-     *
      * @param bool $round
      * @param int $precision
      * @return float|null
@@ -279,7 +216,6 @@ class CartSummary
     public function setCnt(int $cnt): CartSummary
     {
         $this->cnt = $cnt;
-
         return $this;
     }
 
@@ -298,14 +234,13 @@ class CartSummary
     public function setSelectedCnt(int $selectedCnt): CartSummary
     {
         $this->selectedCnt = $selectedCnt;
-
         return $this;
     }
 
     /**
      * @return float
      */
-    public function getTotalProductsNetto(): float
+    public function getTotalProductsNetto(): float|int
     {
         return $this->totalProductsNetto;
     }
@@ -314,17 +249,16 @@ class CartSummary
      * @param float $totalProductsNetto
      * @return CartSummary
      */
-    public function setTotalProductsNetto(float $totalProductsNetto): CartSummary
+    public function setTotalProductsNetto(float|int $totalProductsNetto): CartSummary
     {
         $this->totalProductsNetto = $totalProductsNetto;
-
         return $this;
     }
 
     /**
      * @return float
      */
-    public function getTotalProductsGross(): float
+    public function getTotalProductsGross(): float|int
     {
         return $this->totalProductsGross;
     }
@@ -333,17 +267,16 @@ class CartSummary
      * @param float $totalProductsGross
      * @return CartSummary
      */
-    public function setTotalProductsGross(float $totalProductsGross): CartSummary
+    public function setTotalProductsGross(float|int $totalProductsGross): CartSummary
     {
         $this->totalProductsGross = $totalProductsGross;
-
         return $this;
     }
 
     /**
      * @return float
      */
-    public function getShippingCostNetto(): float
+    public function getShippingCostNetto(): float|int
     {
         return $this->shippingCostNetto;
     }
@@ -352,17 +285,16 @@ class CartSummary
      * @param float $shippingCostNetto
      * @return CartSummary
      */
-    public function setShippingCostNetto(float $shippingCostNetto): CartSummary
+    public function setShippingCostNetto(float|int $shippingCostNetto): CartSummary
     {
         $this->shippingCostNetto = $shippingCostNetto;
-
         return $this;
     }
 
     /**
      * @return float
      */
-    public function getShippingCostGross(): float
+    public function getShippingCostGross(): float|int
     {
         return $this->shippingCostGross;
     }
@@ -371,17 +303,88 @@ class CartSummary
      * @param float $shippingCostGross
      * @return CartSummary
      */
-    public function setShippingCostGross(float $shippingCostGross): CartSummary
+    public function setShippingCostGross(float|int $shippingCostGross): CartSummary
     {
         $this->shippingCostGross = $shippingCostGross;
-
         return $this;
     }
 
     /**
      * @return float
      */
-    public function getPaymentCostNetto(): float
+    public function getShippingCostFromNetto(): float|int
+    {
+        return $this->shippingCostFromNetto;
+    }
+
+    /**
+     * @param float $shippingCostFromNetto
+     * @return CartSummary
+     */
+    public function setShippingCostFromNetto(float|int $shippingCostFromNetto): CartSummary
+    {
+        $this->shippingCostFromNetto = $shippingCostFromNetto;
+        return $this;
+    }
+
+    /**
+     * @return float
+     */
+    public function getShippingCostFromGross(): float|int
+    {
+        return $this->shippingCostFromGross;
+    }
+
+    /**
+     * @param float $shippingCostFromGross
+     * @return CartSummary
+     */
+    public function setShippingCostFromGross(float|int $shippingCostFromGross): CartSummary
+    {
+        $this->shippingCostFromGross = $shippingCostFromGross;
+        return $this;
+    }
+
+    /**
+     * @return float
+     */
+    public function getFreeShippingThresholdNetto(): float|int
+    {
+        return $this->freeShippingThresholdNetto;
+    }
+
+    /**
+     * @param float $freeShippingThresholdNetto
+     * @return CartSummary
+     */
+    public function setFreeShippingThresholdNetto(float|int $freeShippingThresholdNetto): CartSummary
+    {
+        $this->freeShippingThresholdNetto = $freeShippingThresholdNetto;
+        return $this;
+    }
+
+    /**
+     * @return float
+     */
+    public function getFreeShippingThresholdGross(): float|int
+    {
+        return $this->freeShippingThresholdGross;
+    }
+
+    /**
+     * @param float $freeShippingThresholdGross
+     * @return CartSummary
+     */
+    public function setFreeShippingThresholdGross(float|int $freeShippingThresholdGross): CartSummary
+    {
+        $this->freeShippingThresholdGross = $freeShippingThresholdGross;
+        return $this;
+    }
+
+    /**
+     * @return float
+     */
+    public function getPaymentCostNetto(): float|int
     {
         return $this->paymentCostNetto;
     }
@@ -390,17 +393,16 @@ class CartSummary
      * @param float $paymentCostNetto
      * @return CartSummary
      */
-    public function setPaymentCostNetto(float $paymentCostNetto): CartSummary
+    public function setPaymentCostNetto(float|int $paymentCostNetto): CartSummary
     {
         $this->paymentCostNetto = $paymentCostNetto;
-
         return $this;
     }
 
     /**
      * @return float
      */
-    public function getPaymentCostGross(): float
+    public function getPaymentCostGross(): float|int
     {
         return $this->paymentCostGross;
     }
@@ -409,17 +411,16 @@ class CartSummary
      * @param float $paymentCostGross
      * @return CartSummary
      */
-    public function setPaymentCostGross(float $paymentCostGross): CartSummary
+    public function setPaymentCostGross(float|int $paymentCostGross): CartSummary
     {
         $this->paymentCostGross = $paymentCostGross;
-
         return $this;
     }
 
     /**
      * @return float
      */
-    public function getTotalNetto(): float
+    public function getTotalNetto(): float|int
     {
         return $this->totalNetto;
     }
@@ -428,17 +429,16 @@ class CartSummary
      * @param float $totalNetto
      * @return CartSummary
      */
-    public function setTotalNetto(float $totalNetto): CartSummary
+    public function setTotalNetto(float|int $totalNetto): CartSummary
     {
         $this->totalNetto = $totalNetto;
-
         return $this;
     }
 
     /**
      * @return float
      */
-    public function getTotalGross(): float
+    public function getTotalGross(): float|int
     {
         return $this->totalGross;
     }
@@ -447,17 +447,16 @@ class CartSummary
      * @param float $totalGross
      * @return CartSummary
      */
-    public function setTotalGross(float $totalGross): CartSummary
+    public function setTotalGross(float|int $totalGross): CartSummary
     {
         $this->totalGross = $totalGross;
-
         return $this;
     }
 
     /**
      * @return float
      */
-    public function getSpreadNetto(): float
+    public function getSpreadNetto(): float|int
     {
         return $this->spreadNetto;
     }
@@ -466,17 +465,16 @@ class CartSummary
      * @param float $spreadNetto
      * @return CartSummary
      */
-    public function setSpreadNetto(float $spreadNetto): CartSummary
+    public function setSpreadNetto(float|int $spreadNetto): CartSummary
     {
         $this->spreadNetto = $spreadNetto;
-
         return $this;
     }
 
     /**
      * @return float
      */
-    public function getSpreadGross(): float
+    public function getSpreadGross(): float|int
     {
         return $this->spreadGross;
     }
@@ -485,29 +483,27 @@ class CartSummary
      * @param float $spreadGross
      * @return CartSummary
      */
-    public function setSpreadGross(float $spreadGross): CartSummary
+    public function setSpreadGross(float|int $spreadGross): CartSummary
     {
         $this->spreadGross = $spreadGross;
-
         return $this;
     }
 
     /**
-     * @return \DateTime|null
+     * @return DateTime|null
      */
-    public function getCalculatedAt(): ?\DateTime
+    public function getCalculatedAt(): ?DateTime
     {
         return $this->calculatedAt;
     }
 
     /**
-     * @param \DateTime $calculatedAt
+     * @param DateTime|null $calculatedAt
      * @return CartSummary
      */
-    public function setCalculatedAt(\DateTime $calculatedAt): CartSummary
+    public function setCalculatedAt(?DateTime $calculatedAt): CartSummary
     {
         $this->calculatedAt = $calculatedAt;
-
         return $this;
     }
 
@@ -526,7 +522,6 @@ class CartSummary
     public function setShowVatViesWarning(bool $showVatViesWarning): CartSummary
     {
         $this->showVatViesWarning = $showVatViesWarning;
-
         return $this;
     }
 
@@ -545,79 +540,6 @@ class CartSummary
     public function setCalculationType(int $calculationType): CartSummary
     {
         $this->calculationType = $calculationType;
-
-        return $this;
-    }
-
-    /**
-     * @return float|null
-     */
-    public function getShippingCostFromNetto(): ?float
-    {
-        return $this->shippingCostFromNetto;
-    }
-
-    /**
-     * @param float $shippingCostFromNetto
-     * @return CartSummary
-     */
-    public function setShippingCostFromNetto(float $shippingCostFromNetto): CartSummary
-    {
-        $this->shippingCostFromNetto = $shippingCostFromNetto;
-        return $this;
-    }
-
-    /**
-     * @return float|null
-     */
-    public function getShippingCostFromGross(): ?float
-    {
-        return $this->shippingCostFromGross;
-    }
-
-    /**
-     * @param float $shippingCostFromGross
-     * @return CartSummary
-     */
-    public function setShippingCostFromGross(float $shippingCostFromGross): CartSummary
-    {
-        $this->shippingCostFromGross = $shippingCostFromGross;
-        return $this;
-    }
-
-    /**
-     * @return float|null
-     */
-    public function getFreeShippingThresholdNetto(): ?float
-    {
-        return $this->freeShippingThresholdNetto;
-    }
-
-    /**
-     * @param float $freeShippingThresholdNetto
-     * @return CartSummary
-     */
-    public function setFreeShippingThresholdNetto(?float $freeShippingThresholdNetto): CartSummary
-    {
-        $this->freeShippingThresholdNetto = $freeShippingThresholdNetto;
-        return $this;
-    }
-
-    /**
-     * @return float|null
-     */
-    public function getFreeShippingThresholdGross(): ?float
-    {
-        return $this->freeShippingThresholdGross;
-    }
-
-    /**
-     * @param float $freeShippingThresholdGross
-     * @return CartSummary
-     */
-    public function setFreeShippingThresholdGross(?float $freeShippingThresholdGross): CartSummary
-    {
-        $this->freeShippingThresholdGross = $freeShippingThresholdGross;
         return $this;
     }
 
@@ -642,7 +564,7 @@ class CartSummary
     /**
      * @return bool
      */
-    public function getShowPrices(): bool
+    public function isShowPrices(): bool
     {
         return $this->showPrices;
     }

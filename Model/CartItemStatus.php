@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Model;
 
-use LSB\CartBundle\Entity\CartItem;
+use LSB\OrderBundle\Entity\CartItemInterface;
 use JMS\Serializer\Annotation\Groups;
 
 /**
@@ -13,33 +13,42 @@ use JMS\Serializer\Annotation\Groups;
 class CartItemStatus
 {
     /**
-     * @var CartItem|null
+     * @var CartItemInterface|null
      */
-    protected $cartItem;
+    protected ?CartItemInterface $cartItem;
 
     /**
      * @var bool
-     * @Groups(groups={"EDI_User"})
      */
-    protected $isChecked = false;
+    protected bool $isChecked = false;
 
     /**
      * CartItemStatus constructor.
      * @param bool $isChecked
-     * @param CartItem|null $cartItem
+     * @param CartItemInterface|null $cartItem
      */
-    public function __construct(bool $isChecked = false, ?CartItem $cartItem = null)
+    public function __construct(bool $isChecked = false, ?CartItemInterface $cartItem = null)
     {
         $this->isChecked = $isChecked;
         $this->cartItem = $cartItem;
     }
 
     /**
-     * @return CartItem|null
+     * @return CartItemInterface|null
      */
-    public function getCartItem(): ?CartItem
+    public function getCartItem(): ?CartItemInterface
     {
         return $this->cartItem;
+    }
+
+    /**
+     * @param CartItemInterface|null $cartItem
+     * @return CartItemStatus
+     */
+    public function setCartItem(?CartItemInterface $cartItem): CartItemStatus
+    {
+        $this->cartItem = $cartItem;
+        return $this;
     }
 
     /**
@@ -48,5 +57,15 @@ class CartItemStatus
     public function isChecked(): bool
     {
         return $this->isChecked;
+    }
+
+    /**
+     * @param bool $isChecked
+     * @return CartItemStatus
+     */
+    public function setIsChecked(bool $isChecked): CartItemStatus
+    {
+        $this->isChecked = $isChecked;
+        return $this;
     }
 }

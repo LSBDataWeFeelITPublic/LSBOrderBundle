@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Model;
 
+use DateTime;
 use JMS\Serializer\Annotation\ExclusionPolicy;
 use JMS\Serializer\Annotation\Expose;
 use JMS\Serializer\Annotation\Groups;
@@ -14,156 +15,96 @@ use LSB\ProductBundle\Model\Price;
  */
 class CartItemSummary
 {
-
     /**
-     * @Groups({"Default", "EDI_Price", "SHOP_Public"})
-     *
      * @var float|null
      */
-    protected $priceNetto = null;
-
-    /**
-     * @Groups({"Default", "EDI_Price", "SHOP_Public"})
-     *
-     * @var float|null
-     */
-    protected $priceGross = null;
-
-    /**
-     * @Groups({"Default", "EDI_Price", "SHOP_Public"})
-     *
-     * @var float|null
-     */
-    protected $valueNetto = null;
-
-    /**
-     * @Groups({"Default", "EDI_Price", "SHOP_Public"})
-     *
-     * @var float|null
-     */
-    protected $valueGross = null;
+    protected ?float $priceNetto = null;
 
     /**
      * @var float|null
      */
-    protected $basePriceNetto = null;
+    protected ?float $priceGross = null;
 
     /**
      * @var float|null
      */
-    protected $basePriceGross = null;
+    protected ?float $valueNetto = null;
 
     /**
      * @var float|null
      */
-    protected $baseValueNetto = null;
+    protected ?float $valueGross = null;
 
     /**
      * @var float|null
      */
-    protected $baseValueGross = null;
+    protected ?float $basePriceNetto = null;
 
     /**
-     * @Groups({"Default", "EDI_Price", "SHOP_Public"})
-     *
      * @var float|null
      */
-    protected $taxValue = null;
+    protected ?float $basePriceGross = null;
 
     /**
-     * @Groups({"Default", "EDI_Price", "SHOP_Public"})
-     *
-     * @var integer|null
+     * @var float|null
      */
-    protected $tax = null;
+    protected ?float $baseValueNetto = null;
+
+    /**
+     * @var float|null
+     */
+    protected ?float $baseValueGross = null;
+
+    /**
+     * @var float|null
+     */
+    protected ?float $taxValue = null;
+
+    /**
+     * @var int|null
+     */
+    protected ?int $taxRate = null;
 
     /**
      * @var array
      */
-    protected $res = [];
+    protected array $res = [];
 
     /**
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
-     *
      * @var null|float
      */
-    protected $quantity;
+    protected ?float $quantity;
 
     /**
-     * @var \DateTime|null
+     * @var DateTime|null
      */
-    protected $calculatedAt;
-
-    /**
-     * @var Price|null
-     */
-    protected $activePrice;
+    protected ?DateTime $calculatedAt;
 
     /**
      * Oznaczenie waluty
      *
      * @var string|null
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
      */
-    protected $currencyCode;
+    protected ?string $currencyIsoCode;
 
     /**
      * Wyświetlanie cen w koszyku
      *
      * @var boolean
      */
-    protected $showPrices = true;
+    protected bool $showPrices = true;
 
     /**
      * @var bool
      */
-    protected $isProductSet = false;
+    protected bool $isProductSet = false;
 
     /**
      * W przypadku zestawów należy przechowywać pulę obiektów;
      *
      * @var array
      */
-    protected $productSetProductActivePrices = [];
-
-    /*
-     * ----------------
-     * Metody dodatkowe
-     * ----------------
-     */
-
-    /**
-     * Metoda weryfikuję potrzebę wyświetlenia ceny bazowej netto
-     * @return bool
-     */
-    public function isShowBaseNettoPrice(): bool
-    {
-        if ($this->basePriceNetto && $this->priceNetto && $this->basePriceNetto !== $this->priceNetto) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * Metoda weryfikuję potrzebę wyświetlenia ceny bazowej brutto
-     * @return bool
-     */
-    public function isShowBaseGrossPrice(): bool
-    {
-        if ($this->basePriceGross && $this->priceGross && $this->basePriceGross !== $this->priceGross) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /*
-     * -----------------
-     * Gettery i settery
-     * -----------------
-     */
-
+    protected array $productSetProductActivePrices = [];
 
     /**
      * @return float|null
@@ -174,13 +115,12 @@ class CartItemSummary
     }
 
     /**
-     * @param float $priceNetto
+     * @param float|null $priceNetto
      * @return CartItemSummary
      */
-    public function setPriceNetto(float $priceNetto): CartItemSummary
+    public function setPriceNetto(?float $priceNetto): CartItemSummary
     {
         $this->priceNetto = $priceNetto;
-
         return $this;
     }
 
@@ -193,13 +133,12 @@ class CartItemSummary
     }
 
     /**
-     * @param float $priceGross
+     * @param float|null $priceGross
      * @return CartItemSummary
      */
-    public function setPriceGross(float $priceGross): CartItemSummary
+    public function setPriceGross(?float $priceGross): CartItemSummary
     {
         $this->priceGross = $priceGross;
-
         return $this;
     }
 
@@ -212,13 +151,12 @@ class CartItemSummary
     }
 
     /**
-     * @param float $valueNetto
+     * @param float|null $valueNetto
      * @return CartItemSummary
      */
-    public function setValueNetto(float $valueNetto): CartItemSummary
+    public function setValueNetto(?float $valueNetto): CartItemSummary
     {
         $this->valueNetto = $valueNetto;
-
         return $this;
     }
 
@@ -231,13 +169,12 @@ class CartItemSummary
     }
 
     /**
-     * @param float $valueGross
+     * @param float|null $valueGross
      * @return CartItemSummary
      */
-    public function setValueGross(float $valueGross): CartItemSummary
+    public function setValueGross(?float $valueGross): CartItemSummary
     {
         $this->valueGross = $valueGross;
-
         return $this;
     }
 
@@ -250,13 +187,12 @@ class CartItemSummary
     }
 
     /**
-     * @param float $basePriceNetto
+     * @param float|null $basePriceNetto
      * @return CartItemSummary
      */
-    public function setBasePriceNetto(float $basePriceNetto): CartItemSummary
+    public function setBasePriceNetto(?float $basePriceNetto): CartItemSummary
     {
         $this->basePriceNetto = $basePriceNetto;
-
         return $this;
     }
 
@@ -269,13 +205,12 @@ class CartItemSummary
     }
 
     /**
-     * @param float $basePriceGross
+     * @param float|null $basePriceGross
      * @return CartItemSummary
      */
-    public function setBasePriceGross(float $basePriceGross): CartItemSummary
+    public function setBasePriceGross(?float $basePriceGross): CartItemSummary
     {
         $this->basePriceGross = $basePriceGross;
-
         return $this;
     }
 
@@ -288,13 +223,12 @@ class CartItemSummary
     }
 
     /**
-     * @param float $baseValueNetto
+     * @param float|null $baseValueNetto
      * @return CartItemSummary
      */
-    public function setBaseValueNetto(float $baseValueNetto): CartItemSummary
+    public function setBaseValueNetto(?float $baseValueNetto): CartItemSummary
     {
         $this->baseValueNetto = $baseValueNetto;
-
         return $this;
     }
 
@@ -307,13 +241,12 @@ class CartItemSummary
     }
 
     /**
-     * @param float $baseValueGross
+     * @param float|null $baseValueGross
      * @return CartItemSummary
      */
-    public function setBaseValueGross(float $baseValueGross): CartItemSummary
+    public function setBaseValueGross(?float $baseValueGross): CartItemSummary
     {
         $this->baseValueGross = $baseValueGross;
-
         return $this;
     }
 
@@ -326,32 +259,30 @@ class CartItemSummary
     }
 
     /**
-     * @param float $taxValue
+     * @param float|null $taxValue
      * @return CartItemSummary
      */
-    public function setTaxValue(float $taxValue): CartItemSummary
+    public function setTaxValue(?float $taxValue): CartItemSummary
     {
         $this->taxValue = $taxValue;
-
         return $this;
     }
 
     /**
-     * @return int
+     * @return int|null
      */
-    public function getTax(): ?int
+    public function getTaxRate(): ?int
     {
-        return $this->tax;
+        return $this->taxRate;
     }
 
     /**
-     * @param int|null $tax
+     * @param int|null $taxRate
      * @return CartItemSummary
      */
-    public function setTax(?int $tax): CartItemSummary
+    public function setTaxRate(?int $taxRate): CartItemSummary
     {
-        $this->tax = $tax;
-
+        $this->taxRate = $taxRate;
         return $this;
     }
 
@@ -364,13 +295,39 @@ class CartItemSummary
     }
 
     /**
+     * @param ${ENTRY_HINT} $re
+     *
+     * @return CartItemSummary
+     */
+    public function addRe($re): CartItemSummary
+    {
+        if (false === in_array($re, $this->res, true)) {
+            $this->res[] = $re;
+        }
+        return $this;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $re
+     *
+     * @return CartItemSummary
+     */
+    public function removeRe($re): CartItemSummary
+    {
+        if (true === in_array($re, $this->res, true)) {
+            $index = array_search($re, $this->res);
+            array_splice($this->res, $index, 1);
+        }
+        return $this;
+    }
+
+    /**
      * @param array $res
      * @return CartItemSummary
      */
     public function setRes(array $res): CartItemSummary
     {
         $this->res = $res;
-
         return $this;
     }
 
@@ -393,63 +350,45 @@ class CartItemSummary
     }
 
     /**
-     * @return \DateTime|null
+     * @return DateTime|null
      */
-    public function getCalculatedAt(): ?\DateTime
+    public function getCalculatedAt(): ?DateTime
     {
         return $this->calculatedAt;
     }
 
     /**
-     * @param \DateTime|null $calculatedAt
+     * @param DateTime|null $calculatedAt
      * @return CartItemSummary
      */
-    public function setCalculatedAt(?\DateTime $calculatedAt): CartItemSummary
+    public function setCalculatedAt(?DateTime $calculatedAt): CartItemSummary
     {
         $this->calculatedAt = $calculatedAt;
         return $this;
     }
 
     /**
-     * @return Price|null
-     */
-    public function getActivePrice(): ?Price
-    {
-        return $this->activePrice;
-    }
-
-    /**
-     * @param Price|null $activePrice
-     * @return CartItemSummary
-     */
-    public function setActivePrice(?Price $activePrice): CartItemSummary
-    {
-        $this->activePrice = $activePrice;
-        return $this;
-    }
-
-    /**
      * @return string|null
      */
-    public function getCurrencyCode(): ?string
+    public function getCurrencyIsoCode(): ?string
     {
-        return $this->currencyCode;
+        return $this->currencyIsoCode;
     }
 
     /**
-     * @param string|null $currencyCode
+     * @param string|null $currencyIsoCode
      * @return CartItemSummary
      */
-    public function setCurrencyCode(?string $currencyCode): CartItemSummary
+    public function setCurrencyIsoCode(?string $currencyIsoCode): CartItemSummary
     {
-        $this->currencyCode = $currencyCode;
+        $this->currencyIsoCode = $currencyIsoCode;
         return $this;
     }
 
     /**
      * @return bool
      */
-    public function getShowPrices(): bool
+    public function isShowPrices(): bool
     {
         return $this->showPrices;
     }
@@ -491,6 +430,33 @@ class CartItemSummary
     }
 
     /**
+     * @param ${ENTRY_HINT} $productSetProductActivePrice
+     *
+     * @return CartItemSummary
+     */
+    public function addProductSetProductActivePrice($productSetProductActivePrice): CartItemSummary
+    {
+        if (false === in_array($productSetProductActivePrice, $this->productSetProductActivePrices, true)) {
+            $this->productSetProductActivePrices[] = $productSetProductActivePrice;
+        }
+        return $this;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $productSetProductActivePrice
+     *
+     * @return CartItemSummary
+     */
+    public function removeProductSetProductActivePrice($productSetProductActivePrice): CartItemSummary
+    {
+        if (true === in_array($productSetProductActivePrice, $this->productSetProductActivePrices, true)) {
+            $index = array_search($productSetProductActivePrice, $this->productSetProductActivePrices);
+            array_splice($this->productSetProductActivePrices, $index, 1);
+        }
+        return $this;
+    }
+
+    /**
      * @param array $productSetProductActivePrices
      * @return CartItemSummary
      */
@@ -498,32 +464,5 @@ class CartItemSummary
     {
         $this->productSetProductActivePrices = $productSetProductActivePrices;
         return $this;
-    }
-
-    /**
-     * @param int $productId
-     * @return bool
-     */
-    public function hasProductSetProductActivePriceByProductId(int $productId): bool
-    {
-        if (array_key_exists($productId, $this->productSetProductActivePrices) && $this->productSetProductActivePrices[$productId] instanceof Price) {
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
-     * @param int $productId
-     * @return Price
-     * @throws \Exception
-     */
-    public function getProductSetProductActivePriceByProductId(int $productId): Price
-    {
-        if (array_key_exists($productId, $this->productSetProductActivePrices) && $this->productSetProductActivePrices[$productId] instanceof Price) {
-            return $this->productSetProductActivePrices[$productId];
-        }
-
-        throw new \Exception("Active price for product:{$productId} not exists.");
     }
 }

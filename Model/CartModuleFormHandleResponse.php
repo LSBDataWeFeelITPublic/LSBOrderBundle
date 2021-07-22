@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Model;
 
+use stdClass;
 use Symfony\Component\Form\Form;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -16,33 +17,36 @@ class CartModuleFormHandleResponse
     /**
      * @var bool
      */
-    protected $isSubmitted = false;
+    protected bool $isSubmitted = false;
 
     /**
      * @var bool
      */
-    protected $isValid = false;
+    protected bool $isValid = false;
 
     /**
      * @var array
      */
-    protected $result = [];
+    protected array $result = [];
 
     /**
-     * @var Request
+     * @var Request|null
      */
-    protected $request = null;
+    protected ?Request $request = null;
 
     /**
-     * @var Form
+     * @var Form|null
      */
-    protected $form = null;
+    protected ?Form $form = null;
 
     /**
-     * @var \StdClass
+     * @var StdClass|null
      */
-    protected $additionalData;
+    protected ?StdClass $additionalData;
 
+    /**
+     * CartModuleFormHandleResponse constructor.
+     */
     public function __construct()
     {
         $this->additionalData = new \stdClass();
@@ -53,10 +57,6 @@ class CartModuleFormHandleResponse
      */
     public function isSubmitted(): bool
     {
-        if ($this->form) {
-            return $this->form->isSubmitted();
-        }
-
         return $this->isSubmitted;
     }
 
@@ -67,7 +67,6 @@ class CartModuleFormHandleResponse
     public function setIsSubmitted(bool $isSubmitted): CartModuleFormHandleResponse
     {
         $this->isSubmitted = $isSubmitted;
-
         return $this;
     }
 
@@ -76,10 +75,6 @@ class CartModuleFormHandleResponse
      */
     public function isValid(): bool
     {
-        if ($this->form && $this->form->isSubmitted()) {
-            return $this->form->isValid();
-        }
-
         return $this->isValid;
     }
 
@@ -89,9 +84,7 @@ class CartModuleFormHandleResponse
      */
     public function setIsValid(bool $isValid): CartModuleFormHandleResponse
     {
-        $this->isSubmitted = true; //Ustawienie isValid jest równoznaczne z tym, że formularz został odebrany
         $this->isValid = $isValid;
-
         return $this;
     }
 
@@ -104,93 +97,93 @@ class CartModuleFormHandleResponse
     }
 
     /**
+     * @param ${ENTRY_HINT} $result
+     *
+     * @return CartModuleFormHandleResponse
+     */
+    public function addResult($result): CartModuleFormHandleResponse
+    {
+        if (false === in_array($result, $this->result, true)) {
+            $this->result[] = $result;
+        }
+        return $this;
+    }
+
+    /**
+     * @param ${ENTRY_HINT} $result
+     *
+     * @return CartModuleFormHandleResponse
+     */
+    public function removeResult($result): CartModuleFormHandleResponse
+    {
+        if (true === in_array($result, $this->result, true)) {
+            $index = array_search($result, $this->result);
+            array_splice($this->result, $index, 1);
+        }
+        return $this;
+    }
+
+    /**
      * @param array $result
      * @return CartModuleFormHandleResponse
      */
     public function setResult(array $result): CartModuleFormHandleResponse
     {
         $this->result = $result;
-
         return $this;
     }
 
     /**
-     * @return Request
+     * @return Request|null
      */
-    public function getRequest(): Request
+    public function getRequest(): ?Request
     {
         return $this->request;
     }
 
     /**
-     * @param Request $request
+     * @param Request|null $request
      * @return CartModuleFormHandleResponse
      */
-    public function setRequest(Request $request): CartModuleFormHandleResponse
+    public function setRequest(?Request $request): CartModuleFormHandleResponse
     {
         $this->request = $request;
-
         return $this;
     }
 
     /**
-     * @return Form
+     * @return Form|null
      */
-    public function getForm(): Form
+    public function getForm(): ?Form
     {
         return $this->form;
     }
 
     /**
-     * @param Form $form
+     * @param Form|null $form
      * @return CartModuleFormHandleResponse
      */
-    public function setForm(Form $form): CartModuleFormHandleResponse
+    public function setForm(?Form $form): CartModuleFormHandleResponse
     {
         $this->form = $form;
-
         return $this;
     }
 
     /**
-     * @return \StdClass
+     * @return stdClass|null
      */
-    public function getAdditionalData(): \StdClass
+    public function getAdditionalData(): ?stdClass
     {
         return $this->additionalData;
     }
 
     /**
-     * @param \StdClass $additionalData
+     * @param stdClass|null $additionalData
      * @return CartModuleFormHandleResponse
      */
-    public function setAdditionalData(\StdClass $additionalData): CartModuleFormHandleResponse
+    public function setAdditionalData(?stdClass $additionalData): CartModuleFormHandleResponse
     {
         $this->additionalData = $additionalData;
-
         return $this;
     }
-
-    /**
-     * @param string $property
-     * @param $data
-     */
-    public function addAdditionalDataProperty(string $property, $data) {
-        $this->additionalData->$property = $data;
-
-        return $this;
-    }
-
-    /**
-     * @param string $property
-     * @return null
-     */
-    public function getAdditionalDataProperty(string $property) {
-        if (isset($this->additionalData->$property)) {
-            return $this->additionalData->$property;
-        }
-
-        return null;
-    }
-
 }
