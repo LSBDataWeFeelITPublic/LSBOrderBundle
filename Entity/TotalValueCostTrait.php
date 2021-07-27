@@ -7,6 +7,8 @@ use Doctrine\ORM\Mapping as ORM;
 use LSB\LocaleBundle\Entity\CurrencyInterface;
 use LSB\UtilityBundle\Calculation\CalculationTypeTrait;
 use LSB\UtilityBundle\Helper\ValueHelper;
+use Money\Currency;
+use Money\Money;
 use Symfony\Component\Validator\Constraints as Assert;
 
 /**
@@ -18,29 +20,29 @@ trait TotalValueCostTrait
     use CalculationTypeTrait;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
      * @Assert\Type(type="numeric")
      */
-    protected ?string $totalValueNet = "0";
+    protected ?int $totalValueNet = 0;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?string $totalValueGross = "0";
+    protected ?int $totalValueGross = 0;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?string $shippingCostNet = "0";
+    protected ?int $shippingCostNet = 0;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, options={"default": 0})
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?string $shippingCostGross = "0";
+    protected ?int $shippingCostGross = 0;
 
     /**
      * @var integer|null
@@ -49,34 +51,34 @@ trait TotalValueCostTrait
     protected ?int $shippingCostTaxRate;
 
     /**
-     * @var integer|null
+     * @var int|null
      * @ORM\Column(type="integer", nullable=true)
      */
     protected ?int $paymentCostTaxRate;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?string $paymentCostNet = "0";
+    protected ?int $paymentCostNet = 0;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?string $paymentCostGross = "0";
+    protected ?int $paymentCostGross = 0;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?string $productsValueNet = "0";
+    protected ?int $productsValueNet = 0;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true, options={"default": 0})
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?string $productsValueGross = "0";
+    protected ?int $productsValueGross = 0;
 
     /**
      * @var CurrencyInterface|null
@@ -86,74 +88,113 @@ trait TotalValueCostTrait
     protected ?CurrencyInterface $currency = null;
 
     /**
-     * @return float|null
+     * @var string
+     *
+     * @ORM\Column(type="string", length=5, options={"default": "PLN"})
      */
-    public function getTotalValueNet(): ?float
+    protected string $currencyIsoCode = 'PLN';
+
+    /**
+     * @param bool $useMoney
+     * @return Money|int|null
+     */
+    public function getTotalValueNet(bool $useMoney): Money|int|null
     {
-        return ValueHelper::toFloat($this->totalValueNet);
+        return $useMoney ? ValueHelper::intToMoney($this->totalValueNet, $this->currencyIsoCode) : $this->totalValueNet;
     }
 
     /**
-     * @param float|string|null $totalValueNet
-     * @return $this
+     * @param Money|int|null $totalValueNet
+     * @return TotalValueCostTrait
      */
-    public function setTotalValueNet(float|string|null $totalValueNet): static
+    public function setTotalValueNet(Money|int|null $totalValueNet): static
     {
-        $this->totalValueNet = ValueHelper::toString($totalValueNet);
+        if ($totalValueNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($totalValueNet);
+            $this->totalValueNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->totalValueNet = $totalValueNet;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getTotalValueGross(): ?float
+    public function getTotalValueGross(bool $useMoney = false): Money|int|null
     {
-        return ValueHelper::toFloat($this->totalValueGross);
+        return $useMoney ? ValueHelper::intToMoney($this->totalValueGross, $this->currencyIsoCode) : $this->totalValueGross;
     }
 
     /**
-     * @param float|string|null $totalValueGross
-     * @return $this
+     * @param int|null $totalValueGross
+     * @return TotalValueCostTrait
      */
-    public function setTotalValueGross(float|string|null $totalValueGross): static
+    public function setTotalValueGross(?int $totalValueGross): static
     {
-        $this->totalValueGross = ValueHelper::toString($totalValueGross);
+        if ($totalValueGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($totalValueGross);
+            $this->totalValueGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->totalValueGross = $totalValueGross;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getShippingCostNet(): ?float
+    public function getShippingCostNet(bool $useMoney = false): Money|int|null
     {
-        return ValueHelper::toFloat($this->shippingCostNet);
+        return $useMoney ? ValueHelper::intToMoney($this->shippingCostNet, $this->currencyIsoCode) : $this->shippingCostNet;
     }
 
     /**
-     * @param float|string|null $shippingCostNet
-     * @return $this
+     * @param Money|int|null $shippingCostNet
+     * @return TotalValueCostTrait
      */
-    public function setShippingCostNet(float|string|null $shippingCostNet): static
+    public function setShippingCostNet(Money|int|null $shippingCostNet): static
     {
-        $this->shippingCostNet = ValueHelper::toString($shippingCostNet);
+        if ($shippingCostNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($shippingCostNet);
+            $this->shippingCostNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->shippingCostNet = $shippingCostNet;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getShippingCostGross(): ?float
+    public function getShippingCostGross(bool $useMoney = false): Money|int|null
     {
-        return ValueHelper::toFloat($this->shippingCostGross);
+        return $useMoney ? ValueHelper::intToMoney($this->shippingCostGross, $this->currencyIsoCode) : $this->shippingCostGross;
     }
 
     /**
-     * @param float|string|null $shippingCostGross
-     * @return $this
+     * @param Money|int|null $shippingCostGross
+     * @return TotalValueCostTrait
      */
-    public function setShippingCostGross(float|string|null $shippingCostGross): static
+    public function setShippingCostGross(Money|int|null $shippingCostGross): static
     {
-        $this->shippingCostGross = ValueHelper::toString($shippingCostGross);
+        if ($shippingCostGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($shippingCostGross);
+            $this->shippingCostGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->shippingCostGross = $shippingCostGross;
         return $this;
     }
 
@@ -167,7 +208,7 @@ trait TotalValueCostTrait
 
     /**
      * @param int|null $shippingCostTaxRate
-     * @return $this
+     * @return TotalValueCostTrait
      */
     public function setShippingCostTaxRate(?int $shippingCostTaxRate): static
     {
@@ -185,7 +226,7 @@ trait TotalValueCostTrait
 
     /**
      * @param int|null $paymentCostTaxRate
-     * @return $this
+     * @return TotalValueCostTrait
      */
     public function setPaymentCostTaxRate(?int $paymentCostTaxRate): static
     {
@@ -194,74 +235,99 @@ trait TotalValueCostTrait
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getPaymentCostNet(): ?float
+    public function getPaymentCostNet(bool $useMoney = false): Money|int|null
     {
-        return ValueHelper::toFloat($this->paymentCostNet);
+        return $useMoney ? ValueHelper::intToMoney($this->paymentCostNet, $this->currencyIsoCode) : $this->paymentCostNet;
     }
 
     /**
-     * @param float|string|null $paymentCostNet
+     * @param Money|int|null $paymentCostNet
      * @return $this
      */
-    public function setPaymentCostNet(float|string|null $paymentCostNet): static
+    public function setPaymentCostNet(Money|int|null $paymentCostNet): static
     {
-        $this->paymentCostNet = ValueHelper::toString($paymentCostNet);
+        if ($paymentCostNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($paymentCostNet);
+            $this->paymentCostNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->paymentCostNet = $paymentCostNet;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getPaymentCostGross(): ?float
+    public function getPaymentCostGross(bool $useMoney = false): Money|int|null
     {
-        return ValueHelper::toFloat($this->paymentCostGross);
+        return $useMoney ? ValueHelper::intToMoney($this->paymentCostGross, $this->currencyIsoCode) : $this->paymentCostGross;
     }
 
     /**
-     * @param float|string|null $paymentCostGross
-     * @return $this
+     * @param int|null $paymentCostGross
+     * @return TotalValueCostTrait
      */
-    public function setPaymentCostGross(float|string|null $paymentCostGross): static
+    public function setPaymentCostGross(?int $paymentCostGross): static
     {
-        $this->paymentCostGross = ValueHelper::toString($paymentCostGross);
+        if ($paymentCostGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($paymentCostGross);
+            $this->paymentCostGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->paymentCostGross = $paymentCostGross;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getProductsValueNet(): ?float
+    public function getProductsValueNet(bool $useMoney = false): Money|int|null
     {
-        return ValueHelper::toFloat($this->productsValueNet);
+        return $useMoney ? ValueHelper::intToMoney($this->productsValueNet, $this->currencyIsoCode) : $this->productsValueNet;
     }
 
     /**
-     * @param float|string|null $productsValueNet
-     * @return $this
+     * @param int|null $productsValueNet
+     * @return TotalValueCostTrait
      */
-    public function setProductsValueNet(float|string|null $productsValueNet): static
+    public function setProductsValueNet(?int $productsValueNet): static
     {
-        $this->productsValueNet = ValueHelper::toString($productsValueNet);
+        $this->productsValueNet = $productsValueNet;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getProductsValueGross(): ?float
+    public function getProductsValueGross(bool $useMoney = false): Money|int|null
     {
-        return ValueHelper::toFloat($this->productsValueGross);
+        return $useMoney ? ValueHelper::intToMoney($this->productsValueGross, $this->currencyIsoCode) : $this->productsValueGross;
     }
 
     /**
-     * @param float|string|null $productsValueGross
-     * @return $this
+     * @param Money|int|null $productsValueGross
+     * @return TotalValueCostTrait
      */
-    public function setProductsValueGross(float|string|null $productsValueGross): static
+    public function setProductsValueGross(Money|int|null $productsValueGross): static
     {
-        $this->productsValueGross = ValueHelper::toString($productsValueGross);
+        if ($productsValueGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($productsValueGross);
+            $this->productsValueGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->productsValueGross = $productsValueGross;
         return $this;
     }
 
@@ -275,7 +341,7 @@ trait TotalValueCostTrait
 
     /**
      * @param CurrencyInterface|null $currency
-     * @return $this
+     * @return TotalValueCostTrait
      */
     public function setCurrency(?CurrencyInterface $currency): static
     {
@@ -283,4 +349,21 @@ trait TotalValueCostTrait
         return $this;
     }
 
+    /**
+     * @return string
+     */
+    public function getCurrencyIsoCode(): string
+    {
+        return $this->currencyIsoCode;
+    }
+
+    /**
+     * @param string $currencyIsoCode
+     * @return TotalValueCostTrait
+     */
+    public function setCurrencyIsoCode(string $currencyIsoCode): static
+    {
+        $this->currencyIsoCode = $currencyIsoCode;
+        return $this;
+    }
 }

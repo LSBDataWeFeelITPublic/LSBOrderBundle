@@ -9,6 +9,8 @@ use LSB\UtilityBundle\Helper\ValueHelper;
 use LSB\UtilityBundle\Traits\CreatedUpdatedTrait;
 use LSB\UtilityBundle\Traits\PositionTrait;
 use LSB\UtilityBundle\Traits\UuidTrait;
+use LSB\UtilityBundle\Value\Value;
+use Money\Money;
 use Symfony\Component\Validator\Constraints as Assert;
 use Doctrine\ORM\Mapping\MappedSuperclass;
 
@@ -65,40 +67,22 @@ abstract class PackageItem implements PackageItemInterface
     protected ?int $productType = self::PRODUCT_TYPE_DEFAULT;
 
     /**
-     * @ORM\Column(type="string", length=50, nullable=true)
-     * @Assert\Length(max="50")
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?string $orderCode = null;
+    protected ?int $catalogPriceNet = null;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?string $quantity = null;
+    protected ?int $catalogPriceGross = null;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?string $productSetQuantity = null;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
-     */
-    protected ?string $catalogPriceNet = null;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
-     */
-    protected ?string $catalogPriceGross = null;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
-     */
-    protected ?string $discount = null;
+    protected ?int $discount = null;
 
     /**
      * @var ProductInterface|null
@@ -115,10 +99,10 @@ abstract class PackageItem implements PackageItemInterface
     protected ?ProductInterface $productSet = null;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=2, nullable=true)
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?string $bookedQuantity = null;
+    protected ?int $bookedQuantity = null;
 
     /**
      * @var bool
@@ -134,28 +118,13 @@ abstract class PackageItem implements PackageItemInterface
         $this->generateUuid();
     }
 
+    /**
+     * @throws \Exception
+     */
     public function __clone()
     {
         $this->id = null;
         $this->generateUuid(true);
-    }
-
-    /**
-     * @param string|null $productName
-     * @return PackageItem
-     */
-    public function setProductName(?string $productName): PackageItem
-    {
-        $this->productName = $productName;
-        return $this;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getProductName(): ?string
-    {
-        return $this->productName;
     }
 
     /**
@@ -168,15 +137,31 @@ abstract class PackageItem implements PackageItemInterface
 
     /**
      * @param int|null $type
-     * @return PackageItem
+     * @return $this
      */
-    public function setType(?int $type): PackageItem
+    public function setType(?int $type): static
     {
         $this->type = $type;
         return $this;
     }
 
+    /**
+     * @return string|null
+     */
+    public function getProductName(): ?string
+    {
+        return $this->productName;
+    }
 
+    /**
+     * @param string|null $productName
+     * @return $this
+     */
+    public function setProductName(?string $productName): static
+    {
+        $this->productName = $productName;
+        return $this;
+    }
 
     /**
      * @return string|null
@@ -188,9 +173,9 @@ abstract class PackageItem implements PackageItemInterface
 
     /**
      * @param string|null $productNumber
-     * @return PackageItem
+     * @return $this
      */
-    public function setProductNumber(?string $productNumber): PackageItem
+    public function setProductNumber(?string $productNumber): static
     {
         $this->productNumber = $productNumber;
         return $this;
@@ -206,9 +191,9 @@ abstract class PackageItem implements PackageItemInterface
 
     /**
      * @param string|null $productSetName
-     * @return PackageItem
+     * @return $this
      */
-    public function setProductSetName(?string $productSetName): PackageItem
+    public function setProductSetName(?string $productSetName): static
     {
         $this->productSetName = $productSetName;
         return $this;
@@ -224,9 +209,9 @@ abstract class PackageItem implements PackageItemInterface
 
     /**
      * @param string|null $productSetNumber
-     * @return PackageItem
+     * @return $this
      */
-    public function setProductSetNumber(?string $productSetNumber): PackageItem
+    public function setProductSetNumber(?string $productSetNumber): static
     {
         $this->productSetNumber = $productSetNumber;
         return $this;
@@ -242,190 +227,89 @@ abstract class PackageItem implements PackageItemInterface
 
     /**
      * @param int|null $productType
-     * @return PackageItem
+     * @return $this
      */
-    public function setProductType(?int $productType): PackageItem
+    public function setProductType(?int $productType): static
     {
         $this->productType = $productType;
         return $this;
     }
 
     /**
-     * @return string|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getOrderCode(): ?string
+    public function getCatalogPriceNet(bool $useMoney = false): Money|int|null
     {
-        return $this->orderCode;
+        return $useMoney ? ValueHelper::intToMoney($this->catalogPriceNet, $this->currencyIsoCode) : $this->catalogPriceNet;
     }
 
     /**
-     * @param string|null $orderCode
-     * @return PackageItem
+     * @param Money|int|null $catalogPriceNet
+     * @return $this
      */
-    public function setOrderCode(?string $orderCode): PackageItem
+    public function setCatalogPriceNet(Money|int|null $catalogPriceNet): static
     {
-        $this->orderCode = $orderCode;
+        if ($catalogPriceNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($catalogPriceNet);
+            $this->catalogPriceNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->catalogPriceNet = $catalogPriceNet;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getQuantity(): ?float
+    public function getCatalogPriceGross(bool $useMoney = false): Money|int|null
     {
-        return ValueHelper::toFloat($this->quantity);
+        return $useMoney ? ValueHelper::intToMoney($this->catalogPriceGross, $this->currencyIsoCode) : $this->catalogPriceGross;
     }
 
     /**
-     * @param float|string|null $quantity
-     * @return PackageItem
+     * @param Money|int|null $catalogPriceGross
+     * @return $this
      */
-    public function setQuantity(float|string|null $quantity): PackageItem
+    public function setCatalogPriceGross(Money|int|null $catalogPriceGross): static
     {
-        $this->quantity = ValueHelper::toString($quantity);
+        if ($catalogPriceGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($catalogPriceGross);
+            $this->catalogPriceGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->catalogPriceGross = $catalogPriceGross;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useValue
+     * @return Value|int|null
      */
-    public function getProductSetQuantity(): ?float
+    public function getDiscount(bool $useValue = false): Value|int|null
     {
-        return ValueHelper::toFloat($this->productSetQuantity);
+        return $useValue ? ValueHelper::intToValue($this->discount, Value::UNIT_PERCENTAGE) : $this->discount;
     }
 
     /**
-     * @param float|string|null $productSetQuantity
-     * @return PackageItem
+     * @param int|null $discount
+     * @return $this
      */
-    public function setProductSetQuantity(float|string|null $productSetQuantity): PackageItem
+    public function setDiscount(?int $discount): static
     {
-        $this->productSetQuantity = ValueHelper::toString($productSetQuantity);
-        return $this;
-    }
+        if ($discount instanceof Value)
+        {
+            [$amount, $unit] = ValueHelper::valueToIntUnit($discount);
+            $this->discount = $amount;
+            $this->unit = $unit;
+            return $this;
+        }
 
-    /**
-     * @return float|null
-     */
-    public function getPriceNet(): ?float
-    {
-        return ValueHelper::toFloat($this->priceNet);
-    }
-
-    /**
-     * @param float|string|null $priceNet
-     * @return PackageItem
-     */
-    public function setPriceNet(float|string|null $priceNet): PackageItem
-    {
-        $this->priceNet = ValueHelper::toString($priceNet);
-        return $this;
-    }
-
-    /**
-     * @return float|null
-     */
-    public function getValueNet(): ?float
-    {
-        return ValueHelper::toFloat($this->valueNet);
-    }
-
-    /**
-     * @param float|string|null $valueNet
-     * @return PackageItem
-     */
-    public function setValueNet(float|string|null $valueNet): PackageItem
-    {
-        $this->valueNet = ValueHelper::toString($valueNet);
-        return $this;
-    }
-
-    /**
-     * @return float|null
-     */
-    public function getPriceGross(): ?float
-    {
-        return ValueHelper::toFloat($this->priceGross);
-    }
-
-    /**
-     * @param float|string|null $priceGross
-     * @return PackageItem
-     */
-    public function setPriceGross(float|string|null $priceGross): PackageItem
-    {
-        $this->priceGross = ValueHelper::toString($priceGross);
-        return $this;
-    }
-
-    /**
-     * @return float|null
-     */
-    public function getValueGross(): ?float
-    {
-        return ValueHelper::toFloat($this->valueGross);
-    }
-
-    /**
-     * @param float|string|null $valueGross
-     * @return PackageItem
-     */
-    public function setValueGross(float|string|null $valueGross): PackageItem
-    {
-        $this->valueGross = ValueHelper::toString($valueGross);
-        return $this;
-    }
-
-    /**
-     * @return float|null
-     */
-    public function getCatalogPriceNet(): ?float
-    {
-        return ValueHelper::toFloat($this->catalogPriceNet);
-    }
-
-    /**
-     * @param float|string|null $catalogPriceNet
-     * @return PackageItem
-     */
-    public function setCatalogPriceNet(float|string|null $catalogPriceNet): PackageItem
-    {
-        $this->catalogPriceNet = ValueHelper::toString($catalogPriceNet);
-        return $this;
-    }
-
-    /**
-     * @return float|null
-     */
-    public function getCatalogPriceGross(): ?float
-    {
-        return ValueHelper::toFloat($this->catalogPriceGross);
-    }
-
-    /**
-     * @param float|string|null $catalogPriceGross
-     * @return PackageItem
-     */
-    public function setCatalogPriceGross(float|string|null $catalogPriceGross): PackageItem
-    {
-        $this->catalogPriceGross = ValueHelper::toString($catalogPriceGross);
-        return $this;
-    }
-
-    /**
-     * @return float|null
-     */
-    public function getDiscount(): ?float
-    {
-        return ValueHelper::toFloat($this->discount);
-    }
-
-    /**
-     * @param float|string|null $discount
-     * @return PackageItem
-     */
-    public function setDiscount(float|string|null $discount): PackageItem
-    {
         $this->discount = $discount;
         return $this;
     }
@@ -440,9 +324,9 @@ abstract class PackageItem implements PackageItemInterface
 
     /**
      * @param ProductInterface|null $product
-     * @return PackageItem
+     * @return $this
      */
-    public function setProduct(?ProductInterface $product): PackageItem
+    public function setProduct(?ProductInterface $product): static
     {
         $this->product = $product;
         return $this;
@@ -458,9 +342,9 @@ abstract class PackageItem implements PackageItemInterface
 
     /**
      * @param ProductInterface|null $productSet
-     * @return PackageItem
+     * @return $this
      */
-    public function setProductSet(?ProductInterface $productSet): PackageItem
+    public function setProductSet(?ProductInterface $productSet): static
     {
         $this->productSet = $productSet;
         return $this;
@@ -469,54 +353,18 @@ abstract class PackageItem implements PackageItemInterface
     /**
      * @return int|null
      */
-    public function getTaxPercentage(): ?int
+    public function getBookedQuantity(): ?int
     {
-        return $this->taxPercentage;
+        return $this->bookedQuantity;
     }
 
     /**
-     * @param int|null $taxPercentage
-     * @return PackageItem
+     * @param int|null $bookedQuantity
+     * @return $this
      */
-    public function setTaxPercentage(?int $taxPercentage): PackageItem
+    public function setBookedQuantity(?int $bookedQuantity): static
     {
-        $this->taxPercentage = $taxPercentage;
-        return $this;
-    }
-
-    /**
-     * @return float|null
-     */
-    public function getTaxValue(): ?float
-    {
-        return ValueHelper::toFloat($this->taxValue);
-    }
-
-    /**
-     * @param float|string|null $taxValue
-     * @return PackageItem
-     */
-    public function setTaxValue(float|string|null $taxValue): PackageItem
-    {
-        $this->taxValue = ValueHelper::toString($taxValue);
-        return $this;
-    }
-
-    /**
-     * @return float|null
-     */
-    public function getBookedQuantity(): ?float
-    {
-        return ValueHelper::toFloat($this->bookedQuantity);
-    }
-
-    /**
-     * @param float|string|null $bookedQuantity
-     * @return PackageItem
-     */
-    public function setBookedQuantity(float|string|null $bookedQuantity): PackageItem
-    {
-        $this->bookedQuantity = ValueHelper::toString($bookedQuantity);
+        $this->bookedQuantity = $bookedQuantity;
         return $this;
     }
 
@@ -530,9 +378,9 @@ abstract class PackageItem implements PackageItemInterface
 
     /**
      * @param bool $updateValues
-     * @return PackageItem
+     * @return $this
      */
-    public function setUpdateValues(bool $updateValues): PackageItem
+    public function setUpdateValues(bool $updateValues): static
     {
         $this->updateValues = $updateValues;
         return $this;

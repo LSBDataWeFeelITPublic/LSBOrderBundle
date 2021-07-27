@@ -79,17 +79,17 @@ class OrderTotalCalculator extends BaseTotalCalculator
         if ($updateSubject) {
             $subject
                 //Products values
-                ->setProductsValueNet($totalProductsNet)
-                ->setProductsValueGross($totalProductsGross)
+                ->setProductsValueNet((int)$totalProductsNet)
+                ->setProductsValueGross((int)$totalProductsGross)
                 //Shipping cost values
-                ->setShippingCostNet($totalShippingNet)
-                ->setShippingCostGross($totalShippingGross)
+                ->setShippingCostNet((int)$totalShippingNet)
+                ->setShippingCostGross((int)$totalShippingGross)
                 //Payment cost values
-                ->setPaymentCostNet($totalPaymentCostNet)
-                ->setPaymentCostGross($totalPaymentCostGross)
+                ->setPaymentCostNet((int)$totalPaymentCostNet)
+                ->setPaymentCostGross((int)$totalPaymentCostGross)
                 //Order package total values
-                ->setTotalValueNet($totalNet)
-                ->setTotalValueGross($totalGross);
+                ->setTotalValueNet((int)$totalNet)
+                ->setTotalValueGross((int)$totalGross);
         }
 
         return new Result($canRecalculateTotal, $subject->getCurrency(), $totalNet, $totalGross, $subject, $calculationRes);

@@ -27,6 +27,7 @@ class CartItem implements CartItemInterface
 {
     use UuidTrait;
     use CreatedUpdatedTrait;
+    use ItemValueTrait;
 
     const DEFAULT_ORDER_CODE_VALUE = 'default';
 
@@ -43,28 +44,10 @@ class CartItem implements CartItemInterface
     protected ?CartInterface $cart;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=1, nullable=true)
-     */
-    protected ?string $quantity;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="decimal", precision=18, scale=1, nullable=true)
-     */
-    protected ?string $productSetQuantity;
-
-    /**
      * @var int|null
      * @ORM\Column(type="integer", nullable=true)
      */
     protected ?int $availability;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="string", length=50, nullable=true)
-     */
-    protected ?string $orderCode;
 
     /**
      * @ORM\Column(type="boolean", nullable=true, options={"default": true})
@@ -212,42 +195,6 @@ class CartItem implements CartItemInterface
     }
 
     /**
-     * @return string|null
-     */
-    public function getQuantity(): ?string
-    {
-        return $this->quantity;
-    }
-
-    /**
-     * @param string|null $quantity
-     * @return CartItem
-     */
-    public function setQuantity(?string $quantity): CartItem
-    {
-        $this->quantity = $quantity;
-        return $this;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getProductSetQuantity(): ?string
-    {
-        return $this->productSetQuantity;
-    }
-
-    /**
-     * @param string|null $productSetQuantity
-     * @return CartItem
-     */
-    public function setProductSetQuantity(?string $productSetQuantity): CartItem
-    {
-        $this->productSetQuantity = $productSetQuantity;
-        return $this;
-    }
-
-    /**
      * @return int|null
      */
     public function getAvailability(): ?int
@@ -262,24 +209,6 @@ class CartItem implements CartItemInterface
     public function setAvailability(?int $availability): CartItem
     {
         $this->availability = $availability;
-        return $this;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getOrderCode(): ?string
-    {
-        return $this->orderCode;
-    }
-
-    /**
-     * @param string|null $orderCode
-     * @return CartItem
-     */
-    public function setOrderCode(?string $orderCode): CartItem
-    {
-        $this->orderCode = $orderCode;
         return $this;
     }
 

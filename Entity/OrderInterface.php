@@ -5,7 +5,7 @@ namespace LSB\OrderBundle\Entity;
 
 use LSB\OrderBundle\Interfaces\OrderStatusInterface;
 use LSB\OrderBundle\Interfaces\ProcessDateInterface;
-use LSB\OrderBundle\Interfaces\ValueCostInterface;
+use LSB\OrderBundle\Interfaces\TotalValueCostInterface;
 use LSB\OrderBundle\Interfaces\WeightInterface;
 use LSB\UtilityBundle\Calculation\CalculationTypeInterface;
 use LSB\UtilityBundle\Interfaces\UuidInterface;
@@ -19,7 +19,7 @@ use LSB\UtilityBundle\Token\ViewTokenInterface;
  */
 interface OrderInterface extends
     UuidInterface,
-    ValueCostInterface,
+    TotalValueCostInterface,
     OrderStatusInterface,
     WeightInterface,
     ConfirmationTokenInterface,
