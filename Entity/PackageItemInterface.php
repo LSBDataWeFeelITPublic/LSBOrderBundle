@@ -16,4 +16,7 @@ interface PackageItemInterface extends PositionInterface
     const TYPE_PAYMENT = 110;
 
     const PRODUCT_TYPE_DEFAULT = 10;
+
+    const FIRST_POSITION = 1;
+
 }

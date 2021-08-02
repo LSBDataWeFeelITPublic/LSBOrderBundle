@@ -33,40 +33,6 @@ abstract class PackageItem implements PackageItemInterface
     protected ?int $type = self::TYPE_DEFAULT;
 
     /**
-     * @var string|null
-     * @ORM\Column(type="string", length=255, nullable=true)
-     * @Assert\Length(max="255")
-     */
-    protected ?string $productName = null;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="string", length=255, nullable=true)
-     * @Assert\Length(max="255")
-     */
-    protected ?string $productNumber = null;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="string", length=255, nullable=true)
-     * @Assert\Length(max="255")
-     */
-    protected ?string $productSetName = null;
-
-    /**
-     * @var string|null
-     * @ORM\Column(type="string", length=255, nullable=true)
-     * @Assert\Length(max="255")
-     */
-    protected ?string $productSetNumber = null;
-
-    /**
-     * @var integer|null
-     * @ORM\Column(type="integer", nullable=true)
-     */
-    protected ?int $productType = self::PRODUCT_TYPE_DEFAULT;
-
-    /**
      * @var int|null
      * @ORM\Column(type="integer", nullable=true)
      */
@@ -146,96 +112,6 @@ abstract class PackageItem implements PackageItemInterface
     }
 
     /**
-     * @return string|null
-     */
-    public function getProductName(): ?string
-    {
-        return $this->productName;
-    }
-
-    /**
-     * @param string|null $productName
-     * @return $this
-     */
-    public function setProductName(?string $productName): static
-    {
-        $this->productName = $productName;
-        return $this;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getProductNumber(): ?string
-    {
-        return $this->productNumber;
-    }
-
-    /**
-     * @param string|null $productNumber
-     * @return $this
-     */
-    public function setProductNumber(?string $productNumber): static
-    {
-        $this->productNumber = $productNumber;
-        return $this;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getProductSetName(): ?string
-    {
-        return $this->productSetName;
-    }
-
-    /**
-     * @param string|null $productSetName
-     * @return $this
-     */
-    public function setProductSetName(?string $productSetName): static
-    {
-        $this->productSetName = $productSetName;
-        return $this;
-    }
-
-    /**
-     * @return string|null
-     */
-    public function getProductSetNumber(): ?string
-    {
-        return $this->productSetNumber;
-    }
-
-    /**
-     * @param string|null $productSetNumber
-     * @return $this
-     */
-    public function setProductSetNumber(?string $productSetNumber): static
-    {
-        $this->productSetNumber = $productSetNumber;
-        return $this;
-    }
-
-    /**
-     * @return int|null
-     */
-    public function getProductType(): ?int
-    {
-        return $this->productType;
-    }
-
-    /**
-     * @param int|null $productType
-     * @return $this
-     */
-    public function setProductType(?int $productType): static
-    {
-        $this->productType = $productType;
-        return $this;
-    }
-
-    /**
      * @param bool $useMoney
      * @return Money|int|null
      */
@@ -297,10 +173,10 @@ abstract class PackageItem implements PackageItemInterface
     }
 
     /**
-     * @param int|null $discount
+     * @param Value|int|null $discount
      * @return $this
      */
-    public function setDiscount(?int $discount): static
+    public function setDiscount(Value|int|null $discount): static
     {
         if ($discount instanceof Value)
         {
@@ -383,6 +259,25 @@ abstract class PackageItem implements PackageItemInterface
     public function setUpdateValues(bool $updateValues): static
     {
         $this->updateValues = $updateValues;
+        return $this;
+    }
+
+    /**
+     * TODO, remove from entity
+     * @return $this
+     */
+    public function recalculateDiscount()
+    {
+        $discount = 0.00;
+        $catalogPrice = $this->getCatalogPriceNet();
+        $price = $this->getPriceNet();
+
+        if ($catalogPrice && $price && $catalogPrice != 0) {
+            $discount = ((($price - $catalogPrice) / $catalogPrice) * 100) * -1;
+        }
+
+        $this->setDiscount(ValueHelper::convertToValue($discount));
+
         return $this;
     }
 }

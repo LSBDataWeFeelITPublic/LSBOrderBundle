@@ -21,6 +21,13 @@ abstract class CartPackageItem extends PackageItem implements CartPackageItemInt
     protected ?CartPackageInterface $cartPackage;
 
     /**
+     * @var CartItemInterface|null
+     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\CartItemInterface", inversedBy="packageItems")
+     * @ORM\JoinColumn(onDelete="SET NULL")
+     */
+    protected ?CartItemInterface $cartItem = null;
+
+    /**
      * @return CartPackageInterface|null
      */
     public function getCartPackage(): ?CartPackageInterface
@@ -38,5 +45,21 @@ abstract class CartPackageItem extends PackageItem implements CartPackageItemInt
         return $this;
     }
 
+    /**
+     * @return CartItemInterface|null
+     */
+    public function getCartItem(): ?CartItemInterface
+    {
+        return $this->cartItem;
+    }
 
+    /**
+     * @param CartItemInterface|null $cartItem
+     * @return $this
+     */
+    public function setCartItem(?CartItemInterface $cartItem): static
+    {
+        $this->cartItem = $cartItem;
+        return $this;
+    }
 }
