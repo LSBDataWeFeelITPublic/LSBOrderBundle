@@ -131,6 +131,7 @@ class CartConverterService
      * @param CartPackageItemManager $cartPackageItemManager
      * @param CartItemManager $cartItemManager
      * @param OrderPackageManager $orderPackageManager
+     * @param OrderManager $orderManager
      */
     public function setAdditionalServices(
         CartManager $cartManager,
@@ -191,7 +192,7 @@ class CartConverterService
 
     /**
      * @param OrderInterface $order
-     * @param CartPackageInterface $cartPackage
+     * @param CartPackage $cartPackage
      * @return OrderPackageInterface
      * @throws \Exception
      */

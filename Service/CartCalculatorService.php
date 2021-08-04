@@ -6,7 +6,9 @@ namespace LSB\OrderBundle\Service;
 use Doctrine\ORM\EntityManagerInterface;
 use JMS\Serializer\SerializerInterface;
 use LSB\LocaleBundle\Manager\TaxManager;
+use LSB\OrderBundle\CartModule\CartModuleInterface;
 use LSB\OrderBundle\Entity\CartInterface;
+use LSB\OrderBundle\Interfaces\CartCalculatorInterface;
 use LSB\OrderBundle\Model\CartCalculatorResult;
 use LSB\PricelistBundle\Manager\PricelistManager;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -26,86 +28,19 @@ class CartCalculatorService
     //TODO use module repository
     protected array $calculators = [];
 
-    protected ParameterBagInterface $ps;
-
-    protected EntityManagerInterface $em;
-
-    protected TranslatorInterface $translator;
-
-    protected CartService $cartManager;
-
-    /**
-     * @var PriceListManager
-     */
-    protected PricelistManager $priceListManager;
-
-    /**
-     * @var EventDispatcherInterface
-     */
-    protected $eventDispatcher;
-
-    /**
-     * @var TokenStorageInterface
-     */
-    protected $tokenStorage;
-
-    /**
-     * @var TaxManager
-     */
-    protected TaxManager $taxManager;
-
-    /**
-     * @var SessionInterface
-     */
-    protected SessionInterface $session;
-
-    /**
-     * @var SerializerInterface
-     */
-    protected SerializerInterface $serializer;
-
-    /**
-     * BaseCartCalculatorManager constructor.
-     * @param ParameterService $ps
-     * @param EntityManagerInterface $em
-     * @param TranslatorInterface $translator
-     * @param BaseCartManager $cartManager
-     * @param PriceListManager $priceListManager
-     * @param EventDispatcherInterface $eventDispatcher
-     * @param TokenStorageInterface $tokenStorage
-     * @param TaxManager $taxManager
-     * @param NumberPriceCurrencyExtension $valueFormatter
-     * @param PriceManager $priceManager
-     * @param SessionInterface $session
-     * @param SerializerInterface $serializer
-     */
     public function __construct(
-        ParameterService $ps,
-        EntityManagerInterface $em,
-        TranslatorInterface $translator,
-        BaseCartManager $cartManager,
-        PriceListManager $priceListManager,
-        EventDispatcherInterface $eventDispatcher,
-        TokenStorageInterface $tokenStorage,
-        TaxManager $taxManager,
-        NumberPriceCurrencyExtension $valueFormatter,
-        PriceManager $priceManager,
-        SessionInterface $session,
-        SerializerInterface $serializer
-    ) {
-        $this->ps = $ps;
-        $this->em = $em;
-        $this->translator = $translator;
-        $this->cartManager = $cartManager;
-        $this->priceListManager = $priceListManager;
-        $this->eventDispatcher = $eventDispatcher;
-        $this->tokenStorage = $tokenStorage;
-        $this->taxManager = $taxManager;
-        $this->valueFormatter = $valueFormatter;
-        $this->priceManager = $priceManager;
-        $this->session = $session;
-        $this->serializer = $serializer;
-    }
+        protected ParameterBagInterface    $ps,
+        protected EntityManagerInterface   $em,
+        protected TranslatorInterface      $translator,
+        protected CartService              $cartManager,
+        protected PricelistManager         $pricelistManager,
+        protected EventDispatcherInterface $eventDispatcher,
+        protected TokenStorageInterface    $tokenStorage,
+        protected TaxManager               $taxManager,
+        protected PricelistManager         $priceManager,
+        protected SessionInterface         $session,
+        protected SerializerInterface      $serializer
+    ) {}
 
     /**
      * @param CartCalculatorInterface $cartCalculator
@@ -139,12 +74,10 @@ class CartCalculatorService
                                 $this->em,
                                 $this->translator,
                                 $this->cartManager,
-                                $this->priceListManager,
+                                $this->pricelistManager,
                                 $this->eventDispatcher,
                                 $this->tokenStorage,
                                 $this->taxManager,
-                                $this->valueFormatter,
-                                $this->priceManager,
                                 $this->session,
                                 $this->serializer
                             );
@@ -159,10 +92,10 @@ class CartCalculatorService
     }
 
     /**
-     * Metoda pobiera domyślny kalkulator dla modułu
+     * The method takes the default calculator for the module
      *
      * @param $module
-     * @return CartCalculatorInterface|null
+     * @return CartCalculatorInterface
      * @throws \Exception
      */
     protected function getDefaultCalculator($module): CartCalculatorInterface

@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\Module;
 
 use LSB\CartBundle\Event\CartEvent;
+use LSB\ContractorBundle\Entity\ContractorInterface;
 use LSB\LocaleBundle\Entity\Country;
 use LSB\LocaleBundle\Manager\TaxManager;
 use LSB\OrderBundle\CartModule\BaseModule;
@@ -14,6 +15,8 @@ use LSB\OrderBundle\Entity\CartItem;
 use LSB\OrderBundle\Entity\CartItemInterface;
 use LSB\OrderBundle\Entity\CartPackage;
 use LSB\OrderBundle\Event\CartEvents;
+use LSB\OrderBundle\Exception\WrongPackageQuantityException;
+use LSB\OrderBundle\Model\CartModuleConfiguration;
 use LSB\OrderBundle\Model\CartSummary;
 use LSB\PricelistBundle\Entity\Pricelist;
 use LSB\PricelistBundle\Entity\PricelistPosition;
@@ -21,9 +24,11 @@ use LSB\PricelistBundle\Manager\PricelistManager;
 use LSB\PricelistBundle\Model\Price;
 use LSB\ProductBundle\Entity\Product;
 use LSB\ProductBundle\Entity\ProductSetProduct;
+use LSB\ProductBundle\Entity\Storage;
 use LSB\ProductBundle\Entity\StorageInterface;
 use LSB\ProductBundle\Entity\Supplier;
 use LSB\ProductBundle\Manager\StorageManager;
+use LSB\ProductBundle\Service\StorageService;
 use LSB\ShippingBundle\Entity\Method as ShippingMethod;
 use LSB\PaymentBundle\Entity\Method as PaymentMethod;
 use LSB\ShippingBundle\Manager\MethodManager as ShippingMethodManager;
@@ -43,18 +48,23 @@ class CartDataModule extends BaseModule
 
     protected StorageManager $storageManager;
 
+    protected StorageService $storageService;
+
     /**
      * @param ShippingMethodManager $shippingFormManager
      * @param PricelistManager $pricelistManager
      * @param StorageManager $storageManager
+     * @param StorageService $storageService
      */
     public function __construct(
         ShippingMethodManager $shippingFormManager,
         PricelistManager $pricelistManager,
-        StorageManager $storageManager
+        StorageManager $storageManager,
+        StorageService $storageService
     ) {
         $this->shippingMethodManager = $shippingFormManager;
         $this->storageManager = $storageManager;
+        $this->storageService = $storageService;
     }
 
     /**
@@ -219,7 +229,7 @@ class CartDataModule extends BaseModule
     ): void {
         $taxRate = $activePrice->getVat();
 
-        if ($this->ps->getParameter('cart.calculation.gross')) {
+        if ($this->ps->getP('cart.calculation.gross')) {
             $valueNetto = $this->cartService->calculateNettoValueFromGross($activePrice->getGrossPrice(), $selectedCartItem->getQuantity(), $activePrice->getVat());
             $valueGross = $this->cartService->calculateGrossValue($activePrice->getGrossPrice(), $selectedCartItem->getQuantity());
 
@@ -309,7 +319,7 @@ class CartDataModule extends BaseModule
             return $cart->getCartSummary();
         }
 
-        $selectedCartItems = $cart->getSelectedItems();
+        $selectedCartItems = $cart->getSelectedCartItems();
 
         $totalRes = [];
         $spreadRes = [];
@@ -817,30 +827,29 @@ class CartDataModule extends BaseModule
     }
 
     /**
-     * Podstawowa metoda wyliczająca dostępne stany mag, wylicza dostępną ilość do zamówienia, zachowując rozdzial pomiędzy dostępnością lokalną i zdalną
-     * Do użycia w przebudowaie paczek lokalnych, backorder, wyliczania dostępnego stanu całkowitego
+     * The basic method for calculating the available stock stocks, calculating the available quantity for an order, keeping the separation between local and remote availability.
+     * For use in rebuilding local parcels, backorder, calculating the available total
      *
      * @param Product $product
-     * @param float $userQuantity
+     * @param int $userQuantity
      * @return array
      * @throws \Exception
      */
-    public function calculateQuantityForProduct(Product $product, float $userQuantity)
+    public function calculateQuantityForProduct(Product $product, int $userQuantity)
     {
         $localQuantity = $this->getRawLocalQuantityForProduct($product);
 
-        //Rezerwacja stanu lokalnego
-        $localQuantity = $this->storageManager->checkReservedQuantity(
+        $localQuantity = $this->storageService->checkReservedQuantity(
             $product->getId(),
             $userQuantity,
-            Storage::TYPE_LOCAL,
+            StorageInterface::TYPE_LOCAL,
             $localQuantity
         );
 
         $requestedRemoteQuantity = ($userQuantity - $localQuantity > 0) ? $userQuantity - $localQuantity : 0;
 
-        //Niezależnie od ustawienia ordercode, na tym etapi nie zezwalamy na rezerwację stanów
-        [$remoteQuantity, $remoteStoragesWithShippingDays, $backOrderPackageQuantity, $remoteStoragesCountBeforeMerge] = $this->storageManager->calculateRemoteShippingQuantityAndDays(
+        //Regardless of the ordercode setting, we do not allow stocks to be booked at this stage
+        [$remoteQuantity, $remoteStoragesWithShippingDays, $backOrderPackageQuantity, $remoteStoragesCountBeforeMerge] = $this->storageService->calculateRemoteShippingQuantityAndDays(
             $product,
             $requestedRemoteQuantity,
             false,
@@ -848,7 +857,7 @@ class CartDataModule extends BaseModule
             false
         );
 
-        $localShippingDays = $product->getShippingDays($this->ps->getParameter('localstorage_number'));
+        $localShippingDays = $product->getShippingDays($this->ps->get('localstorage_number'));
         $remoteShippingDaysList = array_keys($remoteStoragesWithShippingDays);
         $remoteShippingDays = end($remoteShippingDaysList);
 
@@ -859,43 +868,44 @@ class CartDataModule extends BaseModule
 
         if ($userQuantity <= $localQuantity) {
             $localPackageQuantity = $userQuantity;
-        } elseif ($userQuantity > $localQuantity && $userQuantity <= ($localQuantity + $remoteQuantity + $futureQuantity + $backOrderPackageQuantity)) {
+        } elseif ($userQuantity <= ($localQuantity + $remoteQuantity + $futureQuantity + $backOrderPackageQuantity)) {
             $localPackageQuantity = (float)$localQuantity;
             $remotePackageQuantity = (float)$remoteQuantity;
         } else {
-            //liczba sztuk przewyższa zapasy magazynowe - w tym miejscu jest to niedopuszczalne
-            throw new \Exception('Wrong quantity in packages');
+            //The number of items exceeds stock - it is unacceptable at this point
+            throw new \Exception('Incorrect number of items in packages');
         }
 
+        //TODO replace with value object
         return [
-            (float)$localPackageQuantity, //ilość dostępna dla paczki lokalnej
-            (float)$remotePackageQuantity, //ilość dostępna dla paczki zdalnej
-            (float)$backOrderPackageQuantity, //ilość dostępna dla paczki na zamówienie
-            (int)$localShippingDays, //czas dostawy lokalnej
-            (int)$remoteShippingDays, //czas dostawy zdalnej
-            $remoteStoragesWithShippingDays, //magazyny zdalne z czasem dostawy
-            (int)$maxShippingDaysForUserQuantity, //maksymalny czas dostawy dla
-            (float)$localQuantity, //stan lokalny
-            (float)$remoteQuantity, //stan zdalny
+            (int)$localPackageQuantity, //quantity available for local parcel
+            (int)$remotePackageQuantity, //quantity available for remote package
+            (int)$backOrderPackageQuantity, //quantity available for a package on request
+            (int)$localShippingDays, //local delivery time
+            (int)$remoteShippingDays, //remote delivery time
+            $remoteStoragesWithShippingDays, //external warehouses with delivery time
+            (int)$maxShippingDaysForUserQuantity, //maximum delivery time
+            (int)$localQuantity, //local quantity
+            (int)$remoteQuantity, //remote quantity
             $remoteStoragesCountBeforeMerge, //stany zdalne przed scaleniem
         ];
     }
 
     /**
-     * Metoda przeznaczona do obsługi stanów magazynowych w oparciu o działający trigger przeliczania dostępnych wartości.
+     * A method designed to handle inventory levels based on a working trigger for converting available values.
      *
      * @param Product $product
-     * @param float $userQuantity
+     * @param int $userQuantity
      * @return array
-     * @throws \Exception
+     * @throws WrongPackageQuantityException
      */
-    public function getCalculatedQuantityForProduct(Product $product, int $userQuantity)
+    public function getCalculatedQuantityForProduct(Product $product, int $userQuantity): array
     {
         $localRawQuantity = $this->getRawLocalQuantityForProduct($product);
         $remoteRawQuantity = $this->getRawRemoteQuantityForProduct($product, $userQuantity);
 
         //Rezerwacja stanu lokalnego
-        $localQuantity = $this->storageManager->checkReservedQuantity(
+        $localQuantity = $this->storageService->checkReservedQuantity(
             $product->getId(),
             $userQuantity,
             StorageInterface::TYPE_LOCAL,
@@ -904,7 +914,7 @@ class CartDataModule extends BaseModule
 
         $requestedRemoteQuantity = ($userQuantity - $localQuantity > 0) ? $userQuantity - $localQuantity : 0;
 
-        $remoteQuantity = $this->storageManager->checkReservedQuantity(
+        $remoteQuantity = $this->storageService->checkReservedQuantity(
             $product->getId(),
             $requestedRemoteQuantity,
             StorageInterface::TYPE_EXTERNAL,
@@ -913,7 +923,7 @@ class CartDataModule extends BaseModule
 
         //Uwaga, aktualnie nie ma możliwości ustalenia zdalnego stanu magazynowego dostawcy dlatego pozwalamy na zamówienie każdej ilości w przypadku dostawcy zewnętrznego
         if ($requestedRemoteQuantity > 0
-            && $product->getUseSupplier()
+            && $product->isUseSupplier()
             && $product->getSupplier() instanceof Supplier
         ) {
             $remoteQuantity = $requestedRemoteQuantity;
@@ -921,69 +931,69 @@ class CartDataModule extends BaseModule
 
         $backOrderPackageQuantity = ($userQuantity > $localQuantity + $remoteQuantity) && $this->cartService->isBackorderEnabled() ? $userQuantity - $localQuantity - $remoteQuantity : 0;
 
-        $localShippingDays = $product->getShippingDays($this->ps->getParameter('localstorage_number'));
-        $remoteShippingDaysList = [Storage::DEFAULT_DELIVERY_TERM];
-        $remoteShippingDays = Storage::DEFAULT_DELIVERY_TERM;
+        $localShippingDays = $product->getShippingDays($this->ps->get('localstorage_number'));
+        $remoteShippingDaysList = [StorageInterface::DEFAULT_DELIVERY_TERM];
+        $remoteShippingDays = StorageInterface::DEFAULT_DELIVERY_TERM;
 
         $maxShippingDaysForUserQuantity = ($remoteShippingDays > $localShippingDays) ? $remoteShippingDays : $localShippingDays;
 
-        $futureQuantity = 0;
-        $localPackageQuantity = $remotePackageQuantity = 0.0;
+        $futureQuantity = $localPackageQuantity = $remotePackageQuantity = 0;
 
         if ($userQuantity <= $localQuantity) {
             $localPackageQuantity = $userQuantity;
-        } elseif ($userQuantity > $localQuantity && $userQuantity <= ($localQuantity + $remoteQuantity + $futureQuantity + $backOrderPackageQuantity)) {
-            $localPackageQuantity = (float)$localQuantity;
-            $remotePackageQuantity = (float)$remoteQuantity;
+        } elseif ($userQuantity <= ($localQuantity + $remoteQuantity + $futureQuantity + $backOrderPackageQuantity)) {
+            $localPackageQuantity = $localQuantity;
+            $remotePackageQuantity = $remoteQuantity;
         } else {
             //liczba sztuk przewyższa zapasy magazynowe - w tym miejscu jest to niedopuszczalne
             throw new WrongPackageQuantityException('Wrong quantity in packages');
         }
 
         return [
-            (float)$localPackageQuantity, //ilość dostępna dla paczki lokalnej
-            (float)$remotePackageQuantity, //ilość dostępna dla paczki zdalnej
-            (float)$backOrderPackageQuantity, //ilość dostępna dla paczki na zamówienie
-            (int)$localShippingDays, //czas dostawy lokalnej
-            (int)$remoteShippingDays, //czas dostawy zdalnej
-            $remoteStoragesWithShippingDays = [], //magazyny zdalne z czasem dostawy
-            (int)$maxShippingDaysForUserQuantity, //maksymalny czas dostawy dla
-            (float)$localQuantity, //stan lokalny
-            (float)$remoteQuantity, //stan zdalny
-            $remoteStoragesCountBeforeMerge = [], //stany zdalne przed scaleniem
+            (int)$localPackageQuantity,
+            (int)$remotePackageQuantity,
+            (int)$backOrderPackageQuantity,
+            (int)$localShippingDays,
+            (int)$remoteShippingDays,
+            $remoteStoragesWithShippingDays = [],
+            (int)$maxShippingDaysForUserQuantity,
+            (int)$localQuantity,
+            (int)$remoteQuantity,
+            $remoteStoragesCountBeforeMerge = []
         ];
     }
 
     /**
-     * Metoda wylicza stany uwzględniając stany lokalne w ramach dostępności zdalnej (wówczas stan lokalny może zostać scalony ze stanem zdalnym)
+     * The method calculates the states taking into account local states as part of remote accessibility (then the local state can be merged with the remote state)
      *
      * @param Product $product
      * @param float $userQuantity
      * @return array
      * @throws \Exception
      */
-    protected function calculateQuantityForProductWithLocalMerge(Product $product, float $userQuantity)
+    protected function calculateQuantityForProductWithLocalMerge(Product $product, float $userQuantity): array
     {
         [
             $calculatedQuantity,
             $storagesWithShippingDays,
             $backorderPackageQuantity,
             $storagesCountBeforeMerge
-        ] = $this->storageManager->calculateRemoteShippingQuantityAndDays(
-            $product->getDetailsByClass(EdiProductDetails::class), //TODO Dodać wsparcie dla pobierania klasy z kontekstu aplikacji
+        ] = $this->storageService->calculateRemoteShippingQuantityAndDays(
+            $product,
             $userQuantity,
             $useLocalStorageAsRemote = true,
-            true,//$this->ps->getParameter('cart.ordercode.enabled') ? true : false,
+            $this->ps->get('cart.ordercode.enabled') ? true : false,
             false
         );
 
         $shippingDaysList = array_keys($storagesWithShippingDays);
         $shippingDays = end($shippingDaysList);
 
+        //TODO refactor
         return [
-            (float)$calculatedQuantity,
-            (float)$backorderPackageQuantity,
-            (int)$shippingDays,
+            (int) $calculatedQuantity,
+            (int) $backorderPackageQuantity,
+            (int) $shippingDays,
             $storagesWithShippingDays,
             $storagesCountBeforeMerge,
         ];
@@ -993,9 +1003,9 @@ class CartDataModule extends BaseModule
      * @inheritDoc
      */
     public function getConfiguration(
-        Cart $cart,
-        ?UserBuyerInterface $user = null,
-        ?Customer $customer = null,
+        CartInterface $cart,
+        ?UserInterface $user = null,
+        ?ContractorInterface $contractor = null,
         ?Request $request = null,
         bool $isInitialRender = false
     ): CartModuleConfiguration {

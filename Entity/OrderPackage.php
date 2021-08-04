@@ -37,6 +37,11 @@ abstract class OrderPackage extends Package implements OrderPackageInterface
     protected Collection $orderPackageItems;
 
     /**
+     * @ORM\Column(type="boolean", options={"default" = false})
+     */
+    protected bool $isStockReserved = false;
+
+    /**
      * OrderPackage constructor.
      * @throws \Exception
      */
@@ -153,6 +158,24 @@ abstract class OrderPackage extends Package implements OrderPackageInterface
     public function setOrderPackageItems(ArrayCollection|Collection|OrderPackageItemInterface $orderPackageItems): OrderPackage
     {
         $this->orderPackageItems = $orderPackageItems;
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function isStockReserved(): bool
+    {
+        return $this->isStockReserved;
+    }
+
+    /**
+     * @param bool $isStockReserved
+     * @return OrderPackage
+     */
+    public function setIsStockReserved(bool $isStockReserved): OrderPackage
+    {
+        $this->isStockReserved = $isStockReserved;
         return $this;
     }
 }

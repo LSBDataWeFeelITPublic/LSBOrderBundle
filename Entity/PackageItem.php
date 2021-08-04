@@ -5,6 +5,8 @@ namespace LSB\OrderBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use LSB\ProductBundle\Entity\ProductInterface;
+use LSB\ProductBundle\Entity\Storage;
+use LSB\ProductBundle\Entity\StorageInterface;
 use LSB\UtilityBundle\Helper\ValueHelper;
 use LSB\UtilityBundle\Traits\CreatedUpdatedTrait;
 use LSB\UtilityBundle\Traits\PositionTrait;
@@ -69,6 +71,13 @@ abstract class PackageItem implements PackageItemInterface
      * @ORM\Column(type="integer", nullable=true)
      */
     protected ?int $bookedQuantity = null;
+
+    /**
+     * @var StorageInterface|null
+     * @ORM\ManyToOne(targetEntity="LSB\ProductBundle\Entity\StorageInterface")
+     * @ORM\JoinColumn(onDelete="SET NULL")
+     */
+    protected ?StorageInterface $bookingStorage = null;
 
     /**
      * @var bool
@@ -278,6 +287,65 @@ abstract class PackageItem implements PackageItemInterface
 
         $this->setDiscount(ValueHelper::convertToValue($discount));
 
+        return $this;
+    }
+
+    /**
+     * @param Storage $bookingStorage
+     * @param float|null $bookedQuantity
+     * @return $this
+     */
+    public function book(Storage $bookingStorage, ?float $bookedQuantity = null)
+    {
+        $this->bookingStorage = $bookingStorage;
+
+        if ($bookedQuantity === null) {
+            $bookedQuantity = $this->getQuantity();
+        }
+
+        $this->bookedQuantity = $bookedQuantity;
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function unbook()
+    {
+        $this->bookedQuantity = null;
+        $this->bookingStorage = null;
+
+        return $this;
+    }
+
+    /**
+     * @return bool
+     */
+    public function getIsStockReserved(): bool
+    {
+        if ($this->bookedQuantity) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @return StorageInterface
+     */
+    public function getBookingStorage(): StorageInterface
+    {
+        return $this->bookingStorage;
+    }
+
+    /**
+     * @param StorageInterface $bookingStorage
+     * @return $this
+     */
+    public function setBookingStorage(StorageInterface $bookingStorage): static
+    {
+        $this->bookingStorage = $bookingStorage;
         return $this;
     }
 }

@@ -22,7 +22,6 @@ interface CartModuleInterface
     const RENDER_FORMAT_XML = 'xml';
 
     /**
-     * Zwraca nazwę modułu
      * Returns the name of the module
      *
      * @return null|string
@@ -61,7 +60,7 @@ interface CartModuleInterface
     public function apiProcess(?CartInterface $cart, Request $request);
 
     /**
-     * Realizuje walidację poprawności danych
+     * Performs data validation
      *
      * @param CartInterface $cart
      * @return array
@@ -96,7 +95,6 @@ interface CartModuleInterface
     public function getDataForSerialize(CartInterface $cart, ?Request $request = null): array;
 
     /**
-     * Metoda wykonuje niezbędne czynności przed rozpoczęciem renderowania modułu
      * The method performs necessary steps before the module starts rendering.
      *
      * @param CartInterface $cart
@@ -112,7 +110,7 @@ interface CartModuleInterface
     public function isConfigured(): bool;
 
     /**
-     * The method gets a redirect response from the module
+     * The method gets a redirect response from the module.
      *
      * @return null|string
      */

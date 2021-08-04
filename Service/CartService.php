@@ -6,16 +6,20 @@ namespace LSB\OrderBundle\Service;
 use Doctrine\ORM\EntityManagerInterface;
 use LSB\CartBundle\Event\CartEvent;
 use LSB\ContractorBundle\Entity\Contractor;
+use LSB\ContractorBundle\Entity\ContractorInterface;
+use LSB\LocaleBundle\Entity\CurrencyInterface;
 use LSB\LocaleBundle\Manager\TaxManager;
 use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartItem;
 use LSB\OrderBundle\Event\CartEvents;
 use LSB\OrderBundle\Manager\CartManager;
+use LSB\OrderBundle\Module\CartDataModule;
 use LSB\OrderBundle\Repository\CartRepository;
 use LSB\PricelistBundle\Manager\PricelistManager;
 use LSB\ProductBundle\Entity\Product;
 use LSB\ProductBundle\Manager\ProductManager;
+use LSB\ProductBundle\Manager\StorageManager;
 use LSB\UserBundle\Entity\User;
 use LSB\UserBundle\Entity\UserInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
@@ -49,75 +53,12 @@ class CartService
      * @var bool|null
      * @deprecated
      */
-    protected bool $addTax;
+    protected ?bool $addTax = null;
 
     /**
      * @var array
      */
     protected array $cartItemTypeUpdated = [];
-
-
-    /**
-     * @var EntityManagerInterface
-     */
-    protected EntityManagerInterface $em;
-
-    /**
-     * @var TranslatorInterface
-     */
-    protected TranslatorInterface $translator;
-
-    /**
-     * @var TokenStorageInterface
-     */
-    protected TokenStorageInterface $tokenStorage;
-
-    /**
-     * @var SessionInterface
-     */
-    protected SessionInterface $session;
-
-    /**
-     * @var ProductManager
-     */
-    protected $productManager;
-
-    /**
-     * @var ParameterBagInterface
-     */
-    protected ParameterBagInterface $ps;
-
-    /**
-     * @var StorageManager
-     */
-    protected StorageManager $storageManager;
-
-    /**
-     * @var PricelistManager
-     */
-    protected PricelistManager $pricelistManager;
-
-    /**
-     * @var EventDispatcherInterface
-     */
-    protected $eventDispatcher;
-
-    /**
-     * @var TaxManager
-     */
-    protected $taxManager;
-
-    /**
-     * @var CartModuleManager
-     */
-    protected CartModuleManager $moduleManager;
-
-    /**
-     * @var RequestStack
-     */
-    protected RequestStack $requestStack;
-
-    protected CartManager $cartManager;
 
     /**
      * BaseCartManager constructor.
@@ -136,33 +77,20 @@ class CartService
      * @param RequestStack $requestStack
      */
     public function __construct(
-        CartManager $cartManager,
-        EntityManagerInterface $em,
-        TranslatorInterface $translator,
-        TokenStorageInterface $tokenStorage,
-        SessionInterface $session,
-        ParameterBagInterface $ps,
-        ProductManager $productManager,
-        StorageManager $storageManager,
-        PriceListManager $priceListManager,
-        TaxManager $taxManager,
-        CartModuleManager $moduleManager,
-        EventDispatcherInterface $eventDispatcher,
-        RequestStack $requestStack
+        protected CartManager              $cartManager,
+        protected EntityManagerInterface   $em,
+        protected TranslatorInterface      $translator,
+        protected TokenStorageInterface    $tokenStorage,
+        protected SessionInterface         $session,
+        protected ParameterBagInterface    $ps,
+        protected ProductManager           $productManager,
+        protected StorageManager           $storageManager,
+        protected PriceListManager         $priceListManager,
+        protected TaxManager               $taxManager,
+        protected CartModuleManager        $moduleManager,
+        protected EventDispatcherInterface $eventDispatcher,
+        protected RequestStack             $requestStack
     ) {
-        $this->em = $em;
-        $this->translator = $translator;
-        $this->tokenStorage = $tokenStorage;
-        $this->session = $session;
-        $this->ps = $ps;
-        $this->productManager = $productManager;
-        $this->storageManager = $storageManager;
-        $this->pricelistManager = $priceListManager;
-        $this->taxManager = $taxManager;
-        $this->moduleManager = $moduleManager;
-        $this->eventDispatcher = $eventDispatcher;
-        $this->requestStack = $requestStack;
-        $this->cartManager = $cartManager;
     }
 
     /**
@@ -193,10 +121,10 @@ class CartService
      * @throws \Exception
      */
     public function getCart(
-        ?bool $forceReload = false,
-        ?User $user = null,
+        ?bool       $forceReload = false,
+        ?User       $user = null,
         ?Contractor $contractor = null,
-        bool $requireCreate = true
+        bool        $requireCreate = true
     ): ?Cart {
         if (!$user) {
             $user = $this->getUser();
@@ -222,8 +150,8 @@ class CartService
              * Weryfikujemy obecność koszyka sesyjnego
              * @var null|Cart $sessionCart
              */
-            $sessionCart = $this->cartRepository->getCartForUser(
-                //$this->applicationManager->getApplication()->getId(),
+            $sessionCart = $this->cartManager->getRepository()->getCartForUser(
+            //$this->applicationManager->getApplication()->getId(),
                 null,
                 null,
                 $sessionId,
@@ -235,8 +163,7 @@ class CartService
                 /**
                  * @var null|Cart $storedCart
                  */
-                $storedCart = $this->cartRepository->getCartForUser(
-                    //$this->applicationManager->getApplication()->getId(),
+                $storedCart = $this->cartManager->getRepository()->getCartForUser(
                     $user->getId(),
                     $contractor ? $contractor->getId() : $contractor,
                     null,
@@ -285,7 +212,7 @@ class CartService
         }
 
         if ($requireCreate && !$this->cart->getId() && $flush || $this->cart->getId() && $flush) {
-            //Kod raportowania dodajemy tylko w przed flushem
+            //Add the reporting code only before the flush
             $this->em->flush();
         }
 
@@ -321,39 +248,15 @@ class CartService
         return null;
     }
 
-    /**
-     * Pobranie koszyka po UUID
-     *
-     * @param string $uuid
-     * @return Cart|null
-     * @throws \Exception
-     */
     public function getCartByUuid(string $uuid): ?Cart
     {
-        try {
-            Assert::uuid($uuid);
-            return $this->getCartRepository()->getByUuid($uuid);
-        } catch (\Exception $e) {
-        }
-
-        return null;
+        return $this->cartManager->getByUuid($uuid);
     }
 
-    /**
-     * Pobranie koszyka po UUID
-     *
-     * @param string $uuid
-     * @return Cart|null
-     * @throws \Exception
-     */
-    public function getCartByTransactionId(string $uuid): ?Cart
-    {
-        try {
-            return $this->getCartRepository()->getByTransactionId($uuid);
-        } catch (\Exception $e) {
-        }
 
-        return null;
+    public function getCartByTransactionId(string $uuid): ?CartInterface
+    {
+        return $this->getCartRepository()->getByTransactionId($uuid);
     }
 
     /**
@@ -362,9 +265,9 @@ class CartService
      * @throws \Exception
      * @deprecated
      */
-    public function getReassignSessionCart(string $oldSessionId): ?Cart
+    public function getReassignSessionCart(string $oldSessionId): ?CartInterface
     {
-        $sessionCart = $this->cartRepository->findOneBy(
+        $sessionCart = $this->cartManager->getRepository()->findOneBy(
             [
                 'sessionId' => $oldSessionId,
             ]
@@ -376,18 +279,13 @@ class CartService
             $sessionCart->setSessionId($newSessionId);
         }
 
-        $this->em->flush();
+        //Note, a flush is being performed
+        $this->cartManager->update($sessionCart);
 
         return $sessionCart;
     }
 
-    /**
-     * @param UserBuyerInterface $user
-     * @param Cart|null $cart
-     * @return Cart
-     * @throws \Exception
-     */
-    public function assignRegisteredUser(UserBuyerInterface $user, ?Cart $cart = null): Cart
+    public function assignRegisteredUser(UserInterface $user, ?CartInterface $cart = null): Cart
     {
         if (!$cart) {
             $cart = $this->getCart();
@@ -395,20 +293,15 @@ class CartService
 
         $cart
             ->setUser($user)
-            ->setCustomer($user->getDefaultCustomer());
+            ->setBillingContractor($user->getDefaultBillingContractor());
 
-        //Istotna zmiana, wykonujemy od razu flush
-        $this->em->flush();
+        //An important change, we do a flush right away
+        $this->cartManager->update($cart);
 
         return $cart;
     }
 
-    /**
-     * @param Cart|null $cart
-     * @return Cart
-     * @throws \Exception
-     */
-    public function unsetUser(?Cart $cart = null): Cart
+    public function unsetUser(?Cart $cart = null): CartInterface
     {
         if (!$cart) {
             $cart = $this->getCart();
@@ -416,66 +309,60 @@ class CartService
 
         $cart
             ->setUser(null)
-            ->setCustomer(null, false);
+            ->setBillingContractor(null);
+        //TODO clear string
 
-        //Istotna zmiana, wykonujemy od razu flush
-        $this->em->flush();
+        //An important change, we do a flush right away
+        $this->cartManager->update($cart);
 
         return $cart;
     }
 
     /**
-     * Pobieramy domyślną walutę dla koszyka
      *
-     * @param UserBuyerInterface|null $user
-     * @param Customer|null $customer
+     *
+     * @param UserInterface|null $user
+     * @param ContractorInterface|null $customer
      * @return Currency|null
      * @throws \Exception
      */
     protected function getDefaultCurrencyForCart(
-        ?UserBuyerInterface $user = null,
-        ?Customer $customer = null
-    ): ?Currency {
+        ?UserInterface       $user = null,
+        ?ContractorInterface $customer = null
+    ): ?CurrencyInterface {
         if (!$user) {
             $user = $this->getUser();
         }
 
-        if ($user && !$user instanceof UserBuyerInterface) {
+        if ($user && !$user instanceof UserInterface) {
             throw new \Exception('User class is not supported');
         }
 
 
-        if (!$customer && $user instanceof UserBuyerInterface) {
-            $customer = $user->getDefaultCustomer();
+        if (!$customer && $user instanceof UserInterface) {
+            $customer = $user->getDefaultBillingContractor();
         }
 
+        //TODO
         return $this->priceListManager->getCurrency($customer);
     }
 
-    /**
-     * Tworzy nowy obiekt koszyka
-     *
-     * @param UserBuyerInterface|null $user
-     * @param Customer|null $customer
-     * @param string $sessionId
-     * @param string|null $transactionId
-     * @return Cart
-     * @throws \Exception
-     */
-    protected function createNewCart(?UserBuyerInterface $user, ?Customer $customer, string $sessionId, ?string $transactionId = null): Cart
-    {
-        //stwórz nowy koszyk
+    protected function createNewCart(
+        ?UserInterface       $user,
+        ?ContractorInterface $contractor,
+        string               $sessionId,
+        ?string              $transactionId = null
+    ): CartInterface {
+
         $cart = (new Cart)
             ->setSessionId($sessionId)
             ->setTransactionId($transactionId)
-            ->setCurrencyRelation($this->getDefaultCurrencyForCart($user, $customer))
-            ->setApplication($this->applicationManager->getApplication())
-        ;
+            ->setCurrency($this->getDefaultCurrencyForCart($user, $contractor));
 
-        if ($user instanceof UserBuyerInterface) {
-            //Koszyk jest wiązany z klientem i użytkownikiem
+        if ($user instanceof UserInterface) {
+            //The shopping cart is associated with the customer and the user
             $cart
-                ->setCustomer($customer)
+                ->setBillingContractor($contractor)
                 ->setUser($user)
                 ->setType(CartInterface::CART_TYPE_USER);
         } else {
@@ -497,7 +384,7 @@ class CartService
     }
 
     /**
-     * Metoda scalająca pozycje w koszyku, wymusza aktualizację paczek
+     * 
      *
      * @param Cart $sessionCart
      * @param Cart $storedCart
@@ -507,9 +394,9 @@ class CartService
     public function mergeCarts(Cart $sessionCart, Cart $storedCart): Cart
     {
 
-        $cartDataModule = $this->moduleManager->getModuleByName(BaseCartDataModule::NAME);
+        $cartDataModule = $this->moduleManager->getModuleByName(CartDataModule::NAME);
         //Kasujemy cache naliczania vatu
-        //$this->addTax = null;
+        $this->addTax = null;
 
         return $cartDataModule->mergeCarts($sessionCart, $storedCart);
     }
@@ -629,12 +516,12 @@ class CartService
      * @throws \Doctrine\ORM\NonUniqueResultException
      */
     public function updateCartItems(
-        Cart $cart,
+        Cart  $cart,
         array $updateData,
-        bool $increaseQuantity = false,
-        bool $updateAllCartItems = false,
-        bool $fromOrderTemplate = false,
-        bool $merge = false
+        bool  $increaseQuantity = false,
+        bool  $updateAllCartItems = false,
+        bool  $fromOrderTemplate = false,
+        bool  $merge = false
     ): array {
         /**
          * @var BaseCartItemsModule $cartItemModule
@@ -779,9 +666,9 @@ class CartService
     /**
      * Nie używać!
      *
-     * @see \LSB\CartBundle\Module\BaseCartItemsModule::removeProductsWithNullPrice()
      * @param Cart $cart
      * @throws \Exception
+     * @see \LSB\CartBundle\Module\BaseCartItemsModule::removeProductsWithNullPrice()
      * @deprecated Weryfikacja zerowej oceny realizowana wspólnie z weryfikacją stanu mag.
      */
     protected function removeProductsWithNullPrice(Cart $cart): void
@@ -805,10 +692,10 @@ class CartService
     }
 
     /**
-     * @see \LSB\CartBundle\Module\BasePackageSplitModule::checkForDefaultCartOverSaleType()
      * @param $cart
      * @return mixed
      * @throws \Exception
+     * @see \LSB\CartBundle\Module\BasePackageSplitModule::checkForDefaultCartOverSaleType()
      */
     public function checkForDefaultCartOverSaleType($cart): bool
     {
@@ -886,7 +773,7 @@ class CartService
         $currentCartId = $this->getCart()->getId();
 
         if ($user->getIsHiddenUser() || !$user->isEnabled()) {
-            $carts = $this->cartRepository->getOpenCartsByUser($user->getId());
+            $carts = $this->cartManager->getRepository()->getOpenCartsByUser($user->getId());
 
             foreach ($carts as $cart) {
                 //Zamykamy wszystkie pozostałe otwarte koszyki, za wyjątkiem aktualnie używanego!
@@ -894,8 +781,8 @@ class CartService
                     continue;
                 }
 
-                $cart->setValidatedStep(Cart::CART_STEP_CLOSED_MANUALLY);
-                $this->eventDispatcher->dispatch(CartEvents::CART_CLOSED, new CartEvent($cart, $this->applicationManager->getApplication()));
+                $cart->setValidatedStep(CartInterface::CART_STEP_CLOSED_MANUALLY);
+                $this->eventDispatcher->dispatch(new CartEvent($cart), CartEvents::CART_CLOSED);
             }
             if ($flush) {
                 $this->em->flush();
@@ -912,8 +799,8 @@ class CartService
     public function closeCart(Cart $cart, bool $flush = true): void
     {
         if ($cart->getValidatedStep() < CartInterface::CART_STEP_ORDER_CREATED) {
-            $cart->setValidatedStep(Cart::CART_STEP_CLOSED_MANUALLY);
-            $this->eventDispatcher->dispatch(CartEvents::CART_CLOSED, new CartEvent($cart, $this->applicationManager->getApplication()));
+            $cart->setValidatedStep(CartInterface::CART_STEP_CLOSED_MANUALLY);
+            $this->eventDispatcher->dispatch(new CartEvent($cart), CartEvents::CART_CLOSED);
 
             if ($flush) {
                 $this->em->flush();
@@ -922,30 +809,30 @@ class CartService
     }
 
     /**
-     * @param bool $flush
-     * @param null $directMarketing
-     * @param null $newsletter
-     * @return Customer|null
+     * @param false $flush
+     * @param bool|null $directMarketing
+     * @param bool|null $newsletter
+     * @return ContractorInterface|null
      * @throws \Exception
      */
-    public function updateCustomerAgreementsFromCart(
-        $flush = false,
-        $directMarketing = null,
-        $newsletter = null
-    ): ?Customer {
+    public function updateContractorAgreementsFromCart(
+        bool  $flush = false,
+        ?bool $directMarketing = null,
+        ?bool $newsletter = null
+    ): ?ContractorInterface {
         $customer = $this->getUser() ? $this->getUser()->getDefaultCustomer() : null;
 
-        if (!($customer instanceof Customer)) {
+        if (!($customer instanceof ContractorInterface)) {
             return null;
         }
 
-        if ($directMarketing !== null) {
-            $customer->setDirectMarketingAgree($directMarketing);
-        }
-
-        if ($newsletter !== null) {
-            $customer->setNewsletterAgree($newsletter);
-        }
+//        if ($directMarketing !== null) {
+//            $customer->setDirectMarketingAgree($directMarketing);
+//        }
+//
+//        if ($newsletter !== null) {
+//            $customer->setNewsletterAgree($newsletter);
+//        }
 
         $this->em->persist($customer);
 
@@ -957,37 +844,35 @@ class CartService
     }
 
     /**
-     * Pobiera pozycje z koszyka, force wymusza odświeżenie (pobiera pozycje z bazy!)
-     *
-     * @param Cart|null $cart
+     * @param CartInterface|null $cart
      * @param bool $forceReload
      * @param bool $onlySelected
      * @return iterable
      * @throws \Exception
+     * @deprecated
      */
     public function getCartItems(
-        ?Cart $cart = null,
-        bool $forceReload = false,
-        bool $onlySelected = false
+        ?CartInterface $cart = null,
+        bool           $forceReload = false,
+        bool           $onlySelected = false
     ): iterable {
         if (!$cart) {
             $cart = $this->getCart();
         }
 
         if ($onlySelected) {
-            return $cart->getSelectedItems();
+            return $cart->getSelectedCartItems();
         }
 
-        return $cart->getItems();
+        return $cart->getCartItems();
     }
 
     /**
-     * Pobiera wybrane pozycje z koszyka na podstawie ID produktu
-     *
      * @param array $productIds
      * @param Cart|null $cart
      * @return mixed
      * @throws \Exception
+     * @deprecated
      */
     public function getSelectedCartItems(
         array $productIds,
@@ -1080,8 +965,8 @@ class CartService
     public function calculateShippingCost(
         Cart $cart = null,
         bool $addVat,
-        $calculatedTotalProductsNetto,
-        &$shippingCostRes
+             $calculatedTotalProductsNetto,
+             &$shippingCostRes
     ) {
         /**
          * @var BaseCartDataModule $cartDataModule
@@ -1360,12 +1245,12 @@ class CartService
      */
     public function calculateGrossValueFromNetto(
         float $price,
-        int $quantity,
-        ?int $taxPercentage,
-        bool $round = true,
-        int $precision = 2
+        int   $quantity,
+        ?int  $taxPercentage,
+        bool  $round = true,
+        int   $precision = 2
     ): float {
-        $taxPercentage = (int) $taxPercentage;
+        $taxPercentage = (int)$taxPercentage;
         $value = round($price, $precision) * $quantity;
         return $round ? round($value * (100 + $taxPercentage) / 100, $precision) : $value;
     }
@@ -1380,12 +1265,12 @@ class CartService
      */
     public function calculateNettoValueFromGross(
         float $price,
-        int $quantity,
-        ?int $taxPercentage,
-        bool $round = true,
-        int $precision = 2
+        int   $quantity,
+        ?int  $taxPercentage,
+        bool  $round = true,
+        int   $precision = 2
     ): float {
-        $taxPercentage = (int) $taxPercentage;
+        $taxPercentage = (int)$taxPercentage;
         $value = round($price, $precision) * $quantity;
 
         return $round ? round($value / ((100 + $taxPercentage) / 100), $precision) : $value;
@@ -1478,9 +1363,9 @@ class CartService
      */
     public function calculatePackageShippingCost(
         CartPackage $package,
-        $addVat = true,
-        $calculatedTotalProducts = null,
-        &$shippingCostRes = null
+                    $addVat = true,
+                    $calculatedTotalProducts = null,
+                    &$shippingCostRes = null
     ): CartShippingFormCalculatorResult {
         /**
          * @var BasePackageShippingModule $packageShippingModule

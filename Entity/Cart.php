@@ -442,7 +442,7 @@ class Cart implements CartInterface
     /**
      * @return ArrayCollection
      */
-    public function getSelectedItems(): ArrayCollection
+    public function getSelectedCartItems(): ArrayCollection
     {
         $selectedItems = new ArrayCollection();
 
