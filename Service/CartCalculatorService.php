@@ -13,6 +13,7 @@ use LSB\OrderBundle\Model\CartCalculatorResult;
 use LSB\PricelistBundle\Manager\PricelistManager;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
@@ -23,36 +24,25 @@ use Symfony\Contracts\Translation\TranslatorInterface;
  */
 class CartCalculatorService
 {
-    const DEFAULT_CALCULATOR_NAME = 'Default';
+    const MODULE_TAG_NAME = 'cart.calculator';
 
-    //TODO use module repository
-    protected array $calculators = [];
+    const DEFAULT_CALCULATOR_NAME = 'Default';
 
     public function __construct(
         protected ParameterBagInterface    $ps,
         protected EntityManagerInterface   $em,
         protected TranslatorInterface      $translator,
         protected CartService              $cartManager,
-        protected PricelistManager         $pricelistManager,
         protected EventDispatcherInterface $eventDispatcher,
         protected TokenStorageInterface    $tokenStorage,
         protected TaxManager               $taxManager,
-        protected PricelistManager         $priceManager,
-        protected SessionInterface         $session,
-        protected SerializerInterface      $serializer
-    ) {}
-
-    /**
-     * @param CartCalculatorInterface $cartCalculator
-     * @param array $attrs
-     * @return array
-     */
-    public function addCalculator(CartCalculatorInterface $cartCalculator, array $attrs = []): array
-    {
-        $this->calculators[$cartCalculator->getModule()][$cartCalculator->getName()] = $cartCalculator;
-
-        return $this->calculators;
+        protected PricelistManager         $pricelistManager,
+        protected RequestStack             $requestStack,
+        protected SerializerInterface      $serializer,
+        protected CartCalculatorInventory  $calculatorInventory
+    ) {
     }
+
 
     /**
      * @param string $module
@@ -64,28 +54,24 @@ class CartCalculatorService
      */
     public function getCalculator(string $module, ?string $name): ?CartCalculatorInterface
     {
-        if ($name) {
-            foreach ($this->calculators as $calculatorModuleName => $calculators) {
-                if ($calculatorModuleName === $module) {
-                    foreach ($calculators as $moduleCalculator) {
-                        if ($moduleCalculator->getName() === $name) {
-                            $moduleCalculator->setCoreServices(
-                                $this->ps,
-                                $this->em,
-                                $this->translator,
-                                $this->cartManager,
-                                $this->pricelistManager,
-                                $this->eventDispatcher,
-                                $this->tokenStorage,
-                                $this->taxManager,
-                                $this->session,
-                                $this->serializer
-                            );
-                            return $moduleCalculator;
-                        }
-                    }
-                }
-            }
+        $module = $this->calculatorInventory->getModuleByName($module, $name);
+
+        if ($module instanceof CartCalculatorInterface) {
+            $module->setCoreServices(
+                $this->ps,
+                $this->em,
+                $this->translator,
+                $this->cartManager,
+                $this->pricelistManager,
+                $this->eventDispatcher,
+                $this->tokenStorage,
+                $this->taxManager,
+                $this->requestStack,
+                $this->serializer
+            );
+
+            return $module;
+
         }
 
         return $this->getDefaultCalculator($module);

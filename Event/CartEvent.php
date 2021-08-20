@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace LSB\CartBundle\Event;
+namespace LSB\OrderBundle\Event;
 
 use LSB\OrderBundle\CartModule\CartModuleInterface;
 use LSB\OrderBundle\Entity\CartInterface;

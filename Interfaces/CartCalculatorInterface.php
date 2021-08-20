@@ -5,16 +5,10 @@ namespace LSB\OrderBundle\Interfaces;
 
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Model\CartCalculatorResult;
+use LSB\UtilityBundle\ModuleInventory\ModuleInventoryInterface;
 
-interface CartCalculatorInterface
+interface CartCalculatorInterface extends ModuleInventoryInterface
 {
-    /**
-     * Returns the name of the calculator
-     *
-     * @return mixed
-     */
-    public function getName(): string;
-
     /**
      * Returns the name of the module
      *

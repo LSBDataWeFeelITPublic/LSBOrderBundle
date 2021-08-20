@@ -59,7 +59,7 @@ class CartRepository extends BaseRepository implements CartRepositoryInterface
      */
     public function getCartForUser(
         ?int    $userId,
-        ?int    $customerId,
+        ?int    $contractorId,
         ?string $sessionId,
         ?int    $cartValidDays,
         ?int    $type = null
@@ -75,7 +75,7 @@ class CartRepository extends BaseRepository implements CartRepositoryInterface
 
         $qb = $this->createQueryBuilder('c')
             ->select('c')
-            ->leftJoin('c.shopUser', 'u')
+            ->leftJoin('c.user', 'u')
             ->andWhere('c.validatedStep IS NULL OR c.validatedStep < :finalStep')
             ->setParameter('finalStep', CartInterface::CART_STEP_ORDER_CREATED);
 
@@ -91,20 +91,20 @@ class CartRepository extends BaseRepository implements CartRepositoryInterface
                 ->setParameter('cartValidDate', $cartValidDate, Types::DATETIME_MUTABLE);
         }
 
-        if ($userId && $customerId) {
-            //Session ID is not taken into account when we have userId and customerId
-            $qb->andWhere('c.shopUser = :userId')
-                ->andWhere('c.customer = :customerId')
-                ->setParameter('customerId', $customerId)
+        if ($userId && $contractorId) {
+            //Session ID is not taken into account when we have userId and contractorId
+            $qb->andWhere('c.user = :userId')
+                ->andWhere('c.billingContractor = :contractorId')
+                ->setParameter('contractorId', $contractorId)
                 ->setParameter('userId', $userId);
 
         } elseif ($sessionId) {
             $qb->andWhere('c.sessionId = :sessionId')
-                ->andWhere('c.shopUser IS NULL or (u.isHiddenUser = TRUE OR u.enabled = FALSE)')
-                ->andWhere('c.customer IS NULL or (u.isHiddenUser = TRUE OR u.enabled = FALSE)')
+                ->andWhere('c.user IS NULL or (u.isEnabled = FALSE)')
+                ->andWhere('c.billingContractor IS NULL or (u.isEnabled = FALSE)')
                 ->setParameter('sessionId', $sessionId);
         } else {
-            throw new Exception('UserId and customerId or sessionId must be passed and cannot be null.');
+            throw new Exception('UserId and contractorId or sessionId must be passed and cannot be null.');
         }
 
         $qb
@@ -114,6 +114,10 @@ class CartRepository extends BaseRepository implements CartRepositoryInterface
         return $qb->getQuery()->getOneOrNullResult();
     }
 
+    /**
+     * @param string $transactionId
+     * @return CartInterface|null
+     */
     public function getByTransactionId(string $transactionId): ?CartInterface
     {
         $dateFrom = new \DateTime('now');
@@ -134,6 +138,25 @@ class CartRepository extends BaseRepository implements CartRepositoryInterface
         }
 
         return null;
+    }
+
+    /**
+     * @param int $userId
+     * @return iterable
+     */
+    public function getOpenCartsByUser(int $userId): iterable
+    {
+        $qb = $this->createQueryBuilder('c')
+            ->select('c')
+            ->andWhere('c.validatedStep IS NULL OR c.validatedStep < :finalStep')
+            ->andWhere('c.shopUser = :userId')
+            ->setParameter('finalStep', CartInterface::CART_STEP_ORDER_CREATED)
+            ->setParameter('userId', $userId)
+            ->setMaxResults(500);
+
+        return $qb
+            ->getQuery()
+            ->execute();
     }
 
 }

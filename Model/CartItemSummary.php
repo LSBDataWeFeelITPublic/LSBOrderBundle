@@ -73,12 +73,12 @@ class CartItemSummary
     /**
      * @var null|float
      */
-    protected ?float $quantity;
+    protected ?float $quantity = null;
 
     /**
      * @var DateTime|null
      */
-    protected ?DateTime $calculatedAt;
+    protected ?DateTime $calculatedAt = null;
 
     /**
      * Oznaczenie waluty

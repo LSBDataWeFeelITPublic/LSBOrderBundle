@@ -16,3 +16,132 @@ services:
             - '@security.token_storage'
         tags:
             - { name: calculator.total }
+
+    LSB\OrderBundle\Service\CartService:
+        arguments:
+            - '@LSB\OrderBundle\Manager\CartManager'
+            - '@doctrine.orm.entity_manager'
+            - '@translator'
+            - '@security.token_storage'
+            - '@parameter_bag'
+            - '@LSB\ProductBundle\Manager\ProductManager'
+            - '@LSB\ProductBundle\Manager\StorageManager'
+            - '@LSB\PricelistBundle\Manager\PricelistManager'
+            - '@LSB\LocaleBundle\Manager\TaxManager'
+            - '@LSB\OrderBundle\Service\CartModuleService'
+            - '@event_dispatcher'
+            - '@request_stack'
+            - '@LSB\OrderBundle\Service\CartComponentService'
+
+
+    LSB\OrderBundle\Service\CartModuleService:
+        lazy: true
+        arguments:
+            - '@LSB\OrderBundle\Service\CartModuleInventory'
+            - '@parameter_bag'
+            - '@doctrine.orm.entity_manager'
+            - '@translator'
+            - '@LSB\OrderBundle\Service\CartService'
+            - '@LSB\PricelistBundle\Manager\PricelistManager'
+            - '@event_dispatcher'
+            - '@security.token_storage'
+            - '@LSB\ProductBundle\Manager\ProductManager'
+            - '@LSB\LocaleBundle\Manager\TaxManager'
+            - '@LSB\PricelistBundle\Manager\PricelistManager'
+            - '@LSB\ProductBundle\Manager\StorageManager'
+            - '@form.factory'
+            - '@jms_serializer.serializer'
+            - '@LSB\UserBundle\Manager\UserManager'
+            - '@validator'
+            - '@router.default'
+            - '@LSB\OrderBundle\Service\CartCalculatorService'
+            - '@security.authorization_checker'
+            - '@LSB\OrderBundle\Service\CartStepGeneratorService'
+            - '@twig'
+            - '@LSB\OrderBundle\Service\CartComponentService'
+
+    LSB\OrderBundle\Service\CartCalculatorService:
+        lazy: true
+        arguments:
+            - '@parameter_bag'
+            - '@doctrine.orm.entity_manager'
+            - '@translator'
+            - '@LSB\OrderBundle\Service\CartService'
+            - '@event_dispatcher'
+            - '@security.token_storage'
+            - '@LSB\LocaleBundle\Manager\TaxManager'
+            - '@LSB\PricelistBundle\Manager\PricelistManager'
+            - '@request_stack'
+            - '@jms_serializer.serializer'
+            - '@LSB\OrderBundle\Service\CartCalculatorInventory'
+
+
+    LSB\OrderBundle\Service\CartComponentService:
+        arguments:
+            - '@LSB\OrderBundle\Service\CartComponentInventory'
+
+    LSB\OrderBundle\Service\CartStepGeneratorService:
+        arguments:
+            - '@LSB\OrderBundle\Service\CartStepGeneratorInventory'
+
+    LSB\OrderBundle\Service\CartModuleInventory: ~
+
+    LSB\OrderBundle\Service\CartComponentInventory: ~
+
+    LSB\OrderBundle\Service\CartStepGeneratorInventory: ~
+
+    LSB\OrderBundle\Service\CartCalculatorInventory: ~
+
+    #modules
+    LSB\OrderBundle\CartModule\DataCartModule:
+        arguments:
+            - '@LSB\OrderBundle\CartComponent\DataCartComponent'
+        tags:
+            - name: cart.module
+
+    LSB\OrderBundle\CartModule\CartItemCartModule:
+        arguments:
+            - '@LSB\OrderBundle\CartComponent\DataCartComponent'
+            - '@LSB\OrderBundle\CartComponent\CartItemCartComponent'
+        tags:
+            - name: cart.module
+
+    #components
+    LSB\OrderBundle\CartComponent\DataCartComponent:
+        arguments:
+            - '@security.token_storage'
+            - '@parameter_bag'
+            - '@LSB\OrderBundle\Manager\CartManager'
+            - '@LSB\OrderBundle\Manager\CartItemManager'
+            - '@LSB\ShippingBundle\Manager\MethodManager'
+            - '@LSB\PricelistBundle\Manager\PricelistManager'
+            - '@LSB\ProductBundle\Manager\StorageManager'
+            - '@LSB\ProductBundle\Service\StorageService'
+            - '@request_stack'
+            - '@event_dispatcher'
+            - '@LSB\LocaleBundle\Manager\TaxManager'
+            - '@form.factory'
+            - '@LSB\UserBundle\Manager\UserManager'
+            - '@jms_serializer.serializer'
+            - '@security.authorization_checker'
+            - '@twig'
+            - '@translator'
+            - '@LSB\ProductBundle\Manager\ProductManager'
+            - '@LSB\ProductBundle\Manager\ProductSetProductManager'
+        tags:
+            -   name: cart.component
+
+
+    LSB\OrderBundle\CartComponent\CartItemCartComponent:
+        arguments:
+            - '@security.token_storage'
+            - '@LSB\ProductBundle\Manager\ProductManager'
+            - '@LSB\OrderBundle\Manager\CartManager'
+            - '@LSB\OrderBundle\Manager\CartItemManager'
+            - '@parameter_bag'
+            - '@LSB\PricelistBundle\Manager\PricelistManager'
+            - '@translator'
+            - '@LSB\ProductBundle\Manager\StorageManager'
+            - '@LSB\ProductBundle\Service\StorageService'
+        tags:
+            -   name: cart.component

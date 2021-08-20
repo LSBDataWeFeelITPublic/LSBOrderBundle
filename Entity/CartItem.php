@@ -102,7 +102,7 @@ class CartItem implements CartItemInterface
     /**
      * @var CartItemSummary
      */
-    protected CartItemSUmmary $cartItemSummary;
+    protected CartItemSummary $cartItemSummary;
 
     /**
      * @var CartItemSummary
@@ -121,6 +121,7 @@ class CartItem implements CartItemInterface
     public function __construct()
     {
         $this->generateUuid();
+        $this->cartItemSummary = new CartItemSummary();
     }
 
     /**
@@ -130,6 +131,32 @@ class CartItem implements CartItemInterface
     {
         $this->id = null;
         $this->generateUuid(true);
+    }
+
+    /**
+     * @param $addQuantity
+     * @return $this
+     */
+    public function increaseQuantity($addQuantity)
+    {
+        if ($this->id && $addQuantity) {
+            $this->quantity += $addQuantity;
+        }
+
+        return $this;
+    }
+
+    /**
+     * @param $maxQuantity
+     * @return $this
+     */
+    public function limitQuantityToMax($maxQuantity)
+    {
+        if ($this->id && $maxQuantity && $maxQuantity > $this->quantity) {
+            $this->quantity = $maxQuantity;
+        }
+
+        return $this;
     }
 
     /**

@@ -4,7 +4,7 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use LSB\UtilBundle\Service\TokenGenerator;
+use LSB\UtilityBundle\Token\TokenGenerator;
 
 /**
  * Trait ReportCodeTrait

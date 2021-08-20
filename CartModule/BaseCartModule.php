@@ -1,133 +1,46 @@
 <?php
+declare(strict_types=1);
 
 namespace LSB\OrderBundle\CartModule;
 
 use Doctrine\ORM\EntityManagerInterface;
 use JMS\Serializer\SerializerInterface;
-use LSB\CartBundle\Event\CartEvent;
-use LSB\CartBundle\Service\CartCalculatorService;
 use LSB\ContractorBundle\Entity\ContractorInterface;
-use LSB\LocaleBundle\Manager\TaxManager;
 use LSB\OrderBundle\Entity\CartInterface;
+use LSB\OrderBundle\Event\CartEvent;
 use LSB\OrderBundle\Model\CartModuleConfiguration;
 use LSB\OrderBundle\Model\CartModuleProcessResult;
 use LSB\OrderBundle\Model\FormSubmitResult;
-use LSB\OrderBundle\Service\CartService;
-use LSB\PricelistBundle\Manager\PricelistManager;
-use LSB\ProductBundle\Manager\ProductManager;
 use LSB\UserBundle\Entity\UserInterface;
 use LSB\UserBundle\Manager\UserManager;
+use LSB\UtilityBundle\ModuleInventory\BaseModuleInventory;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormFactory;
-use Symfony\Component\Form\FormFactoryInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\Session\Session;
-use Symfony\Component\HttpFoundation\Session\SessionInterface;
-use Symfony\Component\Routing\RouterInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Serializer\NameConverter\CamelCaseToSnakeCaseNameConverter;
-use Symfony\Component\Serializer\NameConverter\NameConverterInterface;
-use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\HttpFoundation\Request;
-use Symfony\Contracts\Translation\TranslatorInterface;
+use Twig\Environment;
 
 /**
  * Class BaseModule
  * @package LSB\CartBundle\Module
  */
-abstract class BaseModule implements CartModuleInterface
+abstract class BaseCartModule extends BaseModuleInventory implements CartModuleInterface
 {
     const NAME = 'abstract_module';
 
-    /**
-     * @var ParameterBagInterface
-     */
-    protected ParameterBagInterface $ps;
-
-    /**
-     * @var EntityManagerInterface
-     */
-    protected EntityManagerInterface $em;
-
-    /**
-     * @var TranslatorInterface
-     */
-    protected TranslatorInterface $translator;
-
-    protected CartService $cartService;
-
-    protected PricelistManager $priceListManager;
-
-    protected EventDispatcherInterface $eventDispatcher;
-
-    protected TokenStorageInterface $tokenStorage;
+    const FORM_CLASS = 'Form';
 
     protected bool $isConfigured = false;
 
-    protected TaxManager $taxManager;
+    protected mixed $nameConverter = null;
 
-    protected CartModuleService $moduleService;
-
-    protected SessionInterface $session;
-
-    protected FormFactoryInterface $formFactory;
-
-    protected SerializerInterface $serializer;
-
-    protected ValidatorInterface $validator;
-
-    protected CartCarculatorService $cartCalculatorManager;
-
-    protected AuthorizationCheckerInterface $authorizationChecker;
-
-    protected ProductManager $productManager;
-
-    protected NameConverterInterface $nameConverter;
-
-
-    public function setCoreServices(
-        ParameterBagInterface $ps,
-        EntityManagerInterface $em,
-        TranslatorInterface $translator,
-        CartService $cartManager,
-        PriceListManager $priceListManager,
-        EventDispatcherInterface $eventDispatcher,
-        TokenStorageInterface $tokenStorage,
-        ProductManager $productManager,
-        TaxManager $taxManager,
-        CartModuleService $moduleManager,
-        Session $session,
-        FormFactory $formFactory,
-        SerializerInterface $serializer,
-        UserManager $fosUserManager,
-        ValidatorInterface $validator,
-        RouterInterface $router,
-        CartCalculatorService $cartCalculatorManager,
-        AuthorizationCheckerInterface $authorizationChecker
-    ) {
-        $this->ps = $ps;
-        $this->em = $em;
-        $this->translator = $translator;
-        $this->cartService = $cartManager;
-        $this->priceListManager = $priceListManager;
-        $this->eventDispatcher = $eventDispatcher;
-        $this->tokenStorage = $tokenStorage;
-        $this->productManager = $productManager;
+    public function __construct() {
         $this->isConfigured = true;
-        $this->taxManager = $taxManager;
-        $this->moduleService = $moduleManager;
-        $this->session = $session;
-        $this->formFactory = $formFactory;
-        $this->serializer = $serializer;
-        $this->fosUserManager = $fosUserManager;
-        $this->validator = $validator;
-        $this->router = $router;
-        $this->cartCalculatorManager = $cartCalculatorManager;
-        $this->authorizationChecker = $authorizationChecker;
-
         $this->nameConverter = new CamelCaseToSnakeCaseNameConverter();
     }
 
@@ -142,9 +55,17 @@ abstract class BaseModule implements CartModuleInterface
     /**
      * @inheritDoc
      */
-    public function getName()
+    public function getName(): string
     {
         return static::NAME;
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getAdditionalName(): string
+    {
+        return static::ADDITIONAL_NAME_DEFAULT;
     }
 
     /**
@@ -198,7 +119,7 @@ abstract class BaseModule implements CartModuleInterface
         }
 
         if ($this->getDefaultFormClass()) {
-            return $this->formFactory->create($this->getDefaultFormClass(), $dataObject, array_merge($options, $this->getDefaultFormOptions($useCart ? $dataObject : null)));
+            return $this->dataCartComponent->getFormFactory()->create($this->getDefaultFormClass(), $dataObject, array_merge($options, $this->getDefaultFormOptions($useCart ? $dataObject : null)));
         }
 
         return null;
@@ -222,17 +143,17 @@ abstract class BaseModule implements CartModuleInterface
      */
     public function render(CartInterface $cart, ?Request $request = null, bool $isInitialRender = false)
     {
-        switch ($this->ps->get('cart.render.format')) {
+        switch ($this->dataCartComponent->getPs()->get('cart.render.format')) {
             case static::RENDER_FORMAT_JSON:
             case static::RENDER_FORMAT_XML:
                 return $this->getDataForSerialize($cart, $request);
-            //return $this->serializer->serialize(, $this->ps->getParameter('cart.render.format'));
+            //return $this->serializer->serialize(, $this->dataCartComponent->getPs()->getParameter('cart.render.format'));
             case static::RENDER_FORMAT_HTML:
             default:
                 $data = $this->getDataForRender($cart, $request);
 
-                return $this->templating->render(
-                    'LSBFrontendBundle:Cart:/' . $this->ps->getParameter('app.customViewDir') . '/modules/' . $this->getName() . '/' . $this->getName() . '.html.twig',
+                return $this->dataCartComponent->templating->render(
+                    'LSBFrontendBundle:Cart:/' . $this->dataCartComponent->getPs()->getParameter('app.customViewDir') . '/modules/' . $this->getName() . '/' . $this->getName() . '.html.twig',
                     $data
                 );
         }
@@ -243,9 +164,9 @@ abstract class BaseModule implements CartModuleInterface
     /**
      * @param CartInterface $cart
      */
-    public function prepare(CartInterface $cart): mixed
+    public function prepare(CartInterface $cart)
     {
-
+        return;
     }
 
     /**
@@ -281,7 +202,7 @@ abstract class BaseModule implements CartModuleInterface
      */
     protected function getUser(): ?UserInterface
     {
-        if ($this->tokenStorage
+        if ($this->dataCartComponent->getTokenStorage()
             && $this->tokenStorage->getToken()
             && $this->tokenStorage->getToken()->getUser() instanceof UserInterface) {
 
@@ -290,7 +211,7 @@ abstract class BaseModule implements CartModuleInterface
              */
             $user = $this->tokenStorage->getToken()->getUser();
 
-            if (!$user && !$this->ps->get('cart.for.notlogged')) {
+            if (!$user && !$this->dataCartComponent->getPs()->get('cart.for.notlogged')) {
                 throw new \Exception('User not logged in.');
             }
 
@@ -310,15 +231,7 @@ abstract class BaseModule implements CartModuleInterface
         return $this->cartService->getCart($refresh);
     }
 
-    /**
-     * @param $name
-     * @return CartModuleInterface
-     * @throws \Exception
-     */
-    protected function getModuleByName($name): CartModuleInterface
-    {
-        return $this->moduleService->getModuleByName($name);
-    }
+
 
     /**
      * @inheritdoc
@@ -333,9 +246,9 @@ abstract class BaseModule implements CartModuleInterface
      */
     public function isForApiUsage(): bool
     {
-        switch ($this->ps->get('cart.render.format')) {
-            case BaseModule::RENDER_FORMAT_JSON:
-            case BaseModule::RENDER_FORMAT_XML:
+        switch ($this->dataCartComponent->getPs()->get('cart.render.format')) {
+            case CartModuleInterface::RENDER_FORMAT_JSON:
+            case CartModuleInterface::RENDER_FORMAT_XML:
                 return true;
         }
 
@@ -379,10 +292,6 @@ abstract class BaseModule implements CartModuleInterface
         ?Request $request = null,
         bool $isInitialRender = false
     ): array {
-//        if ($this->getDefaultFormClass()) {
-//            $form = $this->getDefaultForm($cart);
-//            return $this->liform->transform($form);
-//        }
 
         return [];
     }

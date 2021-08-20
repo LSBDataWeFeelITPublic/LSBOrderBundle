@@ -8,6 +8,7 @@ use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Model\CartModuleConfiguration;
 use LSB\OrderBundle\Model\FormSubmitResult;
 use LSB\UserBundle\Entity\UserInterface;
+use LSB\UtilityBundle\Module\ModuleInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -15,18 +16,11 @@ use Symfony\Component\HttpFoundation\Request;
  * Interface CartModuleInterface
  * @package LSB\OrderBundle\CartModule
  */
-interface CartModuleInterface
+interface CartModuleInterface extends ModuleInterface
 {
     const RENDER_FORMAT_HTML = 'html';
     const RENDER_FORMAT_JSON = 'json';
     const RENDER_FORMAT_XML = 'xml';
-
-    /**
-     * Returns the name of the module
-     *
-     * @return null|string
-     */
-    public function getName();
 
     /**
      * Renders basic element of the module
@@ -98,9 +92,8 @@ interface CartModuleInterface
      * The method performs necessary steps before the module starts rendering.
      *
      * @param CartInterface $cart
-     * @return mixed
      */
-    public function prepare(CartInterface $cart): mixed;
+    public function prepare(CartInterface $cart);
 
     /**
      * The module verifies that the module is correctly configured and ready to use.

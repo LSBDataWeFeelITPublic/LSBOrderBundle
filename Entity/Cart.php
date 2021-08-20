@@ -10,6 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\MappedSuperclass;
 use Exception;
 use JetBrains\PhpStorm\Pure;
+use LSB\CartBundle\Entity\CartItem;
 use LSB\ContractorBundle\Entity\ContractorInterface;
 use LSB\LocaleBundle\Entity\CountryInterface;
 use LSB\LocaleBundle\Entity\CurrencyInterface;
@@ -312,7 +313,7 @@ class Cart implements CartInterface
      * @ORM\ManyToOne(targetEntity="LSB\ContractorBundle\Entity\ContractorInterface")
      * @ORM\JoinColumn(nullable=true, onDelete="SET NULL")
      */
-    protected ?ContractorInterface $billingContractor;
+    protected ?ContractorInterface $billingContractor = null;
 
     /**
      * @var CountryInterface|null
@@ -320,7 +321,7 @@ class Cart implements CartInterface
      * @ORM\ManyToOne(targetEntity="LSB\LocaleBundle\Entity\CountryInterface")
      * @ORM\JoinColumn(nullable=true, onDelete="SET NULL")
      */
-    protected ?CountryInterface $billingContractorCountry;
+    protected ?CountryInterface $billingContractorCountry = null;
 
     /**
      * @var ContractorInterface|null
@@ -328,7 +329,7 @@ class Cart implements CartInterface
      * @ORM\ManyToOne(targetEntity="LSB\ContractorBundle\Entity\ContractorInterface")
      * @ORM\JoinColumn(nullable=true, onDelete="SET NULL")
      */
-    protected ?ContractorInterface $suggestedBillingContractor;
+    protected ?ContractorInterface $suggestedBillingContractor = null;
 
     /**
      * @var string|null
@@ -358,8 +359,6 @@ class Cart implements CartInterface
      */
     public function __construct()
     {
-        $this->generateUuid();
-
         $this->cartPackages = new ArrayCollection();
         $this->cartItems = new ArrayCollection();
         $this->orders = new ArrayCollection();
@@ -367,6 +366,31 @@ class Cart implements CartInterface
 
         $this->addressConstruct();
         $this->termsConstruct();
+    }
+
+    /**
+     * TODO refactor
+     *
+     * @param int $type
+     * @param bool $onlySelected
+     * @return array
+     */
+    public function getCartItemsByProductType(int $type, bool $onlySelected = false): array
+    {
+        $items = [];
+
+        /**
+         * @var CartItemInterface $cartItem
+         */
+        foreach ($this->getCartItems() as $cartItem) {
+            if ($cartItem->getProduct() && $cartItem->getProduct()->getType() === $type && !$onlySelected
+                || $cartItem->getProduct() && $cartItem->getProduct()->getType() === $type && $onlySelected && $cartItem->isSelected()
+            ) {
+                $items[$cartItem->getUuid()] = $cartItem;
+            }
+        }
+
+        return $items;
     }
 
     /**
