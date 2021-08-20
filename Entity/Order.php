@@ -52,14 +52,14 @@ abstract class Order implements OrderInterface
      * @ORM\ManyToOne(targetEntity="LSB\ContractorBundle\Entity\ContractorInterface")
      * @ORM\JoinColumn(onDelete="SET NULL")
      */
-    protected ?ContractorInterface $payerContractor;
+    protected ?ContractorInterface $billingContractor;
 
     /**
      * @var ContractorInterface|null
      * @ORM\ManyToOne(targetEntity="LSB\ContractorBundle\Entity\ContractorInterface")
      * @ORM\JoinColumn(onDelete="SET NULL")
      */
-    protected ?ContractorInterface $suggestedPayerContractor;
+    protected ?ContractorInterface $suggestedBillingContractor;
 
     /**
      * @ORM\ManyToOne(targetEntity="LSB\ContractorBundle\Entity\ContractorInterface")
@@ -91,7 +91,7 @@ abstract class Order implements OrderInterface
     /**
      * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?int $payerContractorVatStatus;
+    protected ?int $billingContractorVatStatus;
 
     /**
      * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderInterface")
@@ -164,36 +164,36 @@ abstract class Order implements OrderInterface
     /**
      * @return ContractorInterface|null
      */
-    public function getPayerContractor(): ?ContractorInterface
+    public function getBillingContractor(): ?ContractorInterface
     {
-        return $this->payerContractor;
+        return $this->billingContractor;
     }
 
     /**
-     * @param ContractorInterface|null $payerContractor
+     * @param ContractorInterface|null $billingContractor
      * @return $this
      */
-    public function setPayerContractor(?ContractorInterface $payerContractor): static
+    public function setBillingContractor(?ContractorInterface $billingContractor): static
     {
-        $this->payerContractor = $payerContractor;
+        $this->billingContractor = $billingContractor;
         return $this;
     }
 
     /**
      * @return ContractorInterface|null
      */
-    public function getSuggestedPayerContractor(): ?ContractorInterface
+    public function getSuggestedBillingContractor(): ?ContractorInterface
     {
-        return $this->suggestedPayerContractor;
+        return $this->suggestedBillingContractor;
     }
 
     /**
-     * @param ContractorInterface|null $suggestedPayerContractor
+     * @param ContractorInterface|null $suggestedBillingContractor
      * @return $this
      */
-    public function setSuggestedPayerContractor(?ContractorInterface $suggestedPayerContractor): static
+    public function setSuggestedBillingContractor(?ContractorInterface $suggestedBillingContractor): static
     {
-        $this->suggestedPayerContractor = $suggestedPayerContractor;
+        $this->suggestedBillingContractor = $suggestedBillingContractor;
         return $this;
     }
 
@@ -342,18 +342,18 @@ abstract class Order implements OrderInterface
     /**
      * @return int|null
      */
-    public function getPayerContractorVatStatus(): ?int
+    public function getBillingContractorVatStatus(): ?int
     {
-        return $this->payerContractorVatStatus;
+        return $this->billingContractorVatStatus;
     }
 
     /**
-     * @param int|null $payerContractorVatStatus
+     * @param int|null $billingContractorVatStatus
      * @return $this
      */
-    public function setPayerContractorVatStatus(?int $payerContractorVatStatus): static
+    public function setBillingContractorVatStatus(?int $billingContractorVatStatus): static
     {
-        $this->payerContractorVatStatus = $payerContractorVatStatus;
+        $this->billingContractorVatStatus = $billingContractorVatStatus;
         return $this;
     }
 
@@ -444,24 +444,6 @@ abstract class Order implements OrderInterface
     public function setPackagesCnt(int $packagesCnt): static
     {
         $this->packagesCnt = $packagesCnt;
-        return $this;
-    }
-
-    /**
-     * @return BillingData
-     */
-    public function getBillingData(): BillingData
-    {
-        return $this->billingData;
-    }
-
-    /**
-     * @param BillingData $billingData
-     * @return Order
-     */
-    public function setBillingData(BillingData $billingData): static
-    {
-        $this->billingData = $billingData;
         return $this;
     }
 }

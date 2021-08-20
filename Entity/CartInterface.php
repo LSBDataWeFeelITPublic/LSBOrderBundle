@@ -3,11 +3,13 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Entity;
 
+use LSB\UtilityBundle\Interfaces\UuidInterface;
+
 /**
  * Interface CartInterface
  * @package LSB\OrderBundle\Entity
  */
-interface CartInterface
+interface CartInterface extends UuidInterface
 {
     /**
      * Delivery variant

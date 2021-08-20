@@ -191,7 +191,7 @@ class BillingData extends Address
      * @param bool|null $isVatUEActivePayer
      * @return BillingData
      */
-    public function setIsVatUEActivePayer(?bool $isVatUEActivePayer): static
+    public function setIsVatUEActivePayer(?bool $isVatUEActivePayer): BillingData
     {
         $this->isVatUEActivePayer = $isVatUEActivePayer;
         return $this;

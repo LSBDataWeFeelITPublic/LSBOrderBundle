@@ -8,7 +8,11 @@ use Doctrine\Common\Collections\Collection;
 use Doctrine\Common\Collections\Criteria;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\MappedSuperclass;
+use Exception;
+use JetBrains\PhpStorm\Pure;
+use LSB\CartBundle\Entity\CartItem;
 use LSB\ContractorBundle\Entity\ContractorInterface;
+use LSB\LocaleBundle\Entity\CountryInterface;
 use LSB\LocaleBundle\Entity\CurrencyInterface;
 use LSB\OrderBundle\Model\CartSummary;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -31,6 +35,7 @@ class Cart implements CartInterface
     use NoteTrait;
     use TermsTrait;
     use AddressTrait;
+    use ReportCodeTrait;
 
     /**
      * @var array|string[]
@@ -175,7 +180,7 @@ class Cart implements CartInterface
      * @Groups({"Default", "EDI_User", "SHOP_Public"})
      * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?int $deliveryVariant = null;
+    protected ?int $suggestedDeliveryVariant = null;
 
     /**
      * @var int|null
@@ -228,11 +233,6 @@ class Cart implements CartInterface
     protected int $processingType = self::PROCESSING_TYPE_DEFAULT;
 
     /**
-     * @var CartSummary
-     */
-    protected CartSummary $cartSummary;
-
-    /**
      * @var int
      * @ORM\Column(type="integer", nullable=false, options={"default": 1})
      */
@@ -271,6 +271,14 @@ class Cart implements CartInterface
     protected ?ContractorInterface $recipientContractor;
 
     /**
+     * @var CountryInterface|null
+     *
+     * @ORM\ManyToOne(targetEntity="LSB\LocaleBundle\Entity\CountryInterface")
+     * @ORM\JoinColumn(nullable=true, onDelete="SET NULL")
+     */
+    protected ?CountryInterface $recipientContractorCountry;
+
+    /**
      * @var boolean
      *
      * @ORM\Column(type="boolean", nullable=false, options={"default": false})
@@ -305,7 +313,15 @@ class Cart implements CartInterface
      * @ORM\ManyToOne(targetEntity="LSB\ContractorBundle\Entity\ContractorInterface")
      * @ORM\JoinColumn(nullable=true, onDelete="SET NULL")
      */
-    protected ?ContractorInterface $billingContractor;
+    protected ?ContractorInterface $billingContractor = null;
+
+    /**
+     * @var CountryInterface|null
+     *
+     * @ORM\ManyToOne(targetEntity="LSB\LocaleBundle\Entity\CountryInterface")
+     * @ORM\JoinColumn(nullable=true, onDelete="SET NULL")
+     */
+    protected ?CountryInterface $billingContractorCountry = null;
 
     /**
      * @var ContractorInterface|null
@@ -313,15 +329,36 @@ class Cart implements CartInterface
      * @ORM\ManyToOne(targetEntity="LSB\ContractorBundle\Entity\ContractorInterface")
      * @ORM\JoinColumn(nullable=true, onDelete="SET NULL")
      */
-    protected ?ContractorInterface $suggestedBillingContractor;
+    protected ?ContractorInterface $suggestedBillingContractor = null;
+
+    /**
+     * @var string|null
+     * @ORM\Column(type="string", length=255, nullable=true)
+     */
+    protected ?string $transactionId;
+
+    /**
+     * @var DateTime|null
+     * @ORM\Column(type="datetime", nullable=true)
+     */
+    protected ?DateTime $transactionIdUpdatedAt;
+
+    /**
+     * @var DateTime|null
+     * @ORM\Column(type="datetime", nullable=true)
+     */
+    protected ?DateTime $transactionIdUsedAt;
+
+    /**
+     * @var CartSummary
+     */
+    protected CartSummary $cartSummary;
 
     /**
      * Constructor
      */
     public function __construct()
     {
-        $this->generateUuid();
-
         $this->cartPackages = new ArrayCollection();
         $this->cartItems = new ArrayCollection();
         $this->orders = new ArrayCollection();
@@ -332,7 +369,32 @@ class Cart implements CartInterface
     }
 
     /**
-     * @throws \Exception
+     * TODO refactor
+     *
+     * @param int $type
+     * @param bool $onlySelected
+     * @return array
+     */
+    public function getCartItemsByProductType(int $type, bool $onlySelected = false): array
+    {
+        $items = [];
+
+        /**
+         * @var CartItemInterface $cartItem
+         */
+        foreach ($this->getCartItems() as $cartItem) {
+            if ($cartItem->getProduct() && $cartItem->getProduct()->getType() === $type && !$onlySelected
+                || $cartItem->getProduct() && $cartItem->getProduct()->getType() === $type && $onlySelected && $cartItem->isSelected()
+            ) {
+                $items[$cartItem->getUuid()] = $cartItem;
+            }
+        }
+
+        return $items;
+    }
+
+    /**
+     * @throws Exception
      */
     public function __clone()
     {
@@ -340,7 +402,17 @@ class Cart implements CartInterface
         $this->generateUuid(true);
     }
 
+    /**
+     * @return CartSummary
+     */
+    public function getCartSummary(): CartSummary
+    {
+        if ($this->cartSummary === null) {
+            $this->cartSummary = new CartSummary();
+        }
 
+        return $this->cartSummary;
+    }
 
     /**
      * @param CartSummary $cartSummary
@@ -367,9 +439,9 @@ class Cart implements CartInterface
      */
     public function countSelectedItems(): int
     {
-        $criteria = \Doctrine\Common\Collections\Criteria::create()
+        $criteria = Criteria::create()
             ->where(Criteria::expr()->eq("isSelected", true))
-            ->orderBy(['id' => \Doctrine\Common\Collections\Criteria::ASC]);
+            ->orderBy(['id' => Criteria::ASC]);
 
         return $this->cartItems->matching($criteria)->count();
     }
@@ -377,18 +449,37 @@ class Cart implements CartInterface
     /**
      * @return bool
      */
-    public function checkForSelectedCartItem(): bool
+    #[Pure] public function hasSelectedCartItem(): bool
     {
         /**
          * @var CartItemInterface $cartItem
          */
         foreach ($this->cartItems as $cartItem) {
-            if ($cartItem->getIsSelected()) {
+            if ($cartItem->isSelected()) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * @return ArrayCollection
+     */
+    public function getSelectedCartItems(): ArrayCollection
+    {
+        $selectedItems = new ArrayCollection();
+
+        /**
+         * @var CartItemInterface $item
+         */
+        foreach ($this->cartItems as $item) {
+            if ($item->isSelected()) {
+                $selectedItems->add($item);
+            }
+        }
+
+        return $selectedItems;
     }
 
     /**
@@ -411,7 +502,7 @@ class Cart implements CartInterface
             $this->authType = null;
             $this->cartPackages->clear();
             $this->cartItems->clear();
-            $this->deliveryVariant = self::DELIVERY_VARIANT_ONLY_AVAILABLE;
+            $this->suggestedDeliveryVariant = self::DELIVERY_VARIANT_ONLY_AVAILABLE;
             $this->isOrderVerificationRequested = false;
             $this->paymentMethod = null;
             $this->validatedStep = null;
@@ -587,18 +678,18 @@ class Cart implements CartInterface
     /**
      * @return int|null
      */
-    public function getDeliveryVariant(): ?int
+    public function getSuggestedDeliveryVariant(): ?int
     {
-        return $this->deliveryVariant;
+        return $this->suggestedDeliveryVariant;
     }
 
     /**
-     * @param int|null $deliveryVariant
+     * @param int|null $suggestedDeliveryVariant
      * @return $this
      */
-    public function setDeliveryVariant(?int $deliveryVariant): static
+    public function setSuggestedDeliveryVariant(?int $suggestedDeliveryVariant): static
     {
-        $this->deliveryVariant = $deliveryVariant;
+        $this->suggestedDeliveryVariant = $suggestedDeliveryVariant;
         return $this;
     }
 
@@ -969,4 +1060,78 @@ class Cart implements CartInterface
         $this->suggestedBillingContractor = $suggestedBillingContractor;
         return $this;
     }
+
+    /**
+     * @return string|null
+     */
+    public function getTransactionId(): ?string
+    {
+        return $this->transactionId;
+    }
+
+    /**
+     * @param string|null $transactionId
+     * @return $this
+     */
+    public function setTransactionId(?string $transactionId): static
+    {
+        $this->transactionId = $transactionId;
+        return $this;
+    }
+
+    /**
+     * @return DateTime|null
+     */
+    public function getTransactionIdUpdatedAt(): ?DateTime
+    {
+        return $this->transactionIdUpdatedAt;
+    }
+
+    /**
+     * @param DateTime|null $transactionIdUpdatedAt
+     * @return $this
+     */
+    public function setTransactionIdUpdatedAt(?DateTime $transactionIdUpdatedAt): static
+    {
+        $this->transactionIdUpdatedAt = $transactionIdUpdatedAt;
+        return $this;
+    }
+
+    /**
+     * @return DateTime|null
+     */
+    public function getTransactionIdUsedAt(): ?DateTime
+    {
+        return $this->transactionIdUsedAt;
+    }
+
+    /**
+     * @param DateTime|null $transactionIdUsedAt
+     * @return $this
+     */
+    public function setTransactionIdUsedAt(?DateTime $transactionIdUsedAt): static
+    {
+        $this->transactionIdUsedAt = $transactionIdUsedAt;
+        return $this;
+    }
+
+    /**
+     * @return CountryInterface|null
+     */
+    public function getBillingContractorCountry(): ?CountryInterface
+    {
+        return $this->billingContractorCountry;
+    }
+
+    /**
+     * @param CountryInterface|null $billingContractorCountry
+     * @return $this
+     */
+    public function setBillingContractorCountry(?CountryInterface $billingContractorCountry): static
+    {
+        $this->billingContractorCountry = $billingContractorCountry;
+        return $this;
+    }
+
+
 }

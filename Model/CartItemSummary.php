@@ -7,7 +7,7 @@ use DateTime;
 use JMS\Serializer\Annotation\ExclusionPolicy;
 use JMS\Serializer\Annotation\Expose;
 use JMS\Serializer\Annotation\Groups;
-use LSB\ProductBundle\Model\Price;
+use LSB\PricelistBundle\Model\Price;
 
 /**
  * Class CartItemSummary
@@ -73,12 +73,12 @@ class CartItemSummary
     /**
      * @var null|float
      */
-    protected ?float $quantity;
+    protected ?float $quantity = null;
 
     /**
      * @var DateTime|null
      */
-    protected ?DateTime $calculatedAt;
+    protected ?DateTime $calculatedAt = null;
 
     /**
      * Oznaczenie waluty
@@ -105,6 +105,11 @@ class CartItemSummary
      * @var array
      */
     protected array $productSetProductActivePrices = [];
+
+    /**
+     * @var Price|null
+     */
+    protected ?Price $activePrice = null;
 
     /**
      * @return float|null
@@ -463,6 +468,51 @@ class CartItemSummary
     public function setProductSetProductActivePrices(array $productSetProductActivePrices): CartItemSummary
     {
         $this->productSetProductActivePrices = $productSetProductActivePrices;
+        return $this;
+    }
+
+    /**
+     * @param int $productId
+     * @return bool
+     */
+    public function hasProductSetProductActivePriceByProductId(int $productId): bool
+    {
+        if (array_key_exists($productId, $this->productSetProductActivePrices) && $this->productSetProductActivePrices[$productId] instanceof Price) {
+            return true;
+        }
+
+        return false;
+    }
+
+    /**
+     * @param int $productId
+     * @return Price
+     * @throws \Exception
+     */
+    public function getProductSetProductActivePriceByProductId(int $productId): Price
+    {
+        if (array_key_exists($productId, $this->productSetProductActivePrices) && $this->productSetProductActivePrices[$productId] instanceof Price) {
+            return $this->productSetProductActivePrices[$productId];
+        }
+
+        throw new \Exception("Active price for product:{$productId} not exists.");
+    }
+
+    /**
+     * @return Price|null
+     */
+    public function getActivePrice(): ?Price
+    {
+        return $this->activePrice;
+    }
+
+    /**
+     * @param Price|null $activePrice
+     * @return CartItemSummary
+     */
+    public function setActivePrice(?Price $activePrice): CartItemSummary
+    {
+        $this->activePrice = $activePrice;
         return $this;
     }
 }

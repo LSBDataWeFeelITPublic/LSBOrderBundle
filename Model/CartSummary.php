@@ -14,6 +14,9 @@ use LSB\UtilityBundle\Calculation\CalculationTypeInterface;
 class CartSummary
 {
 
+    const CALCULATION_TYPE_NET = 10;
+    const CALCULATION_TYPE_GROSS = 20;
+
     /**
      * @var int
      */
