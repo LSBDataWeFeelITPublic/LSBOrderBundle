@@ -35,7 +35,10 @@ use LSB\ShippingBundle\Manager\MethodManager as ShippingMethodManager;
 use LSB\UserBundle\Entity\User;
 use LSB\UserBundle\Entity\UserInterface;
 use LSB\UserBundle\Manager\UserManager;
+use LSB\UtilityBundle\Helper\ValueHelper;
 use LSB\UtilityBundle\Value\Value;
+use Money\Currency as MoneyCurrency;
+use Money\Money;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Form\FormFactory;
@@ -285,12 +288,16 @@ class DataCartComponent extends BaseCartComponent
      * @param Cart $cart
      * @param Product $product
      * @param Product|null $productSet
-     * @param float $quantity
+     * @param Value $quantity
      * @return Price|null
-     * @throws \Doctrine\DBAL\DBALException
+     * @throws \Exception
      */
-    protected function getCataloguePriceForProduct(CartInterface $cart, Product $product, ?Product $productSet, float $quantity): ?Price
-    {
+    protected function getCataloguePriceForProduct(
+        CartInterface $cart,
+        Product $product,
+        ?Product $productSet,
+        Value $quantity
+    ): ?Price {
         if (!$this->ps->get('cart.catalogue_price.calculate')) {
             return null;
         }
@@ -315,11 +322,16 @@ class DataCartComponent extends BaseCartComponent
      * @param Cart $cart
      * @param Product $product
      * @param Product|null $productSet
-     * @param float $quantity
+     * @param Value $quantity
      * @return Price|null
+     * @throws \Exception
      */
-    protected function getPriceForProduct(Cart $cart, Product $product, ?Product $productSet, float $quantity): ?Price
-    {
+    protected function getPriceForProduct(
+        Cart $cart,
+        Product $product,
+        ?Product $productSet,
+        Value $quantity
+    ): ?Price {
         return $this->pricelistManager->getPriceForProduct(
             $product,
             null,
@@ -333,6 +345,7 @@ class DataCartComponent extends BaseCartComponent
      * @param CartItem $selectedCartItem
      * @param Price|null $cataloguePrice
      * @return array
+     * @throws \Exception
      */
     protected function calculateCatalogueValues(CartItem $selectedCartItem, ?Price $cataloguePrice): array
     {
@@ -341,20 +354,23 @@ class DataCartComponent extends BaseCartComponent
         }
 
         if ($this->ps->get('cart.calculation.gross')) {
-            $catalogueValueNetto = $this->calculateNettoValueFromGross(
-                $cataloguePrice->getGrossPrice(),
-                $selectedCartItem->getQuantity(),
-                $cataloguePrice->getVat()
+            $catalogueValueNetto = $this->calculateMoneyNetValueFromGrossPrice(
+                $cataloguePrice->getGrossPrice(true),
+                $selectedCartItem->getQuantity(true),
+                $cataloguePrice->getVat(true)
             );
-            $catalogueValueGross = $this->calculateGrossValue(
-                $cataloguePrice->getGrossPrice(),
-                $selectedCartItem->getQuantity()
+            $catalogueValueGross = $this->calculateMoneyGrossValue(
+                $cataloguePrice->getGrossPrice(true),
+                $selectedCartItem->getQuantity(true)
             );
         } else {
-            $catalogueValueNetto = $this->calculateNettoValue($cataloguePrice->getNetPrice(), $selectedCartItem->getQuantity());
+            $catalogueValueNetto = $this->calculateMOneyNetValue(
+                $cataloguePrice->getNetPrice(true),
+                $selectedCartItem->getQuantity(true)
+            );
 
-            $catalogueValueGross = $this->calculateGrossValueFromNetto(
-                $cataloguePrice->getNetPrice(),
+            $catalogueValueGross = $this->calculateMOneyGrossValueFromNetPrice(
+                $cataloguePrice->getNetPrice(true),
                 $selectedCartItem->getQuantity(),
                 $cataloguePrice->getVat()
             );
@@ -377,6 +393,19 @@ class DataCartComponent extends BaseCartComponent
     }
 
     /**
+     * @param Money $grossPrice
+     * @param Value $quantity
+     * @return Money
+     */
+    public function calculateMoneyGrossValue(
+        Money $grossPrice,
+        Value $quantity
+    ): Money {
+
+        return $grossPrice->multiply($quantity->getRealStringAmount());
+    }
+
+    /**
      * @param float $price
      * @param int $quantity
      * @param int|null $taxPercentage
@@ -384,7 +413,7 @@ class DataCartComponent extends BaseCartComponent
      * @param int $precision
      * @return float
      */
-    public function calculateNettoValueFromGross(
+    public function calculateNetValueFromGrossPrice(
         float $price,
         int   $quantity,
         ?int  $taxPercentage,
@@ -394,6 +423,23 @@ class DataCartComponent extends BaseCartComponent
         $taxPercentage = (int)$taxPercentage;
         $value = round($price, $precision) * $quantity;
         return $round ? round($value / ((100 + $taxPercentage) / 100), $precision) : $value;
+    }
+
+    /**
+     * @param Money $grossPrice
+     * @param Value $quantity
+     * @param Value $taxPercentage
+     * @return Money
+     * @throws \Exception
+     */
+    public function calculateMoneyNetValueFromGrossPrice(
+        Money $grossPrice,
+        Value $quantity,
+        Value $taxPercentage
+    ): Money {
+        $precision = ValueHelper::getCurrencyPrecision($grossPrice->getCurrency()->getCode());
+        $grossValue = $grossPrice->multiply($quantity->getAmount());
+        return $grossValue->divide((string) ((ValueHelper::get100Percents($precision) + (int)$taxPercentage->getAmount()) / ValueHelper::get100Percents($precision)));
     }
 
     /**
@@ -409,26 +455,27 @@ class DataCartComponent extends BaseCartComponent
         Price    $activePrice,
         array    &$totalRes,
         array    &$spreadRes,
-        ?float   $catalogueValueNetto,
-        ?float   $catalogueValueGross
+        ?Money   $catalogueValueNetto,
+        ?Money   $catalogueValueGross
     ): void {
-        $taxRate = $activePrice->getVat();
+        $taxRate = $activePrice->getVat(true);
 
         if ($this->ps->get('cart.calculation.gross')) {
-            $valueNetto = $this->calculateNettoValueFromGross($activePrice->getGrossPrice(), $selectedCartItem->getQuantity(), $activePrice->getVat());
-            $valueGross = $this->calculateGrossValue($activePrice->getGrossPrice(), $selectedCartItem->getQuantity());
+            $valueNetto = $this->calculateMoneyNetValueFromGrossPrice($activePrice->getGrossPrice(true), $selectedCartItem->getQuantity(true), $activePrice->getVat(true));
+            $valueGross = $this->calculateMoneyGrossValue($activePrice->getGrossPrice(true), $selectedCartItem->getQuantity(true));
 
-            TaxManager::addValueToGrossRes($taxRate, $valueGross, $totalRes);
+            TaxManager::addMoneyValueToGrossRes($taxRate, $valueGross, $totalRes);
+
             if ($catalogueValueGross !== null) {
-                TaxManager::addValueToGrossRes($taxRate, ($catalogueValueGross > $valueGross) ? $catalogueValueGross - $valueGross : 0, $spreadRes);
+                TaxManager::addValueToGrossRes($taxRate, ($valueGross->lessThan($catalogueValueGross)) ? $catalogueValueGross->subtract($valueGross)  : 0, $spreadRes);
             }
         } else {
-            $valueNetto = $this->calculateNettoValue($activePrice->getNetPrice(), $selectedCartItem->getQuantity());
-            $valueGross = $this->calculateGrossValueFromNetto($activePrice->getNetPrice(), $selectedCartItem->getQuantity(), $activePrice->getVat());
+            $valueNetto = $this->calculateMoneyNetValue($activePrice->getNetPrice(true), $selectedCartItem->getQuantity(true));
+            $valueGross = $this->calculateMoneyGrossValueFromNetPrice($activePrice->getNetPrice(true), $selectedCartItem->getQuantity(true), $activePrice->getVat(true));
 
-            TaxManager::addValueToNettoRes($taxRate, $valueNetto, $totalRes);
+            TaxManager::addMoneyValueToNettoRes($taxRate, $valueNetto, $totalRes);
             if ($catalogueValueNetto !== null) {
-                TaxManager::addValueToNettoRes($taxRate, ($catalogueValueNetto > $valueNetto) ? $catalogueValueNetto - $valueNetto : 0, $spreadRes);
+                TaxManager::addMoneyValueToNettoRes($taxRate, ($catalogueValueNetto->greaterThan($valueNetto)) ? $catalogueValueNetto->subtract($valueNetto) : 0, $spreadRes);
             }
         }
     }
@@ -438,12 +485,25 @@ class DataCartComponent extends BaseCartComponent
      * @param int $quantity
      * @param bool $round
      * @param int $precision
+     * @deprecated
      * @return float
      */
-    public function calculateNettoValue(float $price, int $quantity, bool $round = true, int $precision = 2): float
+    public function calculateNetValue(float $price, int $quantity, bool $round = true, int $precision = 2): float
     {
         $value = round($price, $precision) * $quantity;
         return $round ? round($value, $precision) : $value;
+    }
+
+    /**
+     * @param Money $price
+     * @param Value $quantity
+     * @return Money
+     */
+    public function calculateMoneyNetValue(
+        Money $price,
+        Value $quantity
+    ): Money {
+        return $price->multiply($quantity->getRealStringAmount());
     }
 
     /**
@@ -453,8 +513,9 @@ class DataCartComponent extends BaseCartComponent
      * @param bool $round
      * @param int $precision
      * @return float
+     * @deprecated
      */
-    public function calculateGrossValueFromNetto(
+    public function calculateGrossValueFromNetPrice(
         float $price,
         int   $quantity,
         ?int  $taxPercentage,
@@ -464,6 +525,23 @@ class DataCartComponent extends BaseCartComponent
         $taxPercentage = (int)$taxPercentage;
         $value = round($price, $precision) * $quantity;
         return $round ? round($value * (100 + $taxPercentage) / 100, $precision) : $value;
+    }
+
+    /**
+     * @param Money $netPrice
+     * @param Value $quantity
+     * @param Value $taxPercentage
+     * @return Money
+     * @throws \Exception
+     */
+    public function calculateMoneyGrossValueFromNetPrice(
+        Money $netPrice,
+        Value $quantity,
+        Value $taxPercentage
+    ): Money {
+        $precision = ValueHelper::getCurrencyPrecision($netPrice->getCurrency()->getCode());
+        $grossValue = $netPrice->multiply($quantity->getAmount());
+        return $grossValue->multiply(((ValueHelper::get100Percents($precision) + (int) $taxPercentage->getRealStringAmount()) / ValueHelper::get100Percents($precision)));
     }
 
     /**
@@ -487,7 +565,7 @@ class DataCartComponent extends BaseCartComponent
         $taxRate = $activePrice->getVat();
 
         if ($this->ps->getParameter('cart.calculation.gross')) {
-            $valueNetto = $this->calculateNettoValueFromGross($activePrice->getGrossPrice(), (int)$quantity->getAmount(), $activePrice->getVat());
+            $valueNetto = $this->calculateNetValueFromGrossPrice($activePrice->getGrossPrice(), (int)$quantity->getAmount(), $activePrice->getVat());
             $valueGross = $this->calculateGrossValue($activePrice->getGrossPrice(), (int)$quantity->getAmount());
 
             TaxManager::addValueToGrossRes($taxRate, $valueGross, $totalRes);
@@ -495,8 +573,8 @@ class DataCartComponent extends BaseCartComponent
                 TaxManager::addValueToGrossRes($taxRate, ($catalogueValueGross > $valueGross) ? $catalogueValueGross - $valueGross : 0, $spreadRes);
             }
         } else {
-            $valueNetto = $this->calculateNettoValue($activePrice->getNetPrice(), (int)$quantity->getAmount());
-            $valueGross = $this->calculateGrossValueFromNetto($activePrice->getNetPrice(), (int)$quantity->getAmount(), $activePrice->getVat());
+            $valueNetto = $this->calculateNetValue($activePrice->getNetPrice(), (int)$quantity->getAmount());
+            $valueGross = $this->calculateGrossValueFromNetPrice($activePrice->getNetPrice(), (int)$quantity->getAmount(), $activePrice->getVat());
 
             TaxManager::addValueToNettoRes($taxRate, $valueNetto, $totalRes);
             if ($catalogueValueNetto !== null) {
@@ -543,15 +621,15 @@ class DataCartComponent extends BaseCartComponent
         $spreadRes = [];
         $shippingCostRes = [];
 
-        $totalNetto = (float)0.00;
-        $totalGross = (float)0.00;
+        $totalNet = new Money(0, new MoneyCurrency($cart->getCurrencyIsoCode()));
+        $totalGross = new Money(0, new MoneyCurrency($cart->getCurrencyIsoCode()));
 
-        $spreadNetto = (float)0.00;
-        $spreadGross = (float)0.00;
+        $spreadNet = new Money(0, new MoneyCurrency($cart->getCurrencyIsoCode()));;
+        $spreadGross = new Money(0, new MoneyCurrency($cart->getCurrencyIsoCode()));0;
 
         //Sumy poszczególnych wartości pozycji - nie używać do wyliczania wartości total netto i brutto całego koszyka - tylko do prezentacji
-        $totalItemsNetto = (float)0.00;
-        $totalItemsGross = (float)0.00;
+        $totalItemsNet = new Money(0, new MoneyCurrency($cart->getCurrencyIsoCode()));;
+        $totalItemsGross = new Money(0, new MoneyCurrency($cart->getCurrencyIsoCode()));;
 
         $cnt = $cart->getCartItems()->count();
         $cntSelected = $cart->countSelectedItems();
@@ -561,27 +639,32 @@ class DataCartComponent extends BaseCartComponent
          */
         foreach ($selectedCartItems as $selectedCartItem) {
 
+            //ProductSetProduct
+            if ($selectedCartItem->getProduct()->isProductSet()) {
 
-            if ($selectedCartItem->getProduct() && $selectedCartItem->getProduct()->isProductSet()) {
-                //Mamy do czynienia z zestawem
 
+                //TODO verify product set product
                 /**
                  * @var ProductSetProduct $productSetProduct
                  */
                 foreach ($selectedCartItem->getProduct()->getProductSetProducts() as $productSetProduct) {
                     $product = $productSetProduct->getProduct();
-                    $productQuantity = $productSetProduct->getQuantity();
+                    $productQuantity = $productSetProduct->getQuantity(true);
                     $productSet = $selectedCartItem->getProduct();
-                    $calculatedQuantity = $selectedCartItem->getQuantity() * $productQuantity;
+                    $calculatedQuantity = $selectedCartItem->getQuantity(true)->multiply($productQuantity->getRealStringAmount());
 
-                    $cataloguePrice = $this->getCataloguePriceForProduct($selectedCartItem->getCart(), $product, $productSet, $calculatedQuantity);
+                    $cataloguePrice = $this->getCataloguePriceForProduct(
+                        $selectedCartItem->getCart(),
+                        $product,
+                        $productSet,
+                        $calculatedQuantity
+                    );
+
                     [$catalogueValueNetto, $catalogueValueGross] = $this->calculateCatalogueValues($selectedCartItem, $cataloguePrice);
 
-
-                    if ($selectedCartItem->getCartItemSummary()
-                        && $selectedCartItem->getCartItemSummary()->isProductSet()
-                        && $selectedCartItem->getCartItemSummary()->getCalculatedAt()
-                        && $selectedCartItem->getCartItemSummary()->hasProductSetProductActivePriceByProductId($product->getId())
+                    if ($selectedCartItem->getCartItemSummary()?->isProductSet()
+                        && $selectedCartItem->getCartItemSummary()?->getCalculatedAt()
+                        && $selectedCartItem->getCartItemSummary()?->hasProductSetProductActivePriceByProductId($product->getId())
                     ) {
                         $productActivePrice = $selectedCartItem->getCartItemSummary()->getProductSetProductActivePriceByProductId($product->getId());
                     } else {
@@ -598,17 +681,12 @@ class DataCartComponent extends BaseCartComponent
                         $catalogueValueGross
                     );
                 }
-
             } else {
-                //Zwykły produkt
-
+                //Normal product
                 $cataloguePrice = $this->getCataloguePriceForCartItem($selectedCartItem);
                 [$catalogueValueNetto, $catalogueValueGross] = $this->calculateCatalogueValues($selectedCartItem, $cataloguePrice);
 
-                if ($selectedCartItem->getCartItemSummary()
-                    && $selectedCartItem->getCartItemSummary()->getCalculatedAt()
-                    && $selectedCartItem->getCartItemSummary()->getActivePrice()
-                ) {
+                if ($selectedCartItem->getCartItemSummary()?->getCalculatedAt() && $selectedCartItem->getCartItemSummary()?->getActivePrice()) {
                     $activePrice = $selectedCartItem->getCartItemSummary()->getActivePrice();
                 } else {
                     $activePrice = $this->getActivePriceForCartItem($selectedCartItem);
@@ -623,15 +701,13 @@ class DataCartComponent extends BaseCartComponent
                     $catalogueValueGross
                 );
             }
-
-
         }
 
         //zaokrąglamy na samym końcu
         if ($this->ps->get('cart.calculation.gross')) {
-            [$totalProductsNetto, $totalProductsGross] = TaxManager::calculateTotalNettoAndGrossFromGrossRes($totalRes, $this->addTax($cart));
+            [$totalProductsNet, $totalProductsGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromGrossRes($cart->getCurrencyIsoCode(), $totalRes, $this->addTax($cart));
         } else {
-            [$totalProductsNetto, $totalProductsGross] = TaxManager::calculateTotalNettoAndGrossFromNettoRes($totalRes, $this->addTax($cart));
+            [$totalProductsNet, $totalProductsGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromNettoRes($cart->getCurrencyIsoCode(), $totalRes, $this->addTax($cart));
         }
 
         [
@@ -645,28 +721,32 @@ class DataCartComponent extends BaseCartComponent
         ] = $this->calculateShippingCost(
             $cart,
             $this->addTax($cart),
-            $this->ps->get('cart.calculation.gross') ? $totalProductsGross : $totalProductsNetto,
+            $this->ps->get('cart.calculation.gross') ? $totalProductsGross : $totalProductsNet,
             $shippingCostRes
         );
 
         [$paymentCostNetto, $paymentCostGross] = $this->calculatePaymentCost($cart, $this->addTax($cart), $totalRes);
 
         if ($this->ps->get('cart.calculation.gross')) {
-            [$shippingCostNetto, $shippingCostGross] = TaxManager::calculateTotalNettoAndGrossFromGrossRes($shippingCostRes, $this->addTax($cart));
+            [$shippingCostNetto, $shippingCostGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromGrossRes($cart->getCurrencyIsoCode(), $shippingCostRes, $this->addTax($cart));
         } else {
-            [$shippingCostNetto, $shippingCostGross] = TaxManager::calculateTotalNettoAndGrossFromNettoRes($shippingCostRes, $this->addTax($cart));
+            [$shippingCostNetto, $shippingCostGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromNettoRes($cart->getCurrencyIsoCode(), $shippingCostRes, $this->addTax($cart));
         }
 
+
+
         //sumaryczna wartość produktów z kosztami dostawy
-        $totalWithShippingNettoRes = TaxManager::mergeRes($shippingCostRes, $totalRes);
+        $totalWithShippingNettoRes = TaxManager::mergeMoneyRes($shippingCostRes, $totalRes);
 
         if ($this->ps->get('cart.calculation.gross')) {
-            [$totalWithShippingNetto, $totalWithShippingGross] = TaxManager::calculateTotalNettoAndGrossFromGrossRes(
+            [$totalWithShippingNetto, $totalWithShippingGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromGrossRes(
+                $cart->getCurrencyIsoCode(),
                 $totalWithShippingNettoRes,
                 $this->addTax($cart)
             );
         } else {
-            [$totalWithShippingNetto, $totalWithShippingGross] = TaxManager::calculateTotalNettoAndGrossFromNettoRes(
+            [$totalWithShippingNetto, $totalWithShippingGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromNettoRes(
+                $cart->getCurrencyIsoCode(),
                 $totalWithShippingNettoRes,
                 $this->addTax($cart)
             );
@@ -674,33 +754,34 @@ class DataCartComponent extends BaseCartComponent
 
         [$shippingCostFromNetto, $shippingCostFromGross] = $this->getShippingCostFrom($cart, $shippingCostNetto);
 
+
         $cartSummary = (new CartSummary)
             ->setCnt($cnt)
             ->setSelectedCnt($cntSelected)
-            ->setTotalProductsNetto($totalProductsNetto)
+            ->setTotalProductsNet($totalProductsNet)
             ->setTotalProductsGross($totalProductsGross)
-            ->setShippingCostNetto($shippingCostNetto)
+            ->setShippingCostNet($shippingCostNetto)
             ->setShippingCostGross($shippingCostGross)
-            ->setPaymentCostNetto($paymentCostNetto)
+            ->setPaymentCostNet($paymentCostNetto)
             ->setPaymentCostGross($paymentCostGross)
-            ->setTotalNetto($totalWithShippingNetto)
+            ->setTotalNet($totalWithShippingNetto)
             ->setTotalGross($totalWithShippingGross)
-            ->setSpreadNetto($spreadNetto)
+            ->setSpreadNet($spreadNet)
             ->setSpreadGross($spreadGross)
             ->setCalculatedAt(new \DateTime('NOW'))
             ->setShowVatViesWarning($this->showVatViesWarning($cart))
-            ->setFreeShippingThresholdNetto($freeDeliveryThresholdNetto)
-            ->setFreeShippingThresholdGross($freeDeliveryThresholdGross)
-            ->setShippingCostFromNetto($shippingCostFromNetto)
+            ->setFreeShippingThresholdNet(ValueHelper::convertToMoney($freeDeliveryThresholdNetto, $cart->getCurrencyIsoCode()))
+            ->setFreeShippingThresholdGross(ValueHelper::convertToMoney($freeDeliveryThresholdGross, $cart->getCurrencyIsoCode()))
+            ->setShippingCostFromNet($shippingCostFromNetto)
             ->setShippingCostFromGross($shippingCostFromGross)
             ->setCalculationType($this->ps->get('cart.calculation.gross') ? CartSummary::CALCULATION_TYPE_GROSS : CartSummary::CALCULATION_TYPE_NET)
-            ->setCurrencyCode((string)$cart->getCurrency());
+            ->setCurrencyIsoCode($cart->getCurrencyIsoCode());
 
         $cart->setCartSummary($cartSummary);
 
         $cart
-            ->setTotalValueGross($cartSummary->getTotalGross())
-            ->setTotalValueNet($cartSummary->getTotalNetto());
+            ->setTotalValueGross($cartSummary->getTotalGross(true))
+            ->setTotalValueNet($cartSummary->getTotalNet(true));
 
         $this->eventDispatcher->dispatch(new CartEvent($cart), CartEvents::CART_SUMMARY_CALCULATED);
 
@@ -709,15 +790,19 @@ class DataCartComponent extends BaseCartComponent
 
     /**
      * Metoda zwraca minimalny koszt dostawy dostępny dla klienta
+     * TODO
      *
      * @param Cart $cart
-     * @param float|null $shippingCostNetto ???
+     * @param Money $shippingCostNetto
      * @return array
-     * @throws \Exception
      */
-    protected function getShippingCostFrom(CartInterface $cart, ?float $shippingCostNetto = 0): array
+    protected function getShippingCostFrom(CartInterface $cart, Money $shippingCostNetto): array
     {
-        return [];
+        //TODO calculate shippingCostFrom
+        return [
+            new Money(0, new MoneyCurrency($cart->getCurrencyIsoCode())),
+            new Money(0, new MoneyCurrency($cart->getCurrencyIsoCode()))
+        ];
     }
 
     /**
@@ -729,9 +814,11 @@ class DataCartComponent extends BaseCartComponent
     {
         if ($cart->getBillingContractorCountry()
             && $this->taxManager->getSellerCountry() !== $cart->getBillingContractorCountry()
-            && $cart->getBillingContractorCountry() && $cart->getBillingContractorCountry()->isUeMember()
-            && ($cart->getBillingContractorData()->getType() == BillingData::TYPE_COMPANY
-                || $cart->getBillingContractorData()->getType() === null) && !$cart->getBillingContractorData()->getIsVatUEActivePayer()
+            && $cart->getBillingContractorCountry()->isUeMember()
+            && (
+                $cart->getBillingContractorData()->getType() === BillingData::TYPE_COMPANY
+                || $cart->getBillingContractorData()->getType() === null
+            ) && !$cart->getBillingContractorData()->getIsVatUEActivePayer()
         ) {
             return true;
         }
@@ -740,17 +827,17 @@ class DataCartComponent extends BaseCartComponent
     }
 
     /**
-     * @param Cart|null $cart
+     * @param Cart $cart
      * @param bool $addVat
      * @param null $calculatedTotalProducts
-     * @param $shippingCostRes
+     * @param array $shippingCostRes
      * @return array
      * @throws \Exception
      */
     public function calculateShippingCost(
         Cart  $cart,
         bool  $addVat,
-        array $calculatedTotalProducts,
+              $calculatedTotalProducts,
         array &$shippingCostRes
     ): array {
         if (!$cart) {
@@ -759,12 +846,12 @@ class DataCartComponent extends BaseCartComponent
 
         $packages = $cart->getCartPackages();
 
-        $totalNetto = 0;
-        $totalGrossRounded = 0;
-        $totalGross = 0;
-        $taxPercentage = null;
-        $freeDeliveryThresholdNetto = null;
-        $freeDeliveryThresholdGross = null;
+        $totalNetto = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
+        $totalGross = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
+        $totalGrossRounded = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
+        $taxPercentage = null; //TODO
+        $freeDeliveryThresholdNetto = null; //TODO
+        $freeDeliveryThresholdGross = null; //TODO
 
         //TODO
 //        /**
@@ -785,6 +872,7 @@ class DataCartComponent extends BaseCartComponent
 //            $freeDeliveryThresholdGross = $calculation->getFreeDeliveryThresholdValueGross();
 //        }
 
+        //TODO Zmienić na obiekt wyniku
         return [
             $totalNetto,
             $totalGrossRounded,
@@ -797,33 +885,32 @@ class DataCartComponent extends BaseCartComponent
     }
 
     /**
-     * Wyliczanie kosztów płatności
-     *
      * @param Cart $cart
      * @param bool $addVat
      * @param array $totalRes
      * @return array
+     * @throws \Exception
      */
-    protected function calculatePaymentCost(Cart $cart, bool $addVat, array &$totalRes)
+    protected function calculatePaymentCost(Cart $cart, bool $addVat, array &$totalRes): array
     {
-        $totalNetto = 0;
-        $totalGross = 0;
+        $totalNetto = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
+        $totalGross = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
 
+        //TODO do modyfikacji, należy używać produktu specjalnego powiązanego z metodą płatności
         $paymentMethod = $cart->getPaymentMethod();
 
+        $taxRate = ValueHelper::convertToValue(23);
+
         if ($paymentMethod instanceof PaymentMethod && $paymentMethod->getPrice()) {
-
             //TODO Fetching payment cost prices from priclists
+            $paymentCostNetto = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
+            $paymentCostGross = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
 
-            $paymentCostNetto = 0;
-            $paymentCostGross = 0;
-            $taxRate = 23;
-
-            $totalNetto += $paymentCostNetto;
-            $totalGross += $paymentCostGross;
+            $totalNetto->add($paymentCostNetto);
+            $totalGross->add($paymentCostGross);
 
             //Uzupełniamy tablicę netto o koszty dostawy
-            TaxManager::addValueToNettoRes(
+            TaxManager::addMoneyValueToNettoRes(
                 $taxRate,
                 $this->ps->get('cart.calculation.gross') ? $paymentCostGross : $paymentCostNetto,
                 $totalRes
@@ -1655,7 +1742,7 @@ class DataCartComponent extends BaseCartComponent
     {
         return $this->taxManager->addVat(
             null,//$cart->getBillingContractor()->getCountry(), TODO add country support
-            $cart->getBillingContractor()?->getType(),
+            $cart->getBillingContractor()?->getType() ?? ContractorInterface::TYPE_PRIVATE,
             $cart->getBillingContractor()?->getTaxNumber(),
             (bool)$cart->getVatCalculationType() //TODO fix
         );

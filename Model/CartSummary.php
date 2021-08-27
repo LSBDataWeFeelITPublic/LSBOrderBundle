@@ -4,128 +4,56 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\Model;
 
 use DateTime;
-use JMS\Serializer\Annotation\Groups;
 use LSB\UtilityBundle\Calculation\CalculationTypeInterface;
+use LSB\UtilityBundle\Helper\ValueHelper;
+use Money\Money;
 
-/**
- * Class CartSummary
- * @package LSB\OrderBundle\Model
- */
 class CartSummary
 {
 
     const CALCULATION_TYPE_NET = 10;
     const CALCULATION_TYPE_GROSS = 20;
 
-    /**
-     * @var int
-     */
     protected int $cnt = 0;
 
-    /**
-     * @var int
-     */
     protected int $selectedCnt = 0;
 
-    /**
-     * @var float
-     */
-    protected float $totalProductsNetto = 0;
+    protected ?int $totalProductsNet = 0;
 
-    /**
-     * @var float
-     */
-    protected float $totalProductsGross = 0;
+    protected ?int $totalProductsGross = 0;
 
-    /**
-     * @var float
-     */
-    protected float $shippingCostNetto = 0;
+    protected ?int $shippingCostNet = 0;
 
-    /**
-     * @var float
-     *
-     * @Groups({"Default", "EDI_User", "EDI_Price", "SHOP_Public"})
-     */
-    protected float $shippingCostGross = 0;
+    protected ?int $shippingCostGross = 0;
 
-    /**
-     * @var float
-     */
-    protected float $shippingCostFromNetto = 0;
+    protected ?int $shippingCostFromNet = 0;
 
-    /**
-     * @var float
-     */
-    protected float $shippingCostFromGross = 0;
+    protected ?int $shippingCostFromGross = 0;
 
-    /**
-     * @var float
-     */
-    protected float $freeShippingThresholdNetto = 0;
+    protected ?int $freeShippingThresholdNet = 0;
 
-    /**
-     * @var float
-     */
-    protected float $freeShippingThresholdGross = 0;
+    protected ?int $freeShippingThresholdGross = 0;
 
-    /**
-     * @var float
-     */
-    protected float $paymentCostNetto = 0;
+    protected ?int $paymentCostNet = 0;
 
-    /**
-     * @var float
-     */
-    protected float $paymentCostGross = 0;
+    protected ?int $paymentCostGross = 0;
 
-    /**
-     * @var float
-     */
-    protected float $totalNetto = 0;
+    protected ?int $totalNet = 0;
 
-    /**
-     * @var float
-     */
-    protected float $totalGross = 0;
+    protected ?int $totalGross = 0;
 
-    /**
-     * @var float
-     */
-    protected float $spreadNetto = 0;
+    protected ?int $spreadNet = 0;
 
-    /**
-     * @var float
-     */
-    protected float $spreadGross = 0;
+    protected ?int $spreadGross = 0;
 
-    /**
-     * @var DateTime|null
-     */
     protected ?DateTime $calculatedAt = null;
 
-    /**
-     * @var bool
-     */
     protected bool $showVatViesWarning = false;
 
-    /**
-     * @var int
-     */
     protected int $calculationType = CalculationTypeInterface::CALCULATION_TYPE_NET;
 
-    /**
-     * Oznaczenie waluty
-     *
-     * @var string|null
-     */
-    protected ?string $currencyCode;
+    protected ?string $currencyIsoCode;
 
-    /**
-     * Wyświetlanie cen w koszyku
-     *
-     * @var boolean
-     */
     protected bool $showPrices = true;
 
     /**
@@ -147,7 +75,7 @@ class CartSummary
      */
     public function getTotalAdditionalCostsNet(bool $round = true, int $precision = 2): float
     {
-        $additionalCosts = $this->totalNetto - $this->totalProductsNetto;
+        $additionalCosts = $this->totalNet - $this->totalProductsNet;
 
         if ($additionalCosts < 0) {
             $additionalCosts = 0;
@@ -179,8 +107,8 @@ class CartSummary
      */
     public function getLeftToFreeShippingNet(bool $round = true, int $precision = 2): ?float
     {
-        if ($this->freeShippingThresholdNetto) {
-            $leftToFreeShipping = max($this->freeShippingThresholdNetto - $this->totalProductsNetto, 0);
+        if ($this->freeShippingThresholdNet) {
+            $leftToFreeShipping = max($this->freeShippingThresholdNet - $this->totalProductsNet, 0);
 
             return $round ? round($leftToFreeShipping, $precision) : $leftToFreeShipping;
         }
@@ -241,253 +169,365 @@ class CartSummary
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getTotalProductsNetto(): float|int
+    public function getTotalProductsNet(bool $useMoney = false): Money|int|null
     {
-        return $this->totalProductsNetto;
+        return $useMoney ? ValueHelper::intToMoney($this->totalProductsNet, $this->currencyIsoCode) : $this->totalProductsNet;
     }
 
     /**
-     * @param float $totalProductsNetto
+     * @param Money|int|null $totalProductsNet
      * @return CartSummary
      */
-    public function setTotalProductsNetto(float|int $totalProductsNetto): CartSummary
+    public function setTotalProductsNet(Money|int|null $totalProductsNet): CartSummary
     {
-        $this->totalProductsNetto = $totalProductsNetto;
+        if ($totalProductsNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($totalProductsNet);
+            $this->totalProductsNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->totalProductsNet = $totalProductsNet;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getTotalProductsGross(): float|int
+    public function getTotalProductsGross(bool $useMoney = false): Money|int|null
     {
-        return $this->totalProductsGross;
+        return $useMoney ? ValueHelper::intToMoney($this->totalProductsGross, $this->currencyIsoCode) : $this->totalProductsGross;
     }
 
     /**
-     * @param float $totalProductsGross
+     * @param Money|int|null $totalProductsGross
      * @return CartSummary
      */
-    public function setTotalProductsGross(float|int $totalProductsGross): CartSummary
+    public function setTotalProductsGross(Money|int|null $totalProductsGross): CartSummary
     {
+        if ($totalProductsGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($totalProductsGross);
+            $this->totalProductsGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->totalProductsGross = $totalProductsGross;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getShippingCostNetto(): float|int
+    public function getShippingCostNet(bool $useMoney = false): Money|int|null
     {
-        return $this->shippingCostNetto;
+        return $useMoney ? ValueHelper::intToMoney($this->shippingCostNet, $this->currencyIsoCode) : $this->shippingCostNet;
     }
 
     /**
-     * @param float $shippingCostNetto
+     * @param Money|int|null $shippingCostNet
      * @return CartSummary
      */
-    public function setShippingCostNetto(float|int $shippingCostNetto): CartSummary
+    public function setShippingCostNet(Money|int|null $shippingCostNet): CartSummary
     {
-        $this->shippingCostNetto = $shippingCostNetto;
+        if ($shippingCostNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($shippingCostNet);
+            $this->shippingCostNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->shippingCostNet = $shippingCostNet;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getShippingCostGross(): float|int
+    public function getShippingCostGross(bool $useMoney = false): Money|int|null
     {
-        return $this->shippingCostGross;
+        return $useMoney ? ValueHelper::intToMoney($this->shippingCostGross, $this->currencyIsoCode) : $this->shippingCostGross;
     }
 
     /**
-     * @param float $shippingCostGross
+     * @param Money|int|null $shippingCostGross
      * @return CartSummary
      */
-    public function setShippingCostGross(float|int $shippingCostGross): CartSummary
+    public function setShippingCostGross(Money|int|null $shippingCostGross): CartSummary
     {
+        if ($shippingCostGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($shippingCostGross);
+            $this->shippingCostGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->shippingCostGross = $shippingCostGross;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getShippingCostFromNetto(): float|int
+    public function getShippingCostFromNet(bool $useMoney = false): Money|int|null
     {
-        return $this->shippingCostFromNetto;
+        return $useMoney ? ValueHelper::intToMoney($this->shippingCostFromNet, $this->currencyIsoCode) : $this->shippingCostFromNet;
     }
 
     /**
-     * @param float $shippingCostFromNetto
+     * @param Money|int|null $shippingCostFromNet
      * @return CartSummary
      */
-    public function setShippingCostFromNetto(float|int $shippingCostFromNetto): CartSummary
+    public function setShippingCostFromNet(Money|int|null $shippingCostFromNet): CartSummary
     {
-        $this->shippingCostFromNetto = $shippingCostFromNetto;
+        if ($shippingCostFromNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($shippingCostFromNet);
+            $this->shippingCostFromNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->shippingCostFromNet = $shippingCostFromNet;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getShippingCostFromGross(): float|int
+    public function getShippingCostFromGross(bool $useMoney = false): Money|int|null
     {
-        return $this->shippingCostFromGross;
+        return $useMoney ? ValueHelper::intToMoney($this->shippingCostFromGross, $this->currencyIsoCode) : $this->shippingCostFromGross;
     }
 
     /**
-     * @param float $shippingCostFromGross
+     * @param Money|int|null $shippingCostFromGross
      * @return CartSummary
      */
-    public function setShippingCostFromGross(float|int $shippingCostFromGross): CartSummary
+    public function setShippingCostFromGross(Money|int|null $shippingCostFromGross): CartSummary
     {
+        if ($shippingCostFromGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($shippingCostFromGross);
+            $this->shippingCostFromGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->shippingCostFromGross = $shippingCostFromGross;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getFreeShippingThresholdNetto(): float|int
+    public function getFreeShippingThresholdNet(bool $useMoney = false): Money|int|null
     {
-        return $this->freeShippingThresholdNetto;
+        return $useMoney ? ValueHelper::intToMoney($this->freeShippingThresholdNet, $this->currencyIsoCode) : $this->freeShippingThresholdNet;
     }
 
     /**
-     * @param float $freeShippingThresholdNetto
+     * @param Money|int|null $freeShippingThresholdNet
      * @return CartSummary
      */
-    public function setFreeShippingThresholdNetto(float|int $freeShippingThresholdNetto): CartSummary
+    public function setFreeShippingThresholdNet(Money|int|null  $freeShippingThresholdNet): CartSummary
     {
-        $this->freeShippingThresholdNetto = $freeShippingThresholdNetto;
+        if ($freeShippingThresholdNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($freeShippingThresholdNet);
+            $this->freeShippingThresholdNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->freeShippingThresholdNet = $freeShippingThresholdNet;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getFreeShippingThresholdGross(): float|int
+    public function getFreeShippingThresholdGross(bool $useMoney = false): Money|int|null
     {
-        return $this->freeShippingThresholdGross;
+        return $useMoney ? ValueHelper::intToMoney($this->freeShippingThresholdNet, $this->currencyIsoCode) : $this->freeShippingThresholdNet;
     }
 
     /**
-     * @param float $freeShippingThresholdGross
+     * @param Money|int|null $freeShippingThresholdGross
      * @return CartSummary
      */
-    public function setFreeShippingThresholdGross(float|int $freeShippingThresholdGross): CartSummary
+    public function setFreeShippingThresholdGross(Money|int|null $freeShippingThresholdGross): CartSummary
     {
+        if ($freeShippingThresholdGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($freeShippingThresholdGross);
+            $this->freeShippingThresholdGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->freeShippingThresholdGross = $freeShippingThresholdGross;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getPaymentCostNetto(): float|int
+    public function getPaymentCostNet(bool $useMoney = false): Money|int|null
     {
-        return $this->paymentCostNetto;
+        return $useMoney ? ValueHelper::intToMoney($this->paymentCostNet, $this->currencyIsoCode) : $this->paymentCostNet;
     }
 
     /**
-     * @param float $paymentCostNetto
+     * @param Money|int|null $paymentCostNet
      * @return CartSummary
      */
-    public function setPaymentCostNetto(float|int $paymentCostNetto): CartSummary
+    public function setPaymentCostNet(Money|int|null $paymentCostNet): CartSummary
     {
-        $this->paymentCostNetto = $paymentCostNetto;
+        if ($paymentCostNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($paymentCostNet);
+            $this->paymentCostNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->paymentCostNet = $paymentCostNet;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return int|null
      */
-    public function getPaymentCostGross(): float|int
+    public function getPaymentCostGross(bool $useMoney = false): Money|int|null
     {
-        return $this->paymentCostGross;
+        return $useMoney ? ValueHelper::intToMoney($this->paymentCostGross, $this->currencyIsoCode) : $this->paymentCostGross;
     }
 
     /**
-     * @param float $paymentCostGross
+     * @param Money|int|null $paymentCostGross
      * @return CartSummary
      */
-    public function setPaymentCostGross(float|int $paymentCostGross): CartSummary
+    public function setPaymentCostGross(Money|int|null $paymentCostGross): CartSummary
     {
+        if ($paymentCostGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($paymentCostGross);
+            $this->paymentCostGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->paymentCostGross = $paymentCostGross;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getTotalNetto(): float|int
+    public function getTotalNet(bool $useMoney = false): Money|int|null
     {
-        return $this->totalNetto;
+        return $useMoney ? ValueHelper::intToMoney($this->totalNet, $this->currencyIsoCode) : $this->totalNet;
     }
 
     /**
-     * @param float $totalNetto
+     * @param Money|int|null $totalNet
      * @return CartSummary
      */
-    public function setTotalNetto(float|int $totalNetto): CartSummary
+    public function setTotalNet(Money|int|null $totalNet): CartSummary
     {
-        $this->totalNetto = $totalNetto;
+        if ($totalNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($totalNet);
+            $this->totalNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->totalNet = $totalNet;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getTotalGross(): float|int
+    public function getTotalGross(bool $useMoney = false): Money|int|null
     {
-        return $this->totalGross;
+        return $useMoney ? ValueHelper::intToMoney($this->totalGross, $this->currencyIsoCode) : $this->totalGross;
     }
 
     /**
-     * @param float $totalGross
+     * @param Money|int|null $totalGross
      * @return CartSummary
      */
-    public function setTotalGross(float|int $totalGross): CartSummary
+    public function setTotalGross(Money|int|null $totalGross): CartSummary
     {
+        if ($totalGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($totalGross);
+            $this->totalGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->totalGross = $totalGross;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getSpreadNetto(): float|int
+    public function getSpreadNet(bool $useMoney = false): Money|int|null
     {
-        return $this->spreadNetto;
+        return $useMoney ? ValueHelper::intToMoney($this->spreadNet, $this->currencyIsoCode) : $this->spreadNet;
     }
 
     /**
-     * @param float $spreadNetto
+     * @param Money|int|null $spreadNet
      * @return CartSummary
      */
-    public function setSpreadNetto(float|int $spreadNetto): CartSummary
+    public function setSpreadNet(Money|int|null $spreadNet): CartSummary
     {
-        $this->spreadNetto = $spreadNetto;
+        if ($spreadNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($spreadNet);
+            $this->spreadNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->spreadNet = $spreadNet;
         return $this;
     }
 
     /**
-     * @return float
+     * @param bool $useMoney = false
+     * @return Money|int|null
      */
-    public function getSpreadGross(): float|int
+    public function getSpreadGross(bool $useMoney = false): Money|int|null
     {
-        return $this->spreadGross;
+        return $useMoney ? ValueHelper::intToMoney($this->spreadGross, $this->currencyIsoCode) : $this->spreadGross;
     }
 
     /**
-     * @param float $spreadGross
+     * @param Money|int|null $spreadGross
      * @return CartSummary
      */
-    public function setSpreadGross(float|int $spreadGross): CartSummary
+    public function setSpreadGross(Money|int|null $spreadGross): CartSummary
     {
+        if ($spreadGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($spreadGross);
+            $this->spreadGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->spreadGross = $spreadGross;
         return $this;
     }
@@ -549,18 +589,18 @@ class CartSummary
     /**
      * @return string|null
      */
-    public function getCurrencyCode(): ?string
+    public function getCurrencyIsoCode(): ?string
     {
-        return $this->currencyCode;
+        return $this->currencyIsoCode;
     }
 
     /**
-     * @param string|null $currencyCode
+     * @param string|null $currencyIsoCode
      * @return CartSummary
      */
-    public function setCurrencyCode(?string $currencyCode): CartSummary
+    public function setCurrencyIsoCode(?string $currencyIsoCode): CartSummary
     {
-        $this->currencyCode = $currencyCode;
+        $this->currencyIsoCode = $currencyIsoCode;
         return $this;
     }
 

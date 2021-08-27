@@ -8,6 +8,7 @@ use LSB\OrderBundle\CartComponent\DataCartComponent;
 use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Model\CartModuleConfiguration;
+use LSB\OrderBundle\Model\CartSummary;
 use LSB\UserBundle\Entity\UserInterface;
 use Symfony\Component\HttpFoundation\Request;
 
@@ -23,6 +24,14 @@ class DataCartModule extends BaseCartModule
         protected DataCartComponent $dataCartComponent
     ) {
         parent::__construct();
+    }
+
+    /**
+     * @return DataCartComponent
+     */
+    public function getDataCartComponent(): DataCartComponent
+    {
+        return $this->dataCartComponent;
     }
 
     /**
@@ -87,5 +96,16 @@ class DataCartModule extends BaseCartModule
         bool                 $isInitialRender = false
     ): CartModuleConfiguration {
         return new CartModuleConfiguration(false, false, []);
+    }
+
+    /**
+     * @param Cart $cart
+     * @param bool $rebuildPackages
+     * @return CartSummary
+     * @throws \Exception
+     */
+    public function getCartSummary(Cart $cart, bool $rebuildPackages = false): CartSummary
+    {
+        return $this->dataCartComponent->getCartSummary($cart, $rebuildPackages);
     }
 }

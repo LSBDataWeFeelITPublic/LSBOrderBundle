@@ -9,19 +9,20 @@ use LSB\LocaleBundle\Manager\TaxManager;
 use LSB\OrderBundle\CartComponent\DataCartComponent;
 use LSB\OrderBundle\CartModule\CartItemCartModule;
 use LSB\OrderBundle\CartModule\CartModuleInterface;
+use LSB\OrderBundle\CartModule\DataCartModule;
 use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartItem;
 use LSB\OrderBundle\Manager\CartManager;
+use LSB\OrderBundle\Model\CartItemModule\CartItemUpdateResult;
 use LSB\OrderBundle\Model\CartSummary;
-use LSB\OrderBundle\Module\DataCartModule;
-use LSB\OrderBundle\Repository\CartRepository;
 use LSB\PricelistBundle\Manager\PricelistManager;
 use LSB\ProductBundle\Entity\Product;
 use LSB\ProductBundle\Manager\ProductManager;
 use LSB\ProductBundle\Manager\StorageManager;
 use LSB\UserBundle\Entity\User;
 use LSB\UserBundle\Entity\UserInterface;
+use Money\Money;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -92,6 +93,15 @@ class CartService
     }
 
     /**
+     * @param CartInterface $cart
+     * @throws \Exception
+     */
+    public function updateCart(CartInterface $cart): void
+    {
+        $this->moduleManager->getModuleByName(DataCartModule::NAME)->getDataCartComponent()->getCartManager()->update($cart);
+    }
+
+    /**
      * @param bool|null $forceReload
      * @param User|null $user
      * @param Contractor|null $contractor
@@ -136,26 +146,31 @@ class CartService
         return null;
     }
 
+    /**
+     * @param string $uuid
+     * @return Cart|null
+     */
     public function getCartByUuid(string $uuid): ?Cart
     {
         return $this->cartManager->getByUuid($uuid);
     }
 
-
+    /**
+     * @param string $uuid
+     * @return CartInterface|null
+     */
     public function getCartByTransactionId(string $uuid): ?CartInterface
     {
-        return $this->getCartRepository()->getByTransactionId($uuid);
+        return $this->cartComponentService->getComponentByClass(DataCartComponent::class)->getCartManager()->getRepository()->getByTransactionId($uuid);
     }
 
     /**
-     *
-     *
      * @param Cart $sessionCart
      * @param Cart $storedCart
      * @return Cart
      * @throws \Exception
      */
-    public function mergeCarts(Cart $sessionCart, Cart $storedCart): Cart
+    public function mergeCarts(Cart $sessionCart, Cart $storedCart): CartInterface
     {
 
         $cartDataModule = $this->moduleManager->getModuleByName(DataCartModule::NAME);
@@ -169,14 +184,11 @@ class CartService
      * @param Cart $cart
      * @param UserInterface|null $user
      * @return mixed
+     * @throws \Exception
      */
     protected function convertSessionCartToUserCart(Cart $cart, UserInterface $user = null)
     {
-        /**
-         * @var BaseCartDataModule $cartDataModule
-         */
-        $cartDataModule = $this->moduleManager->getModuleByName(EdiCartDataModule::NAME);
-
+        $cartDataModule = $this->moduleManager->getModuleByName(DataCartModule::NAME);
         return $content = $cartDataModule->convertSessionCartToUserCart($cart, $user);
     }
 
@@ -198,60 +210,6 @@ class CartService
     }
 
     /**
-     * Zwraca informacje o jednej pozycji koszyka w formie tablicy
-     * @deprecated
-     */
-    protected function processCartItemToArray(CartItem $cartItem)
-    {
-        $cartDataToArrayModule = $this->moduleManager->getModuleByName(BaseCartItemsModule::NAME);
-        $content = $cartDataToArrayModule->processCartItemToArray($cartItem);
-
-        return $content;
-    }
-
-    /**
-     * Zwraca tablicę z informacjami o koszyku
-     */
-    public function processCartToArray(Cart $cart = null)
-    {
-        if (!$cart) {
-            $cart = $this->getCart();
-        }
-
-        $cartDataToArrayModule = $this->moduleManager->getModuleByName(BaseCartDataModule::NAME);
-
-        return $cartDataToArrayModule->processCartToArray($cart);
-    }
-
-    /**
-     * @param Cart|null $cart
-     * @return mixed
-     * @throws \Exception
-     * @depracted
-     */
-    public function processPackagesToArray(Cart $cart = null)
-    {
-        if (!$cart) {
-            $cart = $this->getCart();
-        }
-
-        $packageShippingModule = $this->moduleManager->getModuleByName(BasePackageShippingModule::NAME);
-
-        return $packageShippingModule->processPackagesToArray($cart);
-    }
-
-    /**
-     * @param Cart $cart
-     * @return bool
-     * @throws \Exception
-     */
-    public function showVatViesWarning(Cart $cart): bool
-    {
-        $cartDataModule = $this->moduleManager->getModuleByName(BaseCartDataModule::NAME);
-        return $cartDataModule->showVatViesWarning($cart);
-    }
-
-    /**
      * Przekazujemy tablicę
      * [
      *  $productId => $quantity
@@ -261,14 +219,15 @@ class CartService
      * $updateAllCartItems - argument pozwala wymusić przeliczenie wszystkich pozycji w koszyku, jeżeli występuje zależność pomiędzy zmianą jeden pozycji, a pozostałymi
      * Przeliczanie wszystkich pozycji należy stosować wyłącznie przy obsłudzę zmian pozycji z poziomu widoku kroku 1 koszyka
      * Dodając lub zwiększając ilość dla danej pozycji z poziomu widoku produktu nie ma potrzeby przeliczania pozostałych pozycji
+     *
      * @param Cart $cart
      * @param array $updateData
      * @param bool $increaseQuantity
      * @param bool $updateAllCartItems
      * @param bool $fromOrderTemplate
      * @param bool $merge
-     * @return array
-     * @throws \Doctrine\ORM\NonUniqueResultException
+     * @return CartItemUpdateResult
+     * @throws \Exception
      */
     public function updateCartItems(
         Cart  $cart,
@@ -277,7 +236,7 @@ class CartService
         bool  $updateAllCartItems = false,
         bool  $fromOrderTemplate = false,
         bool  $merge = false
-    ): array {
+    ): CartItemUpdateResult {
         $cartItemModule = $this->moduleManager->getModuleByName(CartItemCartModule::NAME);
         $content = $cartItemModule->updateCartItems($cart, $updateData, $increaseQuantity, $updateAllCartItems, $fromOrderTemplate, $merge);
         $cartItemModule->validateDependencies($cart);
@@ -286,36 +245,29 @@ class CartService
     }
 
     /**
+     * @param Cart $cart
+     * @return CartItemUpdateResult
+     * @throws \Exception
+     */
+    public function rebuildCartItems(
+        Cart  $cart
+    ): CartItemUpdateResult {
+        $cartItemModule = $this->moduleManager->getModuleByName(CartItemCartModule::NAME);
+        return $cartItemModule->rebuildAndProcessCartItems($cart);
+    }
+
+    /**
      * Usuwa produkty niedostępne dla płatnika/użytkownika
      *
      * @param Cart $cart
      * @return bool
      * @throws \Exception
+     * @deprecated
      */
     protected function removeUnavailableProducts(Cart $cart): bool
     {
-        /**
-         * @var BaseCartItemsModule $cartItemsModule
-         */
-        $cartItemsModule = $this->moduleManager->getModuleByName(BaseCartItemsModule::NAME);
+        $cartItemsModule = $this->moduleManager->getModuleByName(CartItemCartModule::NAME);
         return $cartItemsModule->removeUnavailableProducts($cart);
-    }
-
-    /**
-     * Nie używać!
-     *
-     * @param Cart $cart
-     * @throws \Exception
-     * @see \LSB\CartBundle\Module\BaseCartItemsModule::removeProductsWithNullPrice()
-     * @deprecated Weryfikacja zerowej oceny realizowana wspólnie z weryfikacją stanu mag.
-     */
-    protected function removeProductsWithNullPrice(Cart $cart): void
-    {
-        /**
-         * @var BaseCartItemsModule $cartItemsModule
-         */
-        $cartItemsModule = $this->moduleManager->getModuleByName(BaseCartItemsModule::NAME);
-        $cartItemsModule->removeProductsWithNullPrice($cart);
     }
 
     /**
@@ -343,9 +295,9 @@ class CartService
     public function checkQuantityAndPriceForCartItem(CartItem $cartItem, array &$notifications): CartItem
     {
         /**
-         * @var BaseCartItemsModule $cartItemsModule
+         * @var CartItemCartModule $cartItemsModule
          */
-        $cartItemsModule = $this->moduleManager->getModuleByName(BaseCartItemsModule::NAME);
+        $cartItemsModule = $this->moduleManager->getModuleByName(CartItemCartModule::NAME);
         return $cartItemsModule->checkQuantityAndPriceForCartItem($cartItem, $notifications);
     }
 
@@ -364,7 +316,7 @@ class CartService
      */
     public function getCartSummary(
         Cart $cart = null,
-        bool $injectCartItemsSummary = false,
+        bool $injectCartItemsSummary = true,
         bool $rebuildItems = false,
         bool $skipItemsCountCheck = true
     ): CartSummary {
@@ -372,40 +324,34 @@ class CartService
             $cart = $this->getCart();
         }
 
-        $itemsCount = $cart->getItems()->count();
+        $itemsCount = $cart->getCartItems()->count();
 
         if ($injectCartItemsSummary && ($itemsCount > 0 || $skipItemsCountCheck)) {
-            /**
-             * @var CartItemsModule $cartItemsModule
-             */
-            $cartItemsModule = $this->moduleManager->getModuleByName(BaseCartItemsModule::NAME);
-            $cartItemsModule->injectPricesToCartItems($cart);
+            $cartItemsModule = $this->moduleManager->getModuleByName(CartItemCartModule::NAME);
+            $cartItemsModule->injectPricesToCartItems($cart, true);
         }
 
-        /**
-         * @var CartDataModule $cartDataModule
-         */
-        $cartDataModule = $this->moduleManager->getModuleByName(BaseCartDataModule::NAME);
+        $cartDataModule = $this->moduleManager->getModuleByName(DataCartModule::NAME);
         return $cartDataModule->getCartSummary($cart, $rebuildItems && ($itemsCount > 0 || $skipItemsCountCheck));
     }
 
     /**
      * Oblicza cenę dostawy dla paczek, bazując na wybranym sposobie dostawy, wartości zamówienia i progu darmowej wysyłki
      *
-     * @param Cart|null $cart
+     * @param Cart $cart
      * @param bool $addVat
      * @param mixed $calculatedTotalProductsNetto
-     * @param $shippingCostRes
+     * @param array $shippingCostRes
      * @return array
      * @throws \Exception
      * @deprecated
      */
     public function calculateShippingCost(
-        Cart $cart = null,
-        bool $addVat,
-             $calculatedTotalProductsNetto,
-             &$shippingCostRes
-    ) {
+        Cart  $cart,
+        bool  $addVat,
+        Money $calculatedTotalProductsNetto,
+        array &$shippingCostRes
+    ): array {
         /**
          * @var BaseCartDataModule $cartDataModule
          */
@@ -417,24 +363,6 @@ class CartService
             $calculatedTotalProductsNetto,
             $shippingCostRes
         );
-    }
-
-    /**
-     * Wpisanie aktualnych cen dla pozycji w koszyku
-     * Korzysta z modułu cartItems
-     *
-     * @param Cart $cart
-     * @param bool $setActivePrice
-     * @throws \Exception
-     * @deprecated Zastępować pobierając kompletne CartSummary
-     */
-    public function injectPricesToCartItems(Cart $cart, bool $setActivePrice = true): void
-    {
-        /**
-         * @var BaseCartItemsModule $cartItemsModule
-         */
-        $cartItemsModule = $this->loadModule(BaseCartItemsModule::NAME);
-        $cartItemsModule->injectPricesToCartItems($cart, $setActivePrice);
     }
 
     /**
@@ -466,25 +394,6 @@ class CartService
         }
 
         return $componentModule;
-    }
-
-    /**
-     * @param Cart|null $cart
-     * @return CartSummary
-     * @throws \Exception
-     * @deprecated Zastępować pobierając kompletne CartSummary
-     */
-    public function injectPricesToCart(Cart $cart = null): CartSummary
-    {
-        if (!$cart) {
-            $cart = $this->getCart();
-        }
-
-        /**
-         * @var BaseCartDataModule $cartDataModule
-         */
-        $cartDataModule = $this->moduleManager->getModuleByName(EdiCartDataModule::NAME);
-        return $cartDataModule->getCartSummary($cart);
     }
 
     /**
@@ -548,29 +457,6 @@ class CartService
         );
     }
 
-
-    /**
-     * @param CartItem $cartItem
-     * @return Price|null
-     * @throws \Exception
-     */
-    public function getPriceForCartItem(CartItem $cartItem): ?Price
-    {
-        /**
-         * @var BaseCartItemsModule $module
-         */
-        $module = $this->moduleManager->getModuleByName(BaseCartItemsModule::NAME);
-        return $module->getPriceForCartItem($cartItem);
-    }
-
-    /**
-     * @return CartRepository
-     */
-    public function getCartRepository(): CartRepository
-    {
-        return $this->cartManager->getRepository();
-    }
-
     /**
      * @param Cart $cart
      * @throws \Exception
@@ -599,4 +485,6 @@ class CartService
     {
         return $this->cartComponentService->getComponentByClass(DataCartComponent::class)->isViewable($cart);
     }
+
+
 }

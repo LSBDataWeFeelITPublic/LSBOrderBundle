@@ -9,7 +9,7 @@ class CartItemRequestProductDataCollection implements Countable
 {
     const ORDER_CODE_DEFAULT = 'default';
 
-    protected array $collection;
+    protected array $collection = [];
 
     /**
      * @return array

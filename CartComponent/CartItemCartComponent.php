@@ -3,12 +3,15 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\CartComponent;
 
+use JetBrains\PhpStorm\Pure;
 use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartItem;
 use LSB\OrderBundle\Entity\CartItemInterface;
 use LSB\OrderBundle\Manager\CartItemManager;
 use LSB\OrderBundle\Manager\CartManager;
+use LSB\OrderBundle\Model\CartItemModule\CartItemUpdateResult;
+use LSB\OrderBundle\Model\CartItemModule\Notification;
 use LSB\OrderBundle\Model\CartItemRequestProductData;
 use LSB\OrderBundle\Model\CartItemRequestProductDataCollection;
 use LSB\PricelistBundle\Manager\PricelistManager;
@@ -22,7 +25,6 @@ use LSB\ProductBundle\Manager\StorageManager;
 use LSB\ProductBundle\Service\StorageService;
 use LSB\UtilityBundle\Value\Value;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
-use Symfony\Component\HttpFoundation\ParameterBag;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
@@ -99,10 +101,14 @@ class CartItemCartComponent extends BaseCartComponent
             ->setOrderCode($cartItemRequestProductData->getOrderCode())
             ->setQuantity($cartItemRequestProductData->getQuantity())
             ->setProductSet($productSet)
-            ->setProductSetQuantity($cartItemRequestProductData->getProductSetQuantity());
+            ->setProductSetQuantity($cartItemRequestProductData->getProductSetQuantity())
+            ->setCurrency($cart->getCurrency())
+            ->setCurrencyIsoCode($cart->getCurrencyIsoCode());
 
         $this->cartItemManager->persist($cartItem);
         $cart->addCartItem($cartItem);
+
+        //Wstrzyknięcie cen
 
         return $cartItem;
     }
@@ -183,67 +189,53 @@ class CartItemCartComponent extends BaseCartComponent
      *
      * @param Cart $cart
      * @param CartItemRequestProductData $productDataRow
-     * @param array $fetchedProductIds
+     * @param array $fetchedProductUuids
      * @param array $availableProductsForCustomer
      * @param bool $fromOrderTemplate
      * @param bool $merge
-     * @param array $alertMessages
      * @return bool
      * @throws \Exception
      */
     public function canCreateNewCartItem(
         Cart                       $cart,
         CartItemRequestProductData $productDataRow,
-        array                      &$fetchedProductIds,
         array                      &$availableProductsForCustomer,
         bool                       $fromOrderTemplate = false,
-        bool                       $merge = false,
-        array                      &$alertMessages = []
+        bool                       $merge = false
     ): bool {
 //        if (!$merge && !$this->dataCartComponent->getAuthorizationChecker()->isGranted($fromOrderTemplate ? CartVoterInterface::ACTION_EDIT_CART_ITEMS : CartVoterInterface::ACTION_ADD_CART_ITEMS, $cart)) {
 //            throw new \Symfony\Component\Security\Core\Exception\AccessDeniedException();
 //        }
 
-        //TODO
-        return true;
-
-        $quantity = $productDataRow->getQuantity()->getFloatAmount();
+        $quantity = $productDataRow->getQuantity();
         $productUuid = $productDataRow->getProductUuid();
         $productSetUuid = $productDataRow->getProductSetUuid();
         $orderCode = $productDataRow->getOrderCode();
 
 
-        if (!$productUuid || $quantity <= 0) {
+        if (!$productUuid || $quantity->lessThanOrEqual(new Value(0))) {
             return false;
         }
 
-        if (array_search($productUuid, $fetchedProductIds) === false) {
-            //Produkt przestał być dostępny w bazie
-
-            //TODO wypracować mechanizm komunikatów
-
-//            $alertMessages[self::ALERT_MESSAGE_DANGER][] = $this->translator->trans(
-//                'Cart.Module.CartItems.AlertMessage.ProductNotAddedToCart',
-//                [],
-//                'Cart'
-//            );
-
-            return false;
-        }
-
-        //Weryfikacja istnienia produktu
+        //Verification of the existence of the product
         $product = $this->productManager->getByUuid($productUuid);
 
         if (!$product instanceof ProductInterface) {
             return false;
         }
 
-        if (!$this->checkProductAvailabilityFlagsForCartProcessing($product, $orderCode, $availableProductsForCustomer, true, $productSetUuid ? true : false)) {
-            //Produkt nie jest dostępny
-            $alertMessages[self::ALERT_MESSAGE_DANGER][] = $this->translator->trans(
-                'Cart.Module.CartItems.AlertMessage.ProductNotAddedToCart',
-                ['%productName%' => $product->getName()],
-                'Cart'
+        if (!$this->checkProductAvailabilityFlagsForCartProcessing(
+            $product,
+            $orderCode,
+            $availableProductsForCustomer,
+            true
+        )) {
+            $productDataRow->createErrorNotification(
+                $this->translator->trans(
+                    'Cart.Module.CartItems.AlertMessage.ProductNotAddedToCart',
+                    ['%productName%' => $product->getName()],
+                    'Cart'
+                )
             );
 
             return false;
@@ -253,8 +245,10 @@ class CartItemCartComponent extends BaseCartComponent
         $rawlocalQuantity = $this->getRawLocalQuantityForProduct($product);
         $rawRemoteQuantity = $this->getRawRemoteQuantityForProduct($product, $quantity);
 
+        $totalAvailableQuantity = $rawlocalQuantity->add($rawRemoteQuantity);
+
         if ($this->ps->get('cart.quantity.validation.add_to_cart')
-            && $rawlocalQuantity + $rawRemoteQuantity < $quantity
+            && $totalAvailableQuantity->lessThan($productDataRow->getQuantity())
             && (!$this->isBackorderEnabled()
                 || $this->isBackorderEnabled()
                 && ($this->ps->get('cart.backorder.check_product_flag')
@@ -262,10 +256,12 @@ class CartItemCartComponent extends BaseCartComponent
                 )
             )
         ) {
-            $alertMessages[self::ALERT_MESSAGE_DANGER][] = $this->translator->trans(
-                'Cart.Module.CartItems.AlertMessage.ProductNotAddedToCart',
-                ['%productName%' => $product->getName()],
-                'Cart'
+            $productDataRow->createErrorNotification(
+                $this->translator->trans(
+                    'Cart.Module.CartItems.AlertMessage.ProductNotAddedToCart',
+                    ['%productName%' => $product->getName()],
+                    'Cart'
+                )
             );
 
             return false;
@@ -300,24 +296,24 @@ class CartItemCartComponent extends BaseCartComponent
     }
 
     /**
-     * Dla sklepu posiadamy wydzieloną kolumnę z aktualnym stanem magazynu głównego
-     *
-     * @param Product|null $product
-     * @return float|int|null
+     * @param Product $product
+     * @return Value
      */
-    protected function getRawLocalQuantityForProduct(?Product $product): Value
+    protected function getRawLocalQuantityForProduct(Product $product): Value
     {
-        return new Value(10); //TODO
+        return $product->getLocalQuantityAvailableAtHand(true) ?? new Value(0);
     }
 
     /**
      * @param Product|null $product
-     * @param float|null $userQuantity
-     * @return float
+     * @param Value|null $userQuantity
+     * @return Value
      */
-    protected function getRawRemoteQuantityForProduct(?Product $product, ?float $userQuantity = null): Value
-    {
-        return new Value(10); //TODO
+    protected function getRawRemoteQuantityForProduct(
+        ?Product $product,
+        ?Value   $userQuantity = null
+    ): Value {
+        return $product->getExternalQuantityAvailableAtHand(true) ?? new Value(0);
     }
 
     /**
@@ -354,7 +350,8 @@ class CartItemCartComponent extends BaseCartComponent
 
     /**
      * @param CartItem $existingCartItem
-     * @param float|null $quantity
+     * @param CartItemRequestProductData $cartItemRequestProductData
+     * @param Value $quantity
      * @param bool $increaseQuantity
      * @param array $itemsCnt
      * @param bool $update
@@ -365,15 +362,16 @@ class CartItemCartComponent extends BaseCartComponent
      * @return bool
      */
     protected function processQuantityForExistingCartItem(
-        CartItem $existingCartItem,
-        ?float   $quantity,
-        bool     $increaseQuantity,
-        array    &$itemsCnt,
-        bool     $update,
-        ?bool    $isSelected,
-        ?bool    $isSelectedForOption,
-        array    &$removedItemsIds,
-        bool     $merge = false
+        CartItem                   $existingCartItem,
+        CartItemRequestProductData $cartItemRequestProductData,
+        Value                      $quantity,
+        bool                       $increaseQuantity,
+        array                      &$itemsCnt,
+        bool                       $update,
+        ?bool                      $isSelected,
+        ?bool                      $isSelectedForOption,
+        array                      &$removedItemsIds,
+        bool                       $merge = false
     ): bool {
         if ($quantity !== null && $quantity <= 0) {
 
@@ -387,16 +385,21 @@ class CartItemCartComponent extends BaseCartComponent
             $this->cartItemManager->remove($existingCartItem);
 
             $itemsCnt['removed']++;
-            $alertMessages[self::ALERT_MESSAGE_WARNING][] = $this->translator->trans(
-                'Cart.Module.CartItems.AlertMessage.ProductRemovedFromCart',
-                [
-                    '%productName%' => $this->ps->get(
-                        'cart.showProductOrderCodeInMessage'
-                    ) ? $existingCartItem->getOrderCode() : $existingCartItem->getProduct()->getName(),
-                    '%quantity%' => $existingCartItem->getQuantity(),
-                ],
-                'Cart'
-            );
+
+            $cartItemRequestProductData->addNotification(new Notification(
+                Notification::TYPE_WARNING,
+                $this->translator->trans(
+                    'Cart.Module.CartItems.AlertMessage.ProductRemovedFromCart',
+                    [
+                        '%productName%' => $this->ps->get(
+                            'cart.showProductOrderCodeInMessage'
+                        ) ? $existingCartItem->getOrderCode() : $existingCartItem->getProduct()->getName(),
+                        '%quantity%' => $existingCartItem->getQuantity(),
+                    ],
+                    'Cart'
+                )
+            ));
+
         } elseif ($quantity !== null && $quantity > 0 && $increaseQuantity) {
 //            if (!$merge && !$this->dataCartComponent->getAuthorizationChecker()->isGranted(CartVoterInterface::ACTION_EDIT_CART_ITEMS, $existingCartItem->getCart())) {
 //                throw new \Symfony\Component\Security\Core\Exception\AccessDeniedException();
@@ -441,20 +444,17 @@ class CartItemCartComponent extends BaseCartComponent
 
     /**
      * @param array $updateData
-     * @param array $itemsCnt
+     * @param CartItemUpdateResult $cartItemUpdateResult
      * @return CartItemRequestProductDataCollection
      */
     public function prepareCartItemsUpdateDataCollection(
-        array &$updateData,
-        array &$itemsCnt
+        array                &$updateData,
+        CartItemUpdateResult $cartItemUpdateResult
     ): CartItemRequestProductDataCollection {
-        $productData = $productIds = $orderCodes = $skippedItemsArray = [];
-
         $cartItemRequestDataCollection = new CartItemRequestProductDataCollection();
 
         /** @var array $row */
         foreach ($updateData as $row) {
-
             $quantity = null;
             $isSkipped = false;
 
@@ -463,8 +463,7 @@ class CartItemCartComponent extends BaseCartComponent
                 || (array_key_exists('uuid', $row) && !((string)$row['uuid']))
                 || (array_key_exists('uuid', $row) && array_key_exists('ordercode', $row) && !($row['ordercode']) && $this->ps->get('cart.ordercode.enabled'))
             ) {
-                $skippedItemsArray[] = $row;
-                $itemsCnt['skipped']++;
+                $cartItemUpdateResult->getProcessedItems()->getUpdateCounter()->increaseSkipped();
                 $isSkipped = true;
             }
 
@@ -503,54 +502,58 @@ class CartItemCartComponent extends BaseCartComponent
                 $productSetQuantity = $row['productSetUuid'];
             }
 
+            $isSelected = false;
+
+            if (array_key_exists('isSelected', $row)) {
+                $isSelected = $row['isSelected'];
+            }
+
+            $isSelectedForOption = false;
+
+            if (array_key_exists('isSelectedForOption', $row)) {
+                $isSelectedForOption = $row['isSelectedForOption'];
+            }
+
             $item = new CartItemRequestProductData(
                 $productUuid,
                 $productSetUuid,
                 $orderCode,
                 new Value($quantity),
                 new Value($productSetQuantity),
-                $isSkipped
+                $isSelected,
+                $isSelectedForOption,
+                $isSkipped ? CartItemRequestProductData::PROCESSING_TYPE_SKIPPED : null
             );
 
             $cartItemRequestDataCollection->add($item);
         }
 
+        $cartItemUpdateResult->getProcessedItems()->setUpdateData($cartItemRequestDataCollection);
         return $cartItemRequestDataCollection;
     }
 
 
     /**
-     * Wstępna obróbka tablicy i przygotowanie danych wejściowych
-     * Wyciągnięcie listy ID produktów
-     * Wyciągnięcie ordercodes
-     * Weryfikacja poprawności quantity, obsługa flagi remove na pozycji - nadpisanie quantity
+     * Initial processing of the data array
      *
      * @param CartItemRequestProductDataCollection $collection
-     * @param array $itemsCnt
+     * @param CartItemUpdateResult $itemsCnt
      * @return array
      */
-    public function prepareCartItemsUpdateDataArray(
+    #[Pure] public function prepareCartItemsUpdateDataArray(
         CartItemRequestProductDataCollection $collection,
-        array                                &$itemsCnt
+        CartItemUpdateResult                 $itemsCnt
     ): array {
-        $productData = $productIds = $orderCodes = $skippedItemsArray = [];
-
+        $productIds = $orderCodes = [];
 
         /**
          * @var array $orderCodes
          */
         foreach ($collection->getCollection() as $productUuid => $orderCodesArray) {
-
             /**
              * @var CartItemRequestProductData $cartItemUpdateRequestData
              */
             foreach ($orderCodesArray as $cartItemUpdateRequestData) {
-                //Product UUID is always required, checking required fields
-                if ($cartItemUpdateRequestData->isSkipped()) {
-                    $skippedItemsArray[] = $cartItemUpdateRequestData;
-                    $itemsCnt['skipped']++;
-                }
-
                 if ($cartItemUpdateRequestData->getOrderCode()) {
                     $orderCodes[] = $cartItemUpdateRequestData->getOrderCode();
                 }
@@ -561,7 +564,7 @@ class CartItemCartComponent extends BaseCartComponent
             }
         }
 
-        return [$productData, $productIds, $orderCodes, $skippedItemsArray];
+        return [$productIds, $orderCodes];
     }
 
     /**
@@ -578,32 +581,17 @@ class CartItemCartComponent extends BaseCartComponent
     }
 
     /**
-     * @param array $notifications
-     * @param CartItem $cartItem
-     * @param string|null $message
-     */
-    protected function addCartItemMessage(
-        array    &$notifications,
-        CartItem $cartItem,
-        ?string  $message = null
-    ): void {
-
-        //TODO przygotować obiekt VO
-        $data = [];
-
-        $notifications[$cartItem->getUuid()] = $data;
-    }
-
-    /**
      * Ustalenie ilości sztuk i ceny
      *
      * @param CartItem $cartItem
-     * @param array $notifications
+     * @param CartItemRequestProductData $productDataRow
      * @return CartItem
-     * @throws \Doctrine\ORM\NonUniqueResultException
+     * @throws \Exception
      */
-    public function checkQuantityAndPriceForCartItem(CartItem $cartItem, array &$notifications): CartItem
-    {
+    public function checkQuantityAndPriceForCartItem(
+        CartItem                   $cartItem,
+        CartItemRequestProductData $productDataRow
+    ): CartItem {
         $cart = $cartItem->getCart();
         $product = $cartItem->getProduct();
 
@@ -619,7 +607,6 @@ class CartItemCartComponent extends BaseCartComponent
             $activePrice = $this->getPriceForCartItem($cartItem);
         }
 
-
         if (!$this->isZeroPriceAllowed() && (!$activePrice instanceof Price || $activePrice->getNetPrice() === null || $activePrice->getNetPrice() <= 0)) {
             $cart->removeCartItem($cartItem);
             $this->cartItemManager->flush();
@@ -631,11 +618,8 @@ class CartItemCartComponent extends BaseCartComponent
         if ($cartItem->getProduct()->getType() === ProductInterface::TYPE_DEFAULT
             && $this->ps->get('cart.max_quantity_per_item')
             && $cartItem->getQuantity() > $this->ps->get('cart.max_quantity_per_item')) {
-            $this->addCartItemMessage(
-                $notifications,
-                $cartItem,
-                null,
-                null,
+
+            $productDataRow->createDefaultNotification(
                 $this->translator->trans(
                     'Cart.Module.CartItems.AlertMessage.ReachedMaxQuantityPerItem',
                     [
@@ -643,17 +627,14 @@ class CartItemCartComponent extends BaseCartComponent
                         '%availableQuantity%' => $this->ps->get('cart.max_quantity_per_item'),
                     ],
                     'Cart'
-                ),
-                null
-            );
+                ));
+
             $cartItem->setQuantity($this->ps->get('cart.max_quantity_per_item'));
         }
 
         //Pomijamy rezerwację, jeżeli pozycja nie jest wybrana na liście
         if (!$cartItem->isSelected()) {
-            $notifications[$cartItem->getUuid()] = [
-                'message' => $this->translator->trans('Cart.Module.CartItems.AlertMessage.QuantityCheckSkipped', [], 'Cart')
-            ];
+            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.QuantityCheckSkipped', [], 'Cart'));
 
             $cartItem
                 ->setAvailability(null)
@@ -668,9 +649,7 @@ class CartItemCartComponent extends BaseCartComponent
         //Jeżeli nie ma potrzeby, nie dokonujemy weryfikacji stanów magazynowych, koszyk pracuje wówczas w trybie backorder z jedną paczką
 
         if ($this->ps->get('cart.quantity.skip_check')) {
-            $notifications[$cartItem->getUuid()] = [
-                'message' => $this->translator->trans('Cart.Module.CartItems.AlertMessage.QuantityCheckSkipped', [], 'Cart')
-            ];
+            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.QuantityCheckSkipped', [], 'Cart'));
 
             $cartItem
                 ->setAvailability(CartItemInterface::ITEM_AVAILABLE_FOR_BACKORDER)
@@ -682,8 +661,8 @@ class CartItemCartComponent extends BaseCartComponent
             return $cartItem;
         }
 
-        $rawLocalQuantity = $this->getRawLocalQuantityForProduct($product)->getFloatAmount();
-        $rawRemoteQuantity = $this->getRawRemoteQuantityForProduct($product, $cartItem->getQuantity())->getFloatAmount();
+        $rawLocalQuantity = (int)$this->getRawLocalQuantityForProduct($product)->getAmount();
+        $rawRemoteQuantity = (int)$this->getRawRemoteQuantityForProduct($product, $cartItem->getQuantity(true))->getAmount();
 
         //Rezerwujemy stan - uwzględnia rozdział tego samego produktu pomiędzy ordercodes
         $localQuantity = $this->storageService->checkReservedQuantity(
@@ -694,7 +673,6 @@ class CartItemCartComponent extends BaseCartComponent
         );
 
         $requestedRemoteQuantity = ($cartItem->getQuantity() - $localQuantity > 0) ? $cartItem->getQuantity() - $localQuantity : 0;
-
 
         //Dokonujemy rezerwacji stanów zdalnych i pominięciem uwzględniania dni dostaw i ilości mag. zewnętrznych
         $remoteQuantity = $this->storageService->checkReservedQuantity(
@@ -750,76 +728,47 @@ class CartItemCartComponent extends BaseCartComponent
             $remove = true;
         } elseif ($cartItem->getQuantity() <= $localQuantity && $localQuantity > 0) {
             //produkt dostępny w magazynie lokalnym w dostatecznej ilości
-            $this->addCartItemMessage(
-                $notifications,
-                $cartItem,
-                $this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableFromLocalStock', [], 'Cart')
-            );
-
+            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableFromLocalStock', [], 'Cart'));
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_FROM_LOCAL_STOCK;
             $forceUpdateAvailability = true;
         } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) <= $remoteQuantity && (!$cart->getSelectedDeliveryVariant() || $cart->getDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)) {
             //produkt jest dostępny w zewnętrznym w odpowiedniej ilości
-
-            $this->addCartItemMessage(
-                $notifications,
-                $cartItem,
-                $this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableInRemoteStock', [], 'Cart')
-            );
-
+            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableInRemoteStock', [], 'Cart'));
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_FROM_REMOTE_STOCK;
         } elseif ($backorderQuantity) {
             //niezależnie od wybranego sposobu podziału, produkt nie jest dostępny w odpowiedniej ilości, ale można go zamówić
-
-            $this->addCartItemMessage(
-                $notifications,
-                $cartItem,
-                $this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableForBackorder', [], 'Cart')
-            );
-
+            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableForBackorder', [], 'Cart'));
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_FOR_BACKORDER;
         } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) <= $remoteQuantity && $cart->getSelectedDeliveryVariant() && $cart->getSuggestedDeliveryVariant() == CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE) {
             //produkt jest dostępny w zewnętrznym w odpowiedniej ilości, klient wybrał sposób podziału na paczki, tylko z lokalnego magazynu
 
-            $message = $this->translator->trans(
+            $productDataRow->createDefaultNotification($this->translator->trans(
                 'Cart.Module.CartItems.AlertMessage.AvailableInRemoteStockButLocalSelected',
                 [
                     '%originalQuantity%' => $cartItem->getQuantity(),
                     '%availableQuantity%' => $localQuantity,
                 ],
                 'Cart'
-            );
-
-            $this->addCartItemMessage(
-                $notifications,
-                $cartItem,
-                $message
-            );
+            ));
 
             $newQuantity = (float)$localQuantity;
 
             //wylaczamy wymuszanie z lokalnego magazynu
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_FORCED_FROM_LOCAL_STOCK;
         } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) <= $futureQuantity && $futureQuantity > 0) && (!$cart->getSelectedDeliveryVariant() || $cart->getSuggestedDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)) {
-            $this->addCartItemMessage(
-                $notifications,
-                $cartItem,
-                $this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableInNextShipping', [], 'Cart')
-            );
-
+            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableInNextShipping', [], 'Cart'));
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_IN_THE_NEXT_SHIPPING;
             //nie modyfikujemy ilość zamówionych sztuk, zostawiamy to do decyzji zamawiającego
         } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) > $futureQuantity && $futureQuantity > 0) && (!$cart->getSelectedDeliveryVariant() || $cart->getSuggestedDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)) {
-            $message = $this->translator->trans(
+
+            $productDataRow->createDefaultNotification($this->translator->trans(
                 'Cart.Module.CartItems.AlertMessage.AvailableInNextShippingButNotEnough',
                 [
                     '%originalQuantity%' => $cartItem->getQuantity(),
                     '%availableQuantity%' => $newQuantity,
                 ],
                 'Cart'
-            );
-
-            $this->addCartItemMessage($notifications, $cartItem, $message);
+            ));
 
             //produkt będzie dostępny w kolejnych dostawach, ale w mniejszej ilości, ograniczamy automatycznie ilość sztuk
             $newQuantity = $localQuantity + $remoteQuantity + $futureQuantity;
@@ -828,31 +777,28 @@ class CartItemCartComponent extends BaseCartComponent
             //produkt będzie dostępny w kolejnych dostawach, ale w mniejszej ilości, ograniczamy automatycznie ilość sztuk
             $newQuantity = $localQuantity;
 
-            $message = $this->translator->trans(
+            $productDataRow->createDefaultNotification($this->translator->trans(
                 'Cart.Module.CartItems.AlertMessage.AvailableInNextShippingButOnlyLocalSelected',
                 [
                     '%originalQuantity%' => $cartItem->getQuantity(),
                     '%availableQuantity%' => $newQuantity,
                 ],
                 'Cart'
-            );
-
-            $this->addCartItemMessage($notifications, $cartItem, $message);
+            ));
 
             //wylaczamy wymuszanie z lokalnego magazynu
             $newAvailability = CartItem::ITEM_AVAILABLE_FORCED_FROM_LOCAL_STOCK;
             //$newAvailability = CartItem::ITEM_AVAILABLE_FROM_LOCAL_STOCK;
         } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) <= $futureQuantity && $futureQuantity > 0) && $cart->getSelectedDeliveryVariant() && $cart->getSuggestedDeliveryVariant() == CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE) {
-            $message = $this->translator->trans(
+
+            $productDataRow->createDefaultNotification($this->translator->trans(
                 'Cart.Module.CartItems.AlertMessage.AvailableInNextShippingButOnlyLocalSelected',
                 [
                     '%originalQuantity%' => $cartItem->getQuantity(),
                     '%availableQuantity%' => $localQuantity,
                 ],
                 'Cart'
-            );
-
-            $this->addCartItemMessage($notifications, $cartItem, $message);
+            ));
 
             //wylaczamy wymuszanie z lokalnego magazynu
             //$newAvailability = CartItem::ITEM_AVAILABLE_FORCED_FROM_LOCAL_STOCK;
@@ -864,72 +810,60 @@ class CartItemCartComponent extends BaseCartComponent
             //produkt jest dostępny w zewnętrznym, ale zbyt małej ilości, zewnętrzne dostawy nie są przewidziane
             $newQuantity = (float)($localQuantity + $remoteQuantity);
 
-            $message = $this->translator->trans(
-                'Cart.Module.CartItems.AlertMessage.AvailableInRemoteStockButNotEnough',
-                [
-                    '%originalQuantity%' => $cartItem->getQuantity(),
-                    '%availableQuantity%' => $newQuantity,
-                ],
-                'Cart'
-            );
-
-            $this->addCartItemMessage(
-                $notifications,
-                $cartItem,
-                $message
-            );
+            $productDataRow->createDefaultNotification(
+                $this->translator->trans(
+                    'Cart.Module.CartItems.AlertMessage.AvailableInRemoteStockButNotEnough',
+                    [
+                        '%originalQuantity%' => $cartItem->getQuantity(),
+                        '%availableQuantity%' => $newQuantity,
+                    ],
+                    'Cart'
+                ));
 
             $newAvailability = CartItem::ITEM_AVAILABLE_FROM_REMOTE_STOCK;
         } elseif (($cartItem->getQuantity() > $localQuantity) && $remoteQuantity == 0 && $futureQuantity == 0 && (!$cart->getSelectedDeliveryVariant() || $cart->getSuggestedDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)
         ) {
             $newQuantity = (float)($localQuantity);
 
-            $message = $this->translator->trans(
-                'Cart.Module.CartItems.AlertMessage.NotAvailableInRemoteStock',
-                [
-                    '%originalQuantity%' => $cartItem->getQuantity(),
-                    '%availableQuantity%' => $newQuantity,
-                ],
-                'Cart'
-            );
-
-            $this->addCartItemMessage(
-                $notifications,
-                $cartItem,
-                $message
-            );
+            $productDataRow->createDefaultNotification(
+                $this->translator->trans(
+                    'Cart.Module.CartItems.AlertMessage.NotAvailableInRemoteStock',
+                    [
+                        '%originalQuantity%' => $cartItem->getQuantity(),
+                        '%availableQuantity%' => $newQuantity,
+                    ],
+                    'Cart'
+                ));
 
             $newAvailability = CartItem::ITEM_AVAILABLE_FROM_LOCAL_STOCK;
         } elseif (($cartItem->getQuantity() > $localQuantity) && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && $futureQuantity == 0 && $cart->getSelectedDeliveryVariant() && $cart->getSuggestedDeliveryVariant() == CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE
         ) {
             //produkt jest dostępny w zewnętrznym, ale zbyt małej ilości, zewnętrzne dostawy nie są przewidziane
-
-            $message = $this->translator->trans(
+            $productDataRow->createDefaultNotification($this->translator->trans(
                 'Cart.tem.Label.AvailableInRemoteStockButNotEnoughButOnlyLocalSelected',
                 [
                     '%originalQuantity%' => $cartItem->getQuantity(),
                     '%availableQuantity%' => $localQuantity,
                 ],
                 'Cart'
-            );
-
-            $this->addCartItemMessage($notifications, $cartItem, $message);
+            ));
 
             $newQuantity = (float)$localQuantity;
             //wylaczamy wymuszanie z lokalnego magazynu
             //$newAvailability = CartItem::ITEM_AVAILABLE_FORCED_FROM_LOCAL_STOCK;
             $newAvailability = CartItem::ITEM_AVAILABLE_FROM_LOCAL_STOCK;
         } elseif (($cartItem->getQuantity() > $localQuantity) && $remoteQuantity == 0 && $futureQuantity == 0) {
-            $message = $this->translator->trans(
-                'Cart.Module.CartItems.AlertMessage.AvailableOnlyStock',
-                [
-                    '%originalQuantity%' => $cartItem->getQuantity(),
-                    '%availableQuantity%' => $localQuantity,
-                ],
-                'Cart'
-            );
 
-            $this->addCartItemMessage($notifications, $cartItem, $message);
+            $productDataRow->createDefaultNotification(
+                $this->translator->trans(
+                    'Cart.Module.CartItems.AlertMessage.AvailableOnlyStock',
+                    [
+                        '%originalQuantity%' => $cartItem->getQuantity(),
+                        '%availableQuantity%' => $localQuantity,
+                    ],
+                    'Cart'
+                )
+            );
 
             //produkt dostępny tylko w magazynie lokalnym, niedostępny w zewnętrznym i niedostępny w przyszlych dostawach
             //zmniejszamy liczbę sztuk
@@ -947,7 +881,7 @@ class CartItemCartComponent extends BaseCartComponent
 
         //Nowy sposób na określenie domyślnego sposobu podziału
         if ($localQuantity) {
-            $localAvailability = CartItem::ITEM_AVAILABLE_FROM_LOCAL_STOCK;
+            $localAvailability = CartItemInterface::ITEM_AVAILABLE_FROM_LOCAL_STOCK;
         }
 
         if ($remoteQuantity && $remoteStoragesCountBeforeMerge == 1) {
@@ -987,11 +921,11 @@ class CartItemCartComponent extends BaseCartComponent
     }
 
     /**
-     * @param CartItem $cartItem
+     * @param CartItemInterface $cartItem
      * @return Price|null
      * @throws \Exception
      */
-    public function getPriceForCartItem(CartItem $cartItem): ?Price
+    public function getPriceForCartItem(CartItemInterface $cartItem): ?Price
     {
         if (!$cartItem->getCart()) {
             return null;
@@ -1002,7 +936,8 @@ class CartItemCartComponent extends BaseCartComponent
             null,
             null,
             $cartItem->getCart()->getCurrency(),
-            $cartItem->getCart()->getBillingContractor()
+            $cartItem->getCart()->getBillingContractor(),
+            $cartItem->getQuantity(true)
         );
     }
 
@@ -1010,7 +945,7 @@ class CartItemCartComponent extends BaseCartComponent
      * @param Cart $cart
      * @param Product $product
      * @param Product|null $productSet
-     * @param float $quantity
+     * @param Value $quantity
      * @return Price|null
      * @throws \Exception
      */
@@ -1018,14 +953,15 @@ class CartItemCartComponent extends BaseCartComponent
         Cart     $cart,
         Product  $product,
         ?Product $productSet,
-        float    $quantity
+        Value    $quantity
     ): ?Price {
         return $this->pricelistManager->getPriceForProduct(
             $product,
             null,
             null,
             $cart->getCurrency(),
-            $cart->getBillingContractor()
+            $cart->getBillingContractor(),
+            $quantity
         );
     }
 }

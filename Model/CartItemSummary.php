@@ -4,10 +4,10 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\Model;
 
 use DateTime;
-use JMS\Serializer\Annotation\ExclusionPolicy;
-use JMS\Serializer\Annotation\Expose;
-use JMS\Serializer\Annotation\Groups;
 use LSB\PricelistBundle\Model\Price;
+use LSB\UtilityBundle\Helper\ValueHelper;
+use LSB\UtilityBundle\Value\Value;
+use Money\Money;
 
 /**
  * Class CartItemSummary
@@ -15,65 +15,32 @@ use LSB\PricelistBundle\Model\Price;
  */
 class CartItemSummary
 {
-    /**
-     * @var float|null
-     */
-    protected ?float $priceNetto = null;
+    protected ?int $priceNet = null;
 
-    /**
-     * @var float|null
-     */
-    protected ?float $priceGross = null;
+    protected ?int $priceGross = null;
 
-    /**
-     * @var float|null
-     */
-    protected ?float $valueNetto = null;
+    protected ?int $valueNet = null;
 
-    /**
-     * @var float|null
-     */
-    protected ?float $valueGross = null;
+    protected ?int $valueGross = null;
 
-    /**
-     * @var float|null
-     */
-    protected ?float $basePriceNetto = null;
+    protected ?int $basePriceNet = null;
 
-    /**
-     * @var float|null
-     */
-    protected ?float $basePriceGross = null;
+    protected ?int $basePriceGross = null;
 
-    /**
-     * @var float|null
-     */
-    protected ?float $baseValueNetto = null;
+    protected ?int $baseValueNet = null;
 
-    /**
-     * @var float|null
-     */
-    protected ?float $baseValueGross = null;
+    protected ?int $baseValueGross = null;
 
-    /**
-     * @var float|null
-     */
-    protected ?float $taxValue = null;
+    protected ?int $taxValue = null;
 
-    /**
-     * @var int|null
-     */
     protected ?int $taxRate = null;
+
+    protected ?int $quantity = null;
 
     /**
      * @var array
      */
     protected array $res = [];
-
-    /**
-     * @var null|float
-     */
-    protected ?float $quantity = null;
 
     /**
      * @var DateTime|null
@@ -112,181 +79,261 @@ class CartItemSummary
     protected ?Price $activePrice = null;
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getPriceNetto(): ?float
+    public function getPriceNet(bool $useMoney = false): Money|int|null
     {
-        return $this->priceNetto;
+        return $useMoney ? ValueHelper::intToMoney($this->priceNet, $this->currencyIsoCode) : $this->priceNet;
     }
 
     /**
-     * @param float|null $priceNetto
+     * @param Money|int|null $priceNet
      * @return CartItemSummary
      */
-    public function setPriceNetto(?float $priceNetto): CartItemSummary
+    public function setPriceNet(Money|int|null $priceNet): CartItemSummary
     {
-        $this->priceNetto = $priceNetto;
+        if ($priceNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($priceNet);
+            $this->priceNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->priceNet = $priceNet;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getPriceGross(): ?float
+    public function getPriceGross(bool $useMoney = false): Money|int|null
     {
-        return $this->priceGross;
+        return $useMoney ? ValueHelper::intToMoney($this->priceGross, $this->currencyIsoCode) : $this->priceGross;
     }
 
     /**
-     * @param float|null $priceGross
+     * @param Money|int|null $priceGross
      * @return CartItemSummary
      */
-    public function setPriceGross(?float $priceGross): CartItemSummary
+    public function setPriceGross(Money|int|null $priceGross): CartItemSummary
     {
+        if ($priceGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($priceGross);
+            $this->priceGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->priceGross = $priceGross;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getValueNetto(): ?float
+    public function getValueNet(bool $useMoney = false): Money|int|null
     {
-        return $this->valueNetto;
+        return $useMoney ? ValueHelper::intToMoney($this->valueNet, $this->currencyIsoCode) : $this->valueNet;
     }
 
     /**
-     * @param float|null $valueNetto
+     * @param Money|int|null $valueNetto
      * @return CartItemSummary
      */
-    public function setValueNetto(?float $valueNetto): CartItemSummary
+    public function setValueNet(Money|int|null $valueNetto): CartItemSummary
     {
-        $this->valueNetto = $valueNetto;
+        if ($valueNetto instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($valueNetto);
+            $this->valueNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->valueNet = $valueNetto;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getValueGross(): ?float
+    public function getValueGross(bool $useMoney = false): Money|int|null
     {
-        return $this->valueGross;
+        return $useMoney ? ValueHelper::intToMoney($this->valueGross, $this->currencyIsoCode) : $this->valueGross;
     }
 
     /**
-     * @param float|null $valueGross
+     * @param Money|int|null $valueGross
      * @return CartItemSummary
      */
-    public function setValueGross(?float $valueGross): CartItemSummary
+    public function setValueGross(Money|int|null $valueGross): CartItemSummary
     {
+        if ($valueGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($valueGross);
+            $this->valueGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->valueGross = $valueGross;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getBasePriceNetto(): ?float
+    public function getBasePriceNet(bool $useMoney = false): Money|int|null
     {
-        return $this->basePriceNetto;
+        return $useMoney ? ValueHelper::intToMoney($this->basePriceNet, $this->currencyIsoCode) : $this->basePriceNet;
     }
 
     /**
-     * @param float|null $basePriceNetto
+     * @param Money|int|null $basePriceNet
      * @return CartItemSummary
      */
-    public function setBasePriceNetto(?float $basePriceNetto): CartItemSummary
+    public function setBasePriceNet(Money|int|null $basePriceNet): CartItemSummary
     {
-        $this->basePriceNetto = $basePriceNetto;
+        if ($basePriceNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($basePriceNet);
+            $this->basePriceNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->basePriceNet = $basePriceNet;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getBasePriceGross(): ?float
+    public function getBasePriceGross(bool $useMoney = false): Money|int|null
     {
-        return $this->basePriceGross;
+        return $useMoney ? ValueHelper::intToMoney($this->basePriceGross, $this->currencyIsoCode) : $this->basePriceGross;
     }
 
     /**
-     * @param float|null $basePriceGross
+     * @param Money|int|null $basePriceGross
      * @return CartItemSummary
      */
-    public function setBasePriceGross(?float $basePriceGross): CartItemSummary
+    public function setBasePriceGross(Money|int|null $basePriceGross): CartItemSummary
     {
+        if ($basePriceGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($basePriceGross);
+            $this->basePriceGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->basePriceGross = $basePriceGross;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getBaseValueNetto(): ?float
+    public function getBaseValueNet(bool $useMoney = false): Money|int|null
     {
-        return $this->baseValueNetto;
+        return $useMoney ? ValueHelper::intToMoney($this->baseValueNet, $this->currencyIsoCode) : $this->baseValueNet;
     }
 
     /**
-     * @param float|null $baseValueNetto
+     * @param Money|int|null $baseValueNet
      * @return CartItemSummary
      */
-    public function setBaseValueNetto(?float $baseValueNetto): CartItemSummary
+    public function setBaseValueNet(Money|int|null $baseValueNet): CartItemSummary
     {
-        $this->baseValueNetto = $baseValueNetto;
+        if ($baseValueNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($baseValueNet);
+            $this->baseValueNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
+        $this->baseValueNet = $baseValueNet;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getBaseValueGross(): ?float
+    public function getBaseValueGross(bool $useMoney = false): Money|int|null
     {
-        return $this->baseValueGross;
+        return $useMoney ? ValueHelper::intToMoney($this->baseValueGross, $this->currencyIsoCode) : $this->baseValueGross;
     }
 
     /**
-     * @param float|null $baseValueGross
+     * @param Money|int|null $baseValueGross
      * @return CartItemSummary
      */
-    public function setBaseValueGross(?float $baseValueGross): CartItemSummary
+    public function setBaseValueGross(Money|int|null $baseValueGross): CartItemSummary
     {
+        if ($baseValueGross instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($baseValueGross);
+            $this->baseValueGross = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->baseValueGross = $baseValueGross;
         return $this;
     }
 
     /**
-     * @return float|null
+     * @param bool $useMoney
+     * @return Money|int|null
      */
-    public function getTaxValue(): ?float
+    public function getTaxValue(bool $useMoney = false): Money|int|null
     {
-        return $this->taxValue;
+        return $useMoney ? ValueHelper::intToMoney($this->taxValue, $this->currencyIsoCode) : $this->taxValue;
     }
 
     /**
-     * @param float|null $taxValue
+     * @param Money|int|null $taxValue
      * @return CartItemSummary
      */
-    public function setTaxValue(?float $taxValue): CartItemSummary
+    public function setTaxValue(Money|int|null $taxValue): CartItemSummary
     {
+        if ($taxValue instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($taxValue);
+            $this->taxValue = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->taxValue = $taxValue;
         return $this;
     }
 
     /**
-     * @return int|null
+     * @param bool $useValue
+     * @return Value|int|null
      */
-    public function getTaxRate(): ?int
+    public function getTaxRate(bool $useValue = false): Value|int|null
     {
-        return $this->taxRate;
+        return $useValue ? ValueHelper::intToValue($this->taxRate, $this->currencyIsoCode) : $this->taxRate;
     }
 
     /**
-     * @param int|null $taxRate
+     * @param Value|int|null $taxRate
      * @return CartItemSummary
      */
-    public function setTaxRate(?int $taxRate): CartItemSummary
+    public function setTaxRate(Value|int|null $taxRate): CartItemSummary
     {
+        if ($taxRate instanceof Value) {
+            [$amount, $currency] = ValueHelper::valueToIntUnit($taxRate);
+            $this->taxRate = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->taxRate = $taxRate;
         return $this;
     }
@@ -337,18 +384,19 @@ class CartItemSummary
     }
 
     /**
-     * @return float|null
+     * @param bool $useValue
+     * @return Value|int|null
      */
-    public function getQuantity(): ?float
+    public function getQuantity(bool $useValue = false): Value|int|null
     {
         return $this->quantity;
     }
 
     /**
-     * @param float|null $quantity
+     * @param Value|int|null $quantity
      * @return CartItemSummary
      */
-    public function setQuantity(?float $quantity): CartItemSummary
+    public function setQuantity(Value|int|null $quantity): CartItemSummary
     {
         $this->quantity = $quantity;
         return $this;
@@ -435,8 +483,7 @@ class CartItemSummary
     }
 
     /**
-     * @param ${ENTRY_HINT} $productSetProductActivePrice
-     *
+     * @param $productSetProductActivePrice
      * @return CartItemSummary
      */
     public function addProductSetProductActivePrice($productSetProductActivePrice): CartItemSummary
@@ -448,8 +495,7 @@ class CartItemSummary
     }
 
     /**
-     * @param ${ENTRY_HINT} $productSetProductActivePrice
-     *
+     * @param $productSetProductActivePrice
      * @return CartItemSummary
      */
     public function removeProductSetProductActivePrice($productSetProductActivePrice): CartItemSummary

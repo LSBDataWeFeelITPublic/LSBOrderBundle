@@ -12,6 +12,7 @@ use LSB\ProductBundle\Entity\Product;
 use LSB\ProductBundle\Entity\ProductInterface;
 use LSB\UtilityBundle\Traits\CreatedUpdatedTrait;
 use LSB\UtilityBundle\Traits\UuidTrait;
+use LSB\UtilityBundle\Value\Value;
 use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 use JMS\Serializer\Annotation\Groups;
 
@@ -41,13 +42,13 @@ class CartItem implements CartItemInterface
      * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\CartInterface", inversedBy="items")
      * @ORM\JoinColumn()
      */
-    protected ?CartInterface $cart;
+    protected ?CartInterface $cart = null;
 
     /**
      * @var int|null
      * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?int $availability;
+    protected ?int $availability = null;
 
     /**
      * @ORM\Column(type="boolean", nullable=true, options={"default": true})
@@ -100,17 +101,17 @@ class CartItem implements CartItemInterface
     protected array $configuration = [];
 
     /**
-     * @var CartItemSummary
+     * @var CartItemSummary|null
      */
-    protected CartItemSummary $cartItemSummary;
+    protected ?CartItemSummary $cartItemSummary = null;
 
     /**
-     * @var CartItemSummary
+     * @var CartItemSummary|null
      */
-    protected CartItemSummary $optionSummary;
+    protected ?CartItemSummary $optionSummary = null;
 
     /**
-     * @var null
+     * @var int|null
      */
     protected ?int $totalAvailability = null;
 
@@ -122,6 +123,7 @@ class CartItem implements CartItemInterface
     {
         $this->generateUuid();
         $this->cartItemSummary = new CartItemSummary();
+        $this->optionSummary = new CartItemSummary();
     }
 
     /**
@@ -134,13 +136,18 @@ class CartItem implements CartItemInterface
     }
 
     /**
-     * @param $addQuantity
+     * @param Value|int $quantity
      * @return $this
      */
-    public function increaseQuantity($addQuantity)
+    public function increaseQuantity(Value|int $quantity): self
     {
-        if ($this->id && $addQuantity) {
-            $this->quantity += $addQuantity;
+        if ($this->id && $quantity) {
+            if ($quantity instanceof Value) {
+                $this->quantity += (int) $quantity->getAmount();
+            } else {
+                $this->quantity += (int) $quantity;
+            }
+
         }
 
         return $this;
@@ -415,6 +422,10 @@ class CartItem implements CartItemInterface
      */
     public function getCartItemSummary(): CartItemSummary
     {
+        if (!$this->cartItemSummary) {
+            $this->cartItemSummary = new CartItemSummary();
+        }
+
         return $this->cartItemSummary;
     }
 
@@ -433,6 +444,10 @@ class CartItem implements CartItemInterface
      */
     public function getOptionSummary(): CartItemSummary
     {
+        if (!$this->optionSummary) {
+            $this->optionSummary = new CartItemSummary();
+        }
+
         return $this->optionSummary;
     }
 

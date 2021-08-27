@@ -350,9 +350,9 @@ class Cart implements CartInterface
     protected ?DateTime $transactionIdUsedAt;
 
     /**
-     * @var CartSummary
+     * @var CartSummary|null
      */
-    protected CartSummary $cartSummary;
+    protected ?CartSummary $cartSummary = null;
 
     /**
      * Constructor

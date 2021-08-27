@@ -47,7 +47,7 @@ abstract class BaseCartComponent implements CartComponentInterface
      * @return UserInterface|null
      * @throws \Exception
      */
-    protected function getUser(): ?UserInterface
+    public function getUser(): ?UserInterface
     {
         if ($this->tokenStorage
             && $this->tokenStorage->getToken()

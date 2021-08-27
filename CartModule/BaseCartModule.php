@@ -3,8 +3,6 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\CartModule;
 
-use Doctrine\ORM\EntityManagerInterface;
-use JMS\Serializer\SerializerInterface;
 use LSB\ContractorBundle\Entity\ContractorInterface;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Event\CartEvent;
@@ -12,18 +10,11 @@ use LSB\OrderBundle\Model\CartModuleConfiguration;
 use LSB\OrderBundle\Model\CartModuleProcessResult;
 use LSB\OrderBundle\Model\FormSubmitResult;
 use LSB\UserBundle\Entity\UserInterface;
-use LSB\UserBundle\Manager\UserManager;
 use LSB\UtilityBundle\ModuleInventory\BaseModuleInventory;
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
-use Symfony\Component\EventDispatcher\EventDispatcherInterface;
-use Symfony\Component\Form\FormFactory;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
-use Symfony\Component\Security\Core\Authorization\AuthorizationCheckerInterface;
 use Symfony\Component\Serializer\NameConverter\CamelCaseToSnakeCaseNameConverter;
 use Symfony\Component\HttpFoundation\Request;
-use Twig\Environment;
 
 /**
  * Class BaseModule
@@ -38,6 +29,7 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
     protected bool $isConfigured = false;
 
     protected mixed $nameConverter = null;
+
 
     public function __construct() {
         $this->isConfigured = true;
@@ -200,26 +192,26 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
      * @return UserInterface|null
      * @throws \Exception
      */
-    protected function getUser(): ?UserInterface
-    {
-        if ($this->dataCartComponent->getTokenStorage()
-            && $this->tokenStorage->getToken()
-            && $this->tokenStorage->getToken()->getUser() instanceof UserInterface) {
-
-            /**
-             * @var UserInterface $user
-             */
-            $user = $this->tokenStorage->getToken()->getUser();
-
-            if (!$user && !$this->dataCartComponent->getPs()->get('cart.for.notlogged')) {
-                throw new \Exception('User not logged in.');
-            }
-
-            return $user;
-        }
-
-        return null;
-    }
+//    protected function getUser(): ?UserInterface
+//    {
+//        if ($this->dataCartComponent->getTokenStorage()
+//            && $this->tokenStorage->getToken()
+//            && $this->tokenStorage->getToken()->getUser() instanceof UserInterface) {
+//
+//            /**
+//             * @var UserInterface $user
+//             */
+//            $user = $this->tokenStorage->getToken()->getUser();
+//
+//            if (!$user && !$this->dataCartComponent->getPs()->get('cart.for.notlogged')) {
+//                throw new \Exception('User not logged in.');
+//            }
+//
+//            return $user;
+//        }
+//
+//        return null;
+//    }
 
     /**
      * @param bool $refresh

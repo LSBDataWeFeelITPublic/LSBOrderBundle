@@ -22,7 +22,6 @@ trait TotalValueCostTrait
     /**
      * @var int|null
      * @ORM\Column(type="integer", nullable=true)
-     * @Assert\Type(type="numeric")
      */
     protected ?int $totalValueNet = 0;
 
@@ -130,10 +129,10 @@ trait TotalValueCostTrait
     }
 
     /**
-     * @param int|null $totalValueGross
+     * @param Money|int|null $totalValueGross
      * @return TotalValueCostTrait
      */
-    public function setTotalValueGross(?int $totalValueGross): static
+    public function setTotalValueGross(Money|int|null $totalValueGross): static
     {
         if ($totalValueGross instanceof Money) {
             [$amount, $currency] = ValueHelper::moneyToIntCurrency($totalValueGross);
