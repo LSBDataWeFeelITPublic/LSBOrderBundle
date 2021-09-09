@@ -28,6 +28,12 @@ abstract class CartPackageItem extends PackageItem implements CartPackageItemInt
     protected ?CartItemInterface $cartItem = null;
 
     /**
+     * @var integer|null
+     * @ORM\Column(type="integer", nullable=true)
+     */
+    protected ?int $availabilityStatus = null;
+
+    /**
      * @return CartPackageInterface|null
      */
     public function getCartPackage(): ?CartPackageInterface
@@ -60,6 +66,24 @@ abstract class CartPackageItem extends PackageItem implements CartPackageItemInt
     public function setCartItem(?CartItemInterface $cartItem): static
     {
         $this->cartItem = $cartItem;
+        return $this;
+    }
+
+    /**
+     * @return int|null
+     */
+    public function getAvailabilityStatus(): ?int
+    {
+        return $this->availabilityStatus;
+    }
+
+    /**
+     * @param int|null $availabilityStatus
+     * @return $this
+     */
+    public function setAvailabilityStatus(?int $availabilityStatus): static
+    {
+        $this->availabilityStatus = $availabilityStatus;
         return $this;
     }
 }

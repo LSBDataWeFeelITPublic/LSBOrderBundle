@@ -10,6 +10,7 @@ use LSB\OrderBundle\CartComponent\DataCartComponent;
 use LSB\OrderBundle\CartModule\CartItemCartModule;
 use LSB\OrderBundle\CartModule\CartModuleInterface;
 use LSB\OrderBundle\CartModule\DataCartModule;
+use LSB\OrderBundle\CartModule\PackageSplitCartModule;
 use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartItem;
@@ -244,6 +245,11 @@ class CartService
         return $content;
     }
 
+    public function rebuildCart(CartInterface $cart)
+    {
+        //TODO
+    }
+
     /**
      * @param Cart $cart
      * @return CartItemUpdateResult
@@ -397,20 +403,17 @@ class CartService
     }
 
     /**
-     * Aktualizacje paczki koszyka
-     * W oparciu o dane cartItems wylicza zawartość paczek
-     *
      * @param Cart $cart
      * @param bool $splitSupplier
      * @return bool|null
      * @throws \Exception
      */
-    public function updatePackages(Cart $cart, bool $splitSupplier = false): ?bool
+    public function updatePackages(CartInterface $cart, bool $splitSupplier = false): ?bool
     {
         /**
-         * @var BasePackageSplitModule $packageSplitModule
+         * @var PackageSplitCartModule $packageSplitModule
          */
-        $packageSplitModule = $this->moduleManager->getModuleByName(BasePackageSplitModule::NAME);
+        $packageSplitModule = $this->moduleManager->getModuleByName(PackageSplitCartModule::NAME);
         return $packageSplitModule->updatePackages($cart, $splitSupplier);
     }
 

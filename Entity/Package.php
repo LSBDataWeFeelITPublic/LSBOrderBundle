@@ -5,6 +5,7 @@ namespace LSB\OrderBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\MappedSuperclass;
+use LSB\ProductBundle\Entity\Product;
 use LSB\ProductBundle\Entity\SupplierInterface;
 use LSB\UtilityBundle\Traits\CreatedUpdatedTrait;
 use LSB\UtilityBundle\Traits\UuidTrait;
@@ -13,7 +14,6 @@ use LSB\ShippingBundle\Entity\MethodInterface as ShippingMethodInterface;
 /**
  * Class OrderPackage
  * @package LSB\OrderBundle\Entity
- * @MappedSuperclass
  */
 abstract class Package implements PackageInterface
 {
@@ -25,7 +25,7 @@ abstract class Package implements PackageInterface
 
     /**
      * @var string|null
-     * @ORM\Column(type="string", length=50)
+     * @ORM\Column(type="string", length=50, nullable=true)
      */
     protected ?string $number = null;
 
@@ -72,6 +72,12 @@ abstract class Package implements PackageInterface
      * @ORM\JoinColumn()
      */
     protected ?ShippingMethodInterface $shippingMethod = null;
+
+    /**
+     * @var integer|null
+     * @ORM\Column(type="integer", nullable=true)
+     */
+    protected ?int $shippingDays = null;
 
     /**
      * OrderPackage constructor.
@@ -233,6 +239,24 @@ abstract class Package implements PackageInterface
     public function setShippingMethod(?ShippingMethodInterface $shippingMethod): static
     {
         $this->shippingMethod = $shippingMethod;
+        return $this;
+    }
+
+    /**
+     * @return int|null
+     */
+    public function getShippingDays(): ?int
+    {
+        return $this->shippingDays;
+    }
+
+    /**
+     * @param int|null $shippingDays
+     * @return $this
+     */
+    public function setShippingDays(?int $shippingDays): static
+    {
+        $this->shippingDays = $shippingDays;
         return $this;
     }
 }

@@ -62,10 +62,10 @@ class CartItemCartModule extends BaseCartModule
     protected $cartItemTypeUpdated = [];
 
     public function __construct(
-        protected DataCartComponent     $dataCartComponent,
+        DataCartComponent               $dataCartComponent,
         protected CartItemCartComponent $cartItemCartComponent
     ) {
-        parent::__construct();
+        parent::__construct($dataCartComponent);
     }
 
     /**
@@ -111,7 +111,8 @@ class CartItemCartModule extends BaseCartModule
     public function getDataForRender(CartInterface $cart, ?Request $request = null): array
     {
         $parentData = parent::getDataForRender($cart, $request);
-        $this->dataCartComponent->getCartSummary($cart, true);
+        //TODO move to calculator
+        //$this->dataCartComponent->getCartSummary($cart, true);
         $defaultCartItems = $this->getDefaultCartItems($cart);
 
         $data = [
@@ -692,8 +693,8 @@ class CartItemCartModule extends BaseCartModule
 
                     $this->cartItemTypeUpdated[$cartItem->getProduct()->getType()] = true;
 
-                    if ($cart->getSelectedDeliveryVariant() && $cart->getSuggestedDeliveryVariant() === CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE) {
-                        $cart->setSelectedDeliveryVariant(false);
+                    if ($cart->getDeliveryVariant() && $cart->getDeliveryVariant() === CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE) {
+                        $cart->setIsDeliveryVariantSelected(false);
                     }
 
                     $this->cartItemCartComponent->checkQuantityAndPriceForCartItem($cartItem, $productDataRow);

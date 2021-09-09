@@ -46,7 +46,7 @@ abstract class BaseCartCalculator extends BaseModuleInventory implements CartCal
 
     protected SerializerInterface $serializer;
 
-    protected CartInterface $cart;
+    protected ?CartInterface $cart = null;
 
     protected mixed $calculationData;
 
@@ -54,7 +54,6 @@ abstract class BaseCartCalculator extends BaseModuleInventory implements CartCal
         ParameterBagInterface $ps,
         EntityManagerInterface $em,
         TranslatorInterface $translator,
-        CartService $cartManager,
         PriceListManager $priceListManager,
         EventDispatcherInterface $eventDispatcher,
         TokenStorageInterface $tokenStorage,
@@ -65,7 +64,6 @@ abstract class BaseCartCalculator extends BaseModuleInventory implements CartCal
         $this->ps = $ps;
         $this->em = $em;
         $this->translator = $translator;
-        $this->cartService = $cartManager;
         $this->priceListManager = $priceListManager;
         $this->eventDispatcher = $eventDispatcher;
         $this->tokenStorage = $tokenStorage;
@@ -78,9 +76,14 @@ abstract class BaseCartCalculator extends BaseModuleInventory implements CartCal
     /**
      * @return string
      */
-    public function getName()
+    public function getName(): string
     {
         return static::NAME;
+    }
+
+    public function getAdditionalName(): string
+    {
+        return self::ADDITIONAL_NAME_DEFAULT;
     }
 
     /**
@@ -103,16 +106,11 @@ abstract class BaseCartCalculator extends BaseModuleInventory implements CartCal
     }
 
     /**
-     * @return CartInterface
-     * @throws \Exception
+     * @return CartInterface|null
      */
-    public function getCart(): CartInterface
+    public function getCart(): ?CartInterface
     {
-        if ($this->cart) {
-            return $this->cart;
-        }
-
-        return $this->cartService->getCart();
+        return $this->cart;
     }
 
     /**

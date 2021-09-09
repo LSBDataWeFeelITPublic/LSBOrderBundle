@@ -52,7 +52,7 @@ class CartSummary
 
     protected int $calculationType = CalculationTypeInterface::CALCULATION_TYPE_NET;
 
-    protected ?string $currencyIsoCode;
+    protected ?string $currencyIsoCode = null;
 
     protected bool $showPrices = true;
 

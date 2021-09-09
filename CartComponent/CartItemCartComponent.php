@@ -23,6 +23,7 @@ use LSB\ProductBundle\Entity\StorageInterface;
 use LSB\ProductBundle\Manager\ProductManager;
 use LSB\ProductBundle\Manager\StorageManager;
 use LSB\ProductBundle\Service\StorageService;
+use LSB\UtilityBundle\Helper\ValueHelper;
 use LSB\UtilityBundle\Value\Value;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
@@ -213,14 +214,44 @@ class CartItemCartComponent extends BaseCartComponent
         $orderCode = $productDataRow->getOrderCode();
 
 
-        if (!$productUuid || $quantity->lessThanOrEqual(new Value(0))) {
+        if (!$productUuid) {
+            $productDataRow->createErrorNotification(
+                $this->translator->trans(
+                    'Cart.Module.CartItems.AlertMessage.ProductNotFound',
+                    ['%productUuid%' => $productUuid],
+                    'Cart'
+                )
+            );
+
             return false;
         }
+
+        if ($quantity->lessThanOrEqual(ValueHelper::createValueZero())) {
+            $productDataRow->createErrorNotification(
+                $this->translator->trans(
+                    'Cart.Module.CartItems.AlertMessage.WrongQuantity',
+                    ['%quantity%' => $quantity],
+                    'Cart'
+                )
+            );
+
+            return false;
+        }
+
 
         //Verification of the existence of the product
         $product = $this->productManager->getByUuid($productUuid);
 
         if (!$product instanceof ProductInterface) {
+
+            $productDataRow->createErrorNotification(
+                $this->translator->trans(
+                    'Cart.Module.CartItems.AlertMessage.ProductNotFound',
+                    ['%productName%' => $product->getName()],
+                    'Cart'
+                )
+            );
+
             return false;
         }
 
@@ -237,7 +268,6 @@ class CartItemCartComponent extends BaseCartComponent
                     'Cart'
                 )
             );
-
             return false;
         }
 
@@ -250,15 +280,14 @@ class CartItemCartComponent extends BaseCartComponent
         if ($this->ps->get('cart.quantity.validation.add_to_cart')
             && $totalAvailableQuantity->lessThan($productDataRow->getQuantity())
             && (!$this->isBackorderEnabled()
-                || $this->isBackorderEnabled()
-                && ($this->ps->get('cart.backorder.check_product_flag')
+                || ($this->ps->get('cart.backorder.check_product_flag')
                     && !$product->isAvailableForBackorder()
                 )
             )
         ) {
             $productDataRow->createErrorNotification(
                 $this->translator->trans(
-                    'Cart.Module.CartItems.AlertMessage.ProductNotAddedToCart',
+                    'Cart.Module.CartItems.AlertMessage.ProductNotAvailableForBackorder',
                     ['%productName%' => $product->getName()],
                     'Cart'
                 )
@@ -281,6 +310,15 @@ class CartItemCartComponent extends BaseCartComponent
                 || $activePrice->getNetPrice() == 0
             )
             || ($activePrice instanceof Price && $activePrice->getNetPrice() < 0)) {
+
+            $productDataRow->createErrorNotification(
+                $this->translator->trans(
+                    'Cart.Module.CartItems.AlertMessage.ProductWithZeroPriceIsNotAllowed',
+                    ['%productName%' => $product->getName()],
+                    'Cart'
+                )
+            );
+
             return false;
         }
 
@@ -637,11 +675,11 @@ class CartItemCartComponent extends BaseCartComponent
             $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.QuantityCheckSkipped', [], 'Cart'));
 
             $cartItem
-                ->setAvailability(null)
+                ->setAvailabilityStatus(null)
                 ->setTotalAvailability(null)
-                ->setLocalAvailability(null)
-                ->setRemoteAvailability(null)
-                ->setBackorderAvailability(null);
+                ->setLocalAvailabilityStatus(null)
+                ->setRemoteAvailabilityStatus(null)
+                ->setBackorderAvailabilityStatus(null);
 
             return $cartItem;
         }
@@ -652,11 +690,11 @@ class CartItemCartComponent extends BaseCartComponent
             $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.QuantityCheckSkipped', [], 'Cart'));
 
             $cartItem
-                ->setAvailability(CartItemInterface::ITEM_AVAILABLE_FOR_BACKORDER)
+                ->setAvailabilityStatus(CartItemInterface::ITEM_AVAILABLE_FOR_BACKORDER)
                 ->setTotalAvailability($cartItem->getQuantity())
-                ->setLocalAvailability(null)
-                ->setRemoteAvailability(null)
-                ->setBackorderAvailability(CartItemInterface::ITEM_AVAILABLE_FOR_BACKORDER);
+                ->setLocalAvailabilityStatus(null)
+                ->setRemoteAvailabilityStatus(null)
+                ->setBackorderAvailabilityStatus(CartItemInterface::ITEM_AVAILABLE_FOR_BACKORDER);
 
             return $cartItem;
         }
@@ -731,7 +769,7 @@ class CartItemCartComponent extends BaseCartComponent
             $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableFromLocalStock', [], 'Cart'));
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_FROM_LOCAL_STOCK;
             $forceUpdateAvailability = true;
-        } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) <= $remoteQuantity && (!$cart->getSelectedDeliveryVariant() || $cart->getDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)) {
+        } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) <= $remoteQuantity && (!$cart->getDeliveryVariant() || $cart->getDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)) {
             //produkt jest dostępny w zewnętrznym w odpowiedniej ilości
             $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableInRemoteStock', [], 'Cart'));
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_FROM_REMOTE_STOCK;
@@ -739,7 +777,7 @@ class CartItemCartComponent extends BaseCartComponent
             //niezależnie od wybranego sposobu podziału, produkt nie jest dostępny w odpowiedniej ilości, ale można go zamówić
             $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableForBackorder', [], 'Cart'));
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_FOR_BACKORDER;
-        } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) <= $remoteQuantity && $cart->getSelectedDeliveryVariant() && $cart->getSuggestedDeliveryVariant() == CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE) {
+        } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) <= $remoteQuantity && $cart->getDeliveryVariant() && $cart->getDeliveryVariant() == CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE) {
             //produkt jest dostępny w zewnętrznym w odpowiedniej ilości, klient wybrał sposób podziału na paczki, tylko z lokalnego magazynu
 
             $productDataRow->createDefaultNotification($this->translator->trans(
@@ -755,11 +793,11 @@ class CartItemCartComponent extends BaseCartComponent
 
             //wylaczamy wymuszanie z lokalnego magazynu
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_FORCED_FROM_LOCAL_STOCK;
-        } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) <= $futureQuantity && $futureQuantity > 0) && (!$cart->getSelectedDeliveryVariant() || $cart->getSuggestedDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)) {
+        } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) <= $futureQuantity && $futureQuantity > 0) && (!$cart->getDeliveryVariant() || $cart->getDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)) {
             $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableInNextShipping', [], 'Cart'));
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_IN_THE_NEXT_SHIPPING;
             //nie modyfikujemy ilość zamówionych sztuk, zostawiamy to do decyzji zamawiającego
-        } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) > $futureQuantity && $futureQuantity > 0) && (!$cart->getSelectedDeliveryVariant() || $cart->getSuggestedDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)) {
+        } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) > $futureQuantity && $futureQuantity > 0) && (!$cart->getDeliveryVariant() || $cart->getDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)) {
 
             $productDataRow->createDefaultNotification($this->translator->trans(
                 'Cart.Module.CartItems.AlertMessage.AvailableInNextShippingButNotEnough',
@@ -773,7 +811,7 @@ class CartItemCartComponent extends BaseCartComponent
             //produkt będzie dostępny w kolejnych dostawach, ale w mniejszej ilości, ograniczamy automatycznie ilość sztuk
             $newQuantity = $localQuantity + $remoteQuantity + $futureQuantity;
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_IN_THE_NEXT_SHIPPING;
-        } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) > $futureQuantity && $futureQuantity > 0) && $cart->getSelectedDeliveryVariant() && $cart->getSuggestedDeliveryVariant() == CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE) {
+        } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) > $futureQuantity && $futureQuantity > 0) && $cart->getDeliveryVariant() && $cart->getDeliveryVariant() == CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE) {
             //produkt będzie dostępny w kolejnych dostawach, ale w mniejszej ilości, ograniczamy automatycznie ilość sztuk
             $newQuantity = $localQuantity;
 
@@ -789,7 +827,7 @@ class CartItemCartComponent extends BaseCartComponent
             //wylaczamy wymuszanie z lokalnego magazynu
             $newAvailability = CartItem::ITEM_AVAILABLE_FORCED_FROM_LOCAL_STOCK;
             //$newAvailability = CartItem::ITEM_AVAILABLE_FROM_LOCAL_STOCK;
-        } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) <= $futureQuantity && $futureQuantity > 0) && $cart->getSelectedDeliveryVariant() && $cart->getSuggestedDeliveryVariant() == CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE) {
+        } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) <= $futureQuantity && $futureQuantity > 0) && $cart->getDeliveryVariant() && $cart->getDeliveryVariant() == CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE) {
 
             $productDataRow->createDefaultNotification($this->translator->trans(
                 'Cart.Module.CartItems.AlertMessage.AvailableInNextShippingButOnlyLocalSelected',
@@ -805,7 +843,7 @@ class CartItemCartComponent extends BaseCartComponent
             $newAvailability = CartItem::ITEM_AVAILABLE_FROM_LOCAL_STOCK;
             //modyfikujemy ilość zamówionych sztuk, ponieważ użytkownik podjął już decyzję
             $newQuantity = (float)$localQuantity;
-        } elseif (($cartItem->getQuantity() > $localQuantity) && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && $remoteQuantity > 0 && $futureQuantity == 0 && (!$cart->getSelectedDeliveryVariant() || $cart->getSuggestedDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)
+        } elseif (($cartItem->getQuantity() > $localQuantity) && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && $remoteQuantity > 0 && $futureQuantity == 0 && (!$cart->getDeliveryVariant() || $cart->getDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)
         ) {
             //produkt jest dostępny w zewnętrznym, ale zbyt małej ilości, zewnętrzne dostawy nie są przewidziane
             $newQuantity = (float)($localQuantity + $remoteQuantity);
@@ -821,7 +859,7 @@ class CartItemCartComponent extends BaseCartComponent
                 ));
 
             $newAvailability = CartItem::ITEM_AVAILABLE_FROM_REMOTE_STOCK;
-        } elseif (($cartItem->getQuantity() > $localQuantity) && $remoteQuantity == 0 && $futureQuantity == 0 && (!$cart->getSelectedDeliveryVariant() || $cart->getSuggestedDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)
+        } elseif (($cartItem->getQuantity() > $localQuantity) && $remoteQuantity == 0 && $futureQuantity == 0 && (!$cart->getDeliveryVariant() || $cart->getDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)
         ) {
             $newQuantity = (float)($localQuantity);
 
@@ -836,7 +874,7 @@ class CartItemCartComponent extends BaseCartComponent
                 ));
 
             $newAvailability = CartItem::ITEM_AVAILABLE_FROM_LOCAL_STOCK;
-        } elseif (($cartItem->getQuantity() > $localQuantity) && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && $futureQuantity == 0 && $cart->getSelectedDeliveryVariant() && $cart->getSuggestedDeliveryVariant() == CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE
+        } elseif (($cartItem->getQuantity() > $localQuantity) && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && $futureQuantity == 0 && $cart->getDeliveryVariant() && $cart->getDeliveryVariant() == CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE
         ) {
             //produkt jest dostępny w zewnętrznym, ale zbyt małej ilości, zewnętrzne dostawy nie są przewidziane
             $productDataRow->createDefaultNotification($this->translator->trans(
@@ -897,9 +935,9 @@ class CartItemCartComponent extends BaseCartComponent
         }
 
         $cartItem
-            ->setLocalAvailability($localAvailability)
-            ->setRemoteAvailability($remoteAvailability)
-            ->setBackorderAvailability($backorderAvailability);
+            ->setLocalAvailabilityStatus($localAvailability)
+            ->setRemoteAvailabilityStatus($remoteAvailability)
+            ->setBackorderAvailabilityStatus($backorderAvailability);
 
 
         //TODO refaktor!

@@ -22,23 +22,27 @@ class CartStepGeneratorService
     }
 
     /**
-     * Pobieranie modułu wg wskazanej nazwy
-     *
-     * @param int $stepNumber
+     * @param string|int $stepNumber
      * @return CartStepGeneratorInterface|null
      * @throws \Exception
      */
-    public function getStepGeneratorByStep(int $stepNumber): ?CartStepGeneratorInterface
+    public function getStepGeneratorByStep(string|int $stepNumber): ?CartStepGeneratorInterface
     {
-        return $this->cartStepGeneratorInventory->getModuleByName((string)$stepNumber);
+        $module = $this->cartStepGeneratorInventory->getModuleByName($stepNumber);
+
+        if ($module instanceof CartStepGeneratorInterface) {
+            return $module;
+        }
+
+        return null;
     }
 
     /**
-     * @param int $stepNumber
+     * @param string|int $stepNumber
      * @return mixed
      * @throws \Exception
      */
-    public function validateStep(int $stepNumber)
+    public function validateStep(string|int $stepNumber): mixed
     {
         $stepGenerator = $this->getStepGeneratorByStep($stepNumber);
 
@@ -78,7 +82,7 @@ class CartStepGeneratorService
     }
 
     /**
-     * @param int $step
+     * @param string|int $step
      * @param CartInterface|null $cart
      * @param UserInterface|null $user
      * @param ContractorInterface|null $customer
@@ -86,14 +90,12 @@ class CartStepGeneratorService
      * @throws \Exception
      */
     public function getStepModulesList(
-        int                  $step,
+        string|int                  $step,
         ?CartInterface       $cart = null,
         ?UserInterface       $user = null,
         ?ContractorInterface $customer = null
     ): ?StepModulesListResponse {
         $cartStepGenerator = $this->getStepGeneratorByStep($step);
-
-        //Jeżeli w koszyku brak jest pozycji blokujemy dalsze
 
         if (!$cartStepGenerator) {
             return null;
@@ -110,7 +112,7 @@ class CartStepGeneratorService
     }
 
     /**
-     * @param int $step
+     * @param string|int $step
      * @param CartInterface|null $cart
      * @param UserInterface|null $user
      * @param ContractorInterface|null $customer
@@ -119,13 +121,13 @@ class CartStepGeneratorService
      * @throws \Exception
      */
     public function generateStepModules(
-        int                  $step,
+        string|int                  $step,
         ?CartInterface       $cart = null,
         ?UserInterface       $user = null,
         ?ContractorInterface $customer = null,
         ?Request             $request = null
     ): ?StepModulesResponse {
-        $cartStepGenerator = $this->getStepGeneratorByStep($step);
+        $cartStepGenerator = $this->getStepGeneratorByStep((string) $step);
 
         $generatedModules = [];
 
@@ -133,6 +135,7 @@ class CartStepGeneratorService
             return null;
         }
 
+        //TODO zamienić na obiekt
         [$canAccess, $goToStep] = $cartStepGenerator->isAccessible($cart);
 
         if ($canAccess && !$cartStepGenerator->getRedirect(false)) {
@@ -146,7 +149,7 @@ class CartStepGeneratorService
             $cartStepGenerator->getCode(),
             !$canAccess && $goToStep ? $goToStep : null,
             $cartStepGenerator->getRedirect(false),
-            $this->getNavigation($step),
+            $this->getNavigation((int) $step),
             $cartStepGenerator->isViewable(),
             $generatedModules
         );
@@ -207,7 +210,6 @@ class CartStepGeneratorService
         $steps = $this->cartStepGeneratorInventory->getModules();
 
         end($steps);
-
         $currentKey = key($steps);
 
         while ($currentKey !== null && $currentKey != $currentStep) {
@@ -216,7 +218,6 @@ class CartStepGeneratorService
         }
 
         $prevStep = prev($steps);
-
         reset($steps);
 
         if ($prevStep instanceof CartStepGeneratorInterface) {

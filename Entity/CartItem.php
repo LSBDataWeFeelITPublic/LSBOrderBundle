@@ -3,7 +3,7 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Entity;
 
-use DateTime;
+use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\MappedSuperclass;
@@ -19,8 +19,7 @@ use JMS\Serializer\Annotation\Groups;
 /**
  * @UniqueEntity(
  *     fields={"product", "orderCode"},
- *     errorPath="product",
- *     message="Cart.Edi.CartItem.CartItemNotUnique"
+ *     errorPath="product"
  * )
  * @MappedSuperclass
  */
@@ -64,13 +63,13 @@ class CartItem implements CartItemInterface
      * @var int|null
      * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?int $localAvailability = null;
+    protected ?int $localAvailabilityStatus = null;
 
     /**
      * @var int|null
      * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?int $remoteAvailability = null;
+    protected ?int $remoteAvailabilityStatus = null;
 
     /**
      * @Groups({"Default"})
@@ -78,7 +77,7 @@ class CartItem implements CartItemInterface
      * @var int|null
      * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?int $backorderAvailability = null;
+    protected ?int $backorderAvailabilityStatus = null;
 
     /**
      * @var ProductInterface|null
@@ -122,6 +121,7 @@ class CartItem implements CartItemInterface
     public function __construct()
     {
         $this->generateUuid();
+        $this->cartPackageItems = new ArrayCollection();
         $this->cartItemSummary = new CartItemSummary();
         $this->optionSummary = new CartItemSummary();
     }
@@ -285,54 +285,54 @@ class CartItem implements CartItemInterface
     /**
      * @return int|null
      */
-    public function getLocalAvailability(): ?int
+    public function getLocalAvailabilityStatus(): ?int
     {
-        return $this->localAvailability;
+        return $this->localAvailabilityStatus;
     }
 
     /**
-     * @param int|null $localAvailability
+     * @param int|null $localAvailabilityStatus
      * @return CartItem
      */
-    public function setLocalAvailability(?int $localAvailability): CartItem
+    public function setLocalAvailabilityStatus(?int $localAvailabilityStatus): CartItem
     {
-        $this->localAvailability = $localAvailability;
+        $this->localAvailabilityStatus = $localAvailabilityStatus;
         return $this;
     }
 
     /**
      * @return int|null
      */
-    public function getRemoteAvailability(): ?int
+    public function getRemoteAvailabilityStatus(): ?int
     {
-        return $this->remoteAvailability;
+        return $this->remoteAvailabilityStatus;
     }
 
     /**
-     * @param int|null $remoteAvailability
+     * @param int|null $remoteAvailabilityStatus
      * @return CartItem
      */
-    public function setRemoteAvailability(?int $remoteAvailability): CartItem
+    public function setRemoteAvailabilityStatus(?int $remoteAvailabilityStatus): CartItem
     {
-        $this->remoteAvailability = $remoteAvailability;
+        $this->remoteAvailabilityStatus = $remoteAvailabilityStatus;
         return $this;
     }
 
     /**
      * @return int|null
      */
-    public function getBackorderAvailability(): ?int
+    public function getBackorderAvailabilityStatus(): ?int
     {
-        return $this->backorderAvailability;
+        return $this->backorderAvailabilityStatus;
     }
 
     /**
-     * @param int|null $backorderAvailability
+     * @param int|null $backorderAvailabilityStatus
      * @return CartItem
      */
-    public function setBackorderAvailability(?int $backorderAvailability): CartItem
+    public function setBackorderAvailabilityStatus(?int $backorderAvailabilityStatus): CartItem
     {
-        $this->backorderAvailability = $backorderAvailability;
+        $this->backorderAvailabilityStatus = $backorderAvailabilityStatus;
         return $this;
     }
 

@@ -155,7 +155,7 @@ class Cart implements CartInterface
      * @var Collection
      *
      * @ORM\OneToMany(targetEntity="LSB\OrderBundle\Entity\CartPackageInterface", mappedBy="cart", orphanRemoval=true, cascade={"persist", "remove"})
-     * @ORM\OrderBy({"packageType" = "ASC", "maxShippingDays" = "ASC"})
+     * @ORM\OrderBy({"type" = "ASC", "maxShippingDays" = "ASC"})
      */
     protected Collection $cartPackages;
 
@@ -176,19 +176,15 @@ class Cart implements CartInterface
 
     /**
      * @var int|null
-     *
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
      * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?int $suggestedDeliveryVariant = null;
+    protected ?int $deliveryVariant = null;
 
     /**
-     * @var int|null
-     *
-     * @Groups({"Default", "EDI_User", "SHOP_Public"})
+     * @var bool|null
      * @ORM\Column(type="integer", nullable=true)
      */
-    protected ?int $selectedDeliveryVariant = null;
+    protected ?bool $isDeliveryVariantSelected = null;
 
     /**
      * @var Collection
@@ -369,6 +365,23 @@ class Cart implements CartInterface
     }
 
     /**
+     * @param int $maxShippingDays
+     * @return CartPackageInterface|null
+     */
+    public function checkForRemotePackageWithMaxShippingDays(int $maxShippingDays): ?CartPackageInterface
+    {
+        if ($this->getCartPackages()->count()) {
+            foreach ($this->getCartPackages() as $package) {
+                if ($package->getMaxShippingDays() === $maxShippingDays) {
+                    return $package;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * TODO refactor
      *
      * @param int $type
@@ -502,7 +515,7 @@ class Cart implements CartInterface
             $this->authType = null;
             $this->cartPackages->clear();
             $this->cartItems->clear();
-            $this->suggestedDeliveryVariant = self::DELIVERY_VARIANT_ONLY_AVAILABLE;
+            $this->deliveryVariant = self::DELIVERY_VARIANT_ONLY_AVAILABLE;
             $this->isOrderVerificationRequested = false;
             $this->paymentMethod = null;
             $this->validatedStep = null;
@@ -678,36 +691,18 @@ class Cart implements CartInterface
     /**
      * @return int|null
      */
-    public function getSuggestedDeliveryVariant(): ?int
+    public function getDeliveryVariant(): ?int
     {
-        return $this->suggestedDeliveryVariant;
+        return $this->deliveryVariant;
     }
 
     /**
-     * @param int|null $suggestedDeliveryVariant
+     * @param int|null $deliveryVariant
      * @return $this
      */
-    public function setSuggestedDeliveryVariant(?int $suggestedDeliveryVariant): static
+    public function setDeliveryVariant(?int $deliveryVariant): static
     {
-        $this->suggestedDeliveryVariant = $suggestedDeliveryVariant;
-        return $this;
-    }
-
-    /**
-     * @return int|null
-     */
-    public function getSelectedDeliveryVariant(): ?int
-    {
-        return $this->selectedDeliveryVariant;
-    }
-
-    /**
-     * @param int|null $selectedDeliveryVariant
-     * @return $this
-     */
-    public function setSelectedDeliveryVariant(?int $selectedDeliveryVariant): static
-    {
-        $this->selectedDeliveryVariant = $selectedDeliveryVariant;
+        $this->deliveryVariant = $deliveryVariant;
         return $this;
     }
 
@@ -1133,5 +1128,21 @@ class Cart implements CartInterface
         return $this;
     }
 
+    /**
+     * @return bool|null
+     */
+    public function getIsDeliveryVariantSelected(): ?bool
+    {
+        return $this->isDeliveryVariantSelected;
+    }
 
+    /**
+     * @param bool|null $isDeliveryVariantSelected
+     * @return Cart
+     */
+    public function setIsDeliveryVariantSelected(?bool $isDeliveryVariantSelected): Cart
+    {
+        $this->isDeliveryVariantSelected = $isDeliveryVariantSelected;
+        return $this;
+    }
 }

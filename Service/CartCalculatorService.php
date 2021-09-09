@@ -11,6 +11,7 @@ use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Interfaces\CartCalculatorInterface;
 use LSB\OrderBundle\Model\CartCalculatorResult;
 use LSB\PricelistBundle\Manager\PricelistManager;
+use LSB\UtilityBundle\Module\ModuleInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
@@ -18,21 +19,16 @@ use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Contracts\Translation\TranslatorInterface;
 
-/**
- * Class CartCalculatorService
- * @package LSB\CartBundle\Service
- */
 class CartCalculatorService
 {
     const MODULE_TAG_NAME = 'cart.calculator';
 
-    const DEFAULT_CALCULATOR_NAME = 'Default';
+    const DEFAULT_CALCULATOR_NAME = ModuleInterface::ADDITIONAL_NAME_DEFAULT;
 
     public function __construct(
         protected ParameterBagInterface    $ps,
         protected EntityManagerInterface   $em,
         protected TranslatorInterface      $translator,
-        protected CartService              $cartManager,
         protected EventDispatcherInterface $eventDispatcher,
         protected TokenStorageInterface    $tokenStorage,
         protected TaxManager               $taxManager,
@@ -43,25 +39,24 @@ class CartCalculatorService
     ) {
     }
 
-
     /**
-     * @param string $module
-     * @param null|string $name
+     * @param string $moduleName
+     * @param string $name
+     * @param bool $loadDefault
      * @return CartModuleInterface|null
      *
      * Pobieranie modułu wg wskazanej nazwy
      * @throws \Exception
      */
-    public function getCalculator(string $module, ?string $name): ?CartCalculatorInterface
+    public function getCalculator(string $moduleName, string $name = ModuleInterface::ADDITIONAL_NAME_DEFAULT, bool $loadDefault = true): ?CartCalculatorInterface
     {
-        $module = $this->calculatorInventory->getModuleByName($module, $name);
+        $module = $this->calculatorInventory->getModuleByName($moduleName, $name, false);
 
         if ($module instanceof CartCalculatorInterface) {
             $module->setCoreServices(
                 $this->ps,
                 $this->em,
                 $this->translator,
-                $this->cartManager,
                 $this->pricelistManager,
                 $this->eventDispatcher,
                 $this->tokenStorage,
@@ -74,11 +69,16 @@ class CartCalculatorService
 
         }
 
-        return $this->getDefaultCalculator($module);
+        if ($loadDefault) {
+            return $this->getDefaultCalculator($moduleName);
+        }
+
+        throw new \Exception('Calculator module '.$moduleName.' was not found');
     }
 
     /**
      * The method takes the default calculator for the module
+     * For an example, if courier shipping module calculator is not available, default shipping module calculator will be returned
      *
      * @param $module
      * @return CartCalculatorInterface
@@ -87,8 +87,7 @@ class CartCalculatorService
     protected function getDefaultCalculator($module): CartCalculatorInterface
     {
         $name = self::DEFAULT_CALCULATOR_NAME;
-
-        $calculator = $this->getCalculator($module, $name);
+        $calculator = $this->getCalculator($module, $name, false);
 
         if (!$calculator instanceof CartCalculatorInterface) {
             throw new \Exception("Default calculator for module {$module} was not found. Please check your configuration and create default calculator for module: {$module}");
@@ -110,7 +109,6 @@ class CartCalculatorService
     {
         $calculator = $this->getCalculator($module, $name);
 
-        //W przypadku braku dedykowanego kalkulatora, używany domyślnego lub wskazujemy inny kolejny
         if (!$calculator) {
             $calculator = $this->getDefaultCalculator($module);
         }

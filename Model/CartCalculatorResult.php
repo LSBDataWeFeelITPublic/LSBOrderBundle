@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Model;
 
+use LSB\UtilityBundle\Value\Value;
+use Money\Money;
+
 /**
  * Class CartCalculatorResult
  * @package LSB\OrderBundle\Model
@@ -10,106 +13,88 @@ namespace LSB\OrderBundle\Model;
 class CartCalculatorResult
 {
     /**
-     * @var null|float
-     */
-    protected ?float $priceNet;
-
-    /**
-     * @var null|float
-     */
-    protected ?float $priceGross;
-
-    /**
-     * @var int|null
-     */
-    protected ?int $taxPercentage;
-
-    /**
-     * @var null|float
-     */
-    protected ?float $calculationQuantity;
-
-    /**
      * CartCalculatorResult constructor.
-     * @param float|null $priceNet
-     * @param float|null $priceGross
-     * @param int|null $taxPercentage
-     * @param float|null $calculationQuantity
+     * @param Money|null $priceNet
+     * @param Money|null $priceGross
+     * @param Value|null $taxPercentage
+     * @param Value|null $calculationQuantity
      */
     public function __construct(
-        ?float $priceNet,
-        ?float $priceGross,
-        ?int $taxPercentage,
-        ?float $calculationQuantity
-    ) {
-        $this->priceNet = $priceNet;
-        $this->priceGross = $priceGross;
-        $this->taxPercentage = $taxPercentage;
-        $this->calculationQuantity = $calculationQuantity;
-    }
+        protected ?Money $priceNet,
+        protected ?Money $priceGross,
+        protected ?Value $taxPercentage,
+        protected ?Value $calculationQuantity
+    ) {}
 
     /**
-     * @param bool $round
-     * @param int $precision
-     * @return float|null
+     * @return Money|null
      */
-    public function getPriceNetto(bool $round = false, int $precision = 2): ?float
+    public function getPriceNet(): ?Money
     {
-        if ($this->priceNet) {
-            return round($this->priceNet, $precision);
-        }
-
         return $this->priceNet;
     }
 
     /**
-     * @param bool $round
-     * @param int $precision
-     * @return float|null
+     * @param Money|null $priceNet
+     * @return $this
      */
-    public function getPriceGross(bool $round = false, int $precision = 2): ?float
+    public function setPriceNet(?Money $priceNet): static
     {
-        if ($this->priceGross) {
-            return round($this->priceGross, $precision);
-        }
+        $this->priceNet = $priceNet;
+        return $this;
+    }
 
+    /**
+     * @return Money|null
+     */
+    public function getPriceGross(): ?Money
+    {
         return $this->priceGross;
     }
 
     /**
-     * @return int|null
+     * @param Money|null $priceGross
+     * @return $this
      */
-    public function getTaxPercentage(): ?int
+    public function setPriceGross(?Money $priceGross): static
+    {
+        $this->priceGross = $priceGross;
+        return $this;
+    }
+
+    /**
+     * @return Value|null
+     */
+    public function getTaxPercentage(): ?Value
     {
         return $this->taxPercentage;
     }
 
     /**
-     * @return float|null
+     * @param Value|null $taxPercentage
+     * @return $this
      */
-    public function getCalculationQuantity(): ?float
+    public function setTaxPercentage(?Value $taxPercentage): static
+    {
+        $this->taxPercentage = $taxPercentage;
+        return $this;
+    }
+
+    /**
+     * @return Value|null
+     */
+    public function getCalculationQuantity(): ?Value
     {
         return $this->calculationQuantity;
     }
 
     /**
-     * @param float|null $priceNet
-     * @return CartCalculatorResult
+     * @param Value|null $calculationQuantity
+     * @return $this
      */
-    public function setPriceNet(?float $priceNet): CartCalculatorResult
+    public function setCalculationQuantity(?Value $calculationQuantity): static
     {
-        $this->priceNet = $priceNet;
+        $this->calculationQuantity = $calculationQuantity;
         return $this;
     }
-
-    /**
-     * @param float|null $priceGross
-     * @return CartCalculatorResult
-     */
-    public function setPriceGross(?float $priceGross): CartCalculatorResult
-    {
-        $this->priceGross = $priceGross;
-        return $this;
-    }
-
 }

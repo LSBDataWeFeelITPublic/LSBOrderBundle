@@ -23,7 +23,7 @@ class OrderPackageTotalCalculator extends BaseTotalCalculator
     protected const SUPPORTED_POSITION_CLASS = OrderPackageItem::class;
 
     /**
-     * @param OrderPackage $subject
+     * @param $subject
      * @param array $options
      * @param string|null $applicationCode
      * @param bool $updateSubject
@@ -34,8 +34,8 @@ class OrderPackageTotalCalculator extends BaseTotalCalculator
      */
     public function calculateTotal(
         $subject,
-        array $options,
-        ?string $applicationCode,
+        array $options = [],
+        ?string $applicationCode = null,
         bool $updateSubject = true,
         bool $updatePositions = true,
         array &$calculationRes = []

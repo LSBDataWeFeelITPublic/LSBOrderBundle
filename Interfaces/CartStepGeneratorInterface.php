@@ -12,12 +12,6 @@ use Symfony\Component\HttpFoundation\Request;
 
 interface CartStepGeneratorInterface extends ModuleInterface
 {
-    const STEP = 0;
-
-    const CODE = 'default';
-
-    const SESSION_CREATED_ORDER_ID_KEY = 'generator/createdOrderId';
-
     /**
      * Zwraca identyfikator kroku (int)
      *

@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace LSB\OrderBundle\Generator;
+namespace LSB\OrderBundle\CartGenerator;
 
 use Doctrine\ORM\EntityManagerInterface;
 use JetBrains\PhpStorm\ArrayShape;
@@ -9,27 +9,27 @@ use LSB\ContractorBundle\Entity\ContractorInterface;
 use LSB\OrderBundle\CartModule\CartModuleInterface;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\Order;
-use LSB\OrderBundle\Event\OrderEvent;
-use LSB\OrderBundle\Event\OrderEvents;
 use LSB\OrderBundle\Interfaces\CartStepGeneratorInterface;
 use LSB\OrderBundle\Service\CartConverterService;
 use LSB\OrderBundle\Service\CartModuleService;
 use LSB\OrderBundle\Service\CartService;
-use LSB\OrderBundle\Service\CartStepGeneratorInventory;
 use LSB\UserBundle\Entity\UserInterface;
 use LSB\UtilityBundle\ModuleInventory\BaseModuleInventory;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\Session\SessionInterface;
 use Symfony\Component\HttpFoundation\Request;
 
 /**
- * Class BaseCartStepGenerator
- * @package LSB\CartBundle\Generator
+ *
  */
 abstract class BaseCartStepGenerator extends BaseModuleInventory implements CartStepGeneratorInterface
 {
+    const STEP = 0;
+
+    const CODE = 'default';
+
+    const SESSION_CREATED_ORDER_ID_KEY = 'generator/createdOrderId';
 
     /**
      * @var bool
@@ -47,19 +47,19 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
     protected bool $isConfigured = false;
 
     /**
-     * @var int
+     * @var int|null
      */
-    protected int $nextStep;
+    protected ?int $nextStep = null;
 
     /**
-     * @var int
+     * @var int|null
      */
-    protected int $previousStep;
+    protected ?int $previousStep = null;
 
     /**
      * @var bool
      */
-    protected bool $isLastStep;
+    protected bool $isLastStep = false;
 
     /**
      * @var bool
@@ -75,22 +75,48 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
      * @param EventDispatcherInterface $eventDispatcher
      */
     public function __construct(
-        protected CartModuleService $moduleService,
-        protected CartService $cartManager,
-        protected EntityManagerInterface $em,
-        protected CartConverterService $cartConverter,
-        protected RequestStack $requestStack,
+        protected CartModuleService        $moduleService,
+        protected CartService              $cartManager,
+        protected EntityManagerInterface   $em,
+        protected CartConverterService     $cartConverter,
+        protected RequestStack             $requestStack,
         protected EventDispatcherInterface $eventDispatcher
     ) {
+    }
+
+    /**
+     * @return string
+     */
+    public function getName(): string
+    {
+        return (string) static::STEP;
+    }
+
+    /**
+     * @return string
+     */
+    public function getAdditionalName(): string
+    {
+        return (string) static::ADDITIONAL_NAME_DEFAULT;
+    }
+
+    /**
+     * @param CartInterface|null $cart
+     * @return bool
+     * @throws \Exception
+     */
+    public function isViewable(?CartInterface $cart = null): bool
+    {
+        return $this->cartManager->isViewable($cart);
     }
 
     /**
      * @inheritdoc
      */
     public function configure(
-        ?UserInterface $user = null,
+        ?UserInterface       $user = null,
         ?ContractorInterface $customer = null,
-        ?CartInterface $cart = null
+        ?CartInterface       $cart = null
     ) {
         if (!$cart instanceof CartInterface) {
             $this->cart = $this->cartManager->getCart(true, $user, $customer);
@@ -148,7 +174,7 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
         [$canAccess, $goToStep] = $this->isAccessible();
 
         if (!$canAccess) {
-            $response = [
+            return [
                 'validation' => $this->getValidationResponse(['isAccessible' => false], 1),
                 'navigation' => [
                     'nextStep' => $goToStep,
@@ -157,8 +183,6 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
                 'process' => null,
                 'isCartFinalized' => $isCartFinalized
             ];
-
-            return $response;
         }
 
         //Walidacja
@@ -174,7 +198,7 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
         }
 
         if ($this->isCartConverterStep && (
-            isset($processResponse['order']['uuid']) && $processResponse['order']['uuid']
+                isset($processResponse['order']['uuid']) && $processResponse['order']['uuid']
                 || isset($processResponse['orders'][0]['uuid']) && $processResponse['orders'][0]['uuid']
             )
         ) {
@@ -368,10 +392,10 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
      * @throws \Exception
      */
     public function renderModule(
-        CartInterface $cart,
+        CartInterface       $cart,
         CartModuleInterface $cartModule,
-        bool $isInitialRender = false,
-        ?Request $request = null
+        bool                $isInitialRender = false,
+        ?Request            $request = null
     ) {
         return $this->moduleService->renderModule($cartModule, $cart, null, null, $request, $isInitialRender);
     }

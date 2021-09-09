@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\CartModule;
 
 use LSB\ContractorBundle\Entity\ContractorInterface;
+use LSB\OrderBundle\CartComponent\DataCartComponent;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Event\CartEvent;
 use LSB\OrderBundle\Model\CartModuleConfiguration;
@@ -30,11 +31,12 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
 
     protected mixed $nameConverter = null;
 
-
-    public function __construct() {
+    public function __construct(protected DataCartComponent $dataCartComponent)
+    {
         $this->isConfigured = true;
         $this->nameConverter = new CamelCaseToSnakeCaseNameConverter();
     }
+
 
     /**
      * @return bool
@@ -69,7 +71,7 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
     }
 
     /**
-     * @param Cart $cart
+     * @param CartInterface $cart
      */
     public function validateDependencies(CartInterface $cart): void
     {
@@ -107,7 +109,7 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
     public function getDefaultForm($dataObject, array $options = [], bool $useCart = true): ?FormInterface
     {
         if (!$dataObject && $useCart) {
-            $dataObject =  $this->getCart();
+            $dataObject = $this->getCart();
         }
 
         if ($this->getDefaultFormClass()) {
@@ -130,7 +132,7 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
      * @param CartInterface $cart
      * @param null|Request $request
      * @param bool $isInitialRender
-     * @return mixed
+     * @return array|string|null
      * @throws \Exception
      */
     public function render(CartInterface $cart, ?Request $request = null, bool $isInitialRender = false)
@@ -144,8 +146,8 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
             default:
                 $data = $this->getDataForRender($cart, $request);
 
-                return $this->dataCartComponent->templating->render(
-                    'LSBFrontendBundle:Cart:/' . $this->dataCartComponent->getPs()->getParameter('app.customViewDir') . '/modules/' . $this->getName() . '/' . $this->getName() . '.html.twig',
+                return $this->dataCartComponent->getTemplating()->render(
+                    'LSBFrontendBundle:Cart:/' . $this->dataCartComponent->getPs()->get('app.customViewDir') . '/modules/' . $this->getName() . '/' . $this->getName() . '.html.twig',
                     $data
                 );
         }
@@ -192,26 +194,10 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
      * @return UserInterface|null
      * @throws \Exception
      */
-//    protected function getUser(): ?UserInterface
-//    {
-//        if ($this->dataCartComponent->getTokenStorage()
-//            && $this->tokenStorage->getToken()
-//            && $this->tokenStorage->getToken()->getUser() instanceof UserInterface) {
-//
-//            /**
-//             * @var UserInterface $user
-//             */
-//            $user = $this->tokenStorage->getToken()->getUser();
-//
-//            if (!$user && !$this->dataCartComponent->getPs()->get('cart.for.notlogged')) {
-//                throw new \Exception('User not logged in.');
-//            }
-//
-//            return $user;
-//        }
-//
-//        return null;
-//    }
+    protected function getUser(): ?UserInterface
+    {
+        return $this->dataCartComponent->getUser();
+    }
 
     /**
      * @param bool $refresh
@@ -220,9 +206,8 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
      */
     protected function getCart(bool $refresh = false): CartInterface
     {
-        return $this->cartService->getCart($refresh);
+        return $this->dataCartComponent->getCart($refresh);
     }
-
 
 
     /**
@@ -238,13 +223,11 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
      */
     public function isForApiUsage(): bool
     {
-        switch ($this->dataCartComponent->getPs()->get('cart.render.format')) {
-            case CartModuleInterface::RENDER_FORMAT_JSON:
-            case CartModuleInterface::RENDER_FORMAT_XML:
-                return true;
-        }
+        return match ($this->dataCartComponent->getPs()->get('cart.render.format')) {
+            CartModuleInterface::RENDER_FORMAT_JSON, CartModuleInterface::RENDER_FORMAT_XML => true,
+            default => false,
+        };
 
-        return false;
     }
 
     /**
@@ -261,16 +244,16 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
      * @inheritDoc
      */
     public function getConfiguration(
-        CartInterface $cart,
-        ?UserInterface $user = null,
-        ?ContractorInterface $customer = null,
-        ?Request $request = null,
-        bool $isInitialRender = false
+        CartInterface        $cart,
+        ?UserInterface       $user = null,
+        ?ContractorInterface $contractor = null,
+        ?Request             $request = null,
+        bool                 $isInitialRender = false
     ): CartModuleConfiguration {
         return new CartModuleConfiguration(
             false,
-            $this->isViewable($cart, $user, $customer, $request, $isInitialRender),
-            $this->getFormSchema($cart, $user, $customer, $request, $isInitialRender)
+            $this->isViewable($cart, $user, $contractor, $request, $isInitialRender),
+            $this->getFormSchema($cart, $user, $contractor, $request, $isInitialRender)
         );
     }
 
@@ -278,11 +261,11 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
      * @inheritDoc
      */
     public function getFormSchema(
-        CartInterface $cart,
-        ?UserInterface $user = null,
+        CartInterface        $cart,
+        ?UserInterface       $user = null,
         ?ContractorInterface $customer = null,
-        ?Request $request = null,
-        bool $isInitialRender = false
+        ?Request             $request = null,
+        bool                 $isInitialRender = false
     ): array {
 
         return [];
@@ -292,24 +275,24 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
      * @inheritDoc
      */
     public function isViewable(
-        CartInterface $cart,
-        ?UserInterface $user = null,
+        CartInterface        $cart,
+        ?UserInterface       $user = null,
         ?ContractorInterface $customer = null,
-        ?Request $request = null,
-        bool $isInitialRender = false
+        ?Request             $request = null,
+        bool                 $isInitialRender = false
     ): bool {
-        return $this->cartService->isViewable();
+        return $this->dataCartComponent->isViewable();
     }
 
     /**
      * @inheritDoc
      */
     public function isAccessible(
-        CartInterface $cart,
-        ?UserInterface $user = null,
+        CartInterface        $cart,
+        ?UserInterface       $user = null,
         ?ContractorInterface $customer = null,
-        ?Request $request = null,
-        bool $isInitialRender = false
+        ?Request             $request = null,
+        bool                 $isInitialRender = false
     ): bool {
         return true;
     }
@@ -352,7 +335,7 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
      */
     public function dispatchSuccessEvent(CartInterface $cart): void
     {
-        $this->eventDispatcher->dispatch(
+        $this->dataCartComponent->getEventDispatcher()->dispatch(
             new CartEvent($cart),
             sprintf('cart.%s.success', $this->nameConverter->normalize($this->getName()))
         );
@@ -363,7 +346,7 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
      */
     public function dispatchFailEvent(CartInterface $cart): void
     {
-        $this->eventDispatcher->dispatch(
+        $this->dataCartComponent->getEventDispatcher()->dispatch(
             new CartEvent($cart),
             sprintf('cart.%s.fail', $this->nameConverter->normalize($this->getName()))
         );
@@ -375,12 +358,11 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
     public function process(?CartInterface $cart, Request $request)
     {
         if (!$cart) {
-            $cart = $this->cartService->getCart();
+            $cart = $this->getCart();
         }
 
         $result = null;
 
-        //Jeżeli moduł nie jest dostępny
         if (!$this->isViewable($cart, null, null, $request, false)) {
             return new CartModuleProcessResult($result, Response::HTTP_NOT_ACCEPTABLE);
         }
@@ -399,7 +381,7 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
             if ($formSubmitResult->isSuccess()) {
                 $this->dispatchSuccessEvent($cart);
                 $status = Response::HTTP_OK;
-                $this->em->flush();
+                $this->dataCartComponent->getCartManager()->flush();
             } else {
                 $this->dispatchFailEvent($cart);
                 $result = $formSubmitResult->getForm();

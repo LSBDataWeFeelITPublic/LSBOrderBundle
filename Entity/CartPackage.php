@@ -13,6 +13,7 @@ use LSB\OrderBundle\Entity\CartPackageItem;
 use LSB\OrderBundle\Entity\CartPackageItemInterface;
 use LSB\OrderBundle\Entity\Package;
 use LSB\OrderBundle\Model\CartCalculatorResult;
+use LSB\ProductBundle\Entity\Product;
 
 /**
  * Class CartPackage
@@ -23,11 +24,11 @@ abstract class CartPackage extends Package implements CartPackageInterface
 {
 
     /**
-     * @var CartInterface
+     * @var CartInterface|null
      *
      * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\CartInterface", inversedBy="packages")
      */
-    protected CartInterface $cart;
+    protected ?CartInterface $cart = null;
 
     /**
      * @var int|null
@@ -97,21 +98,24 @@ abstract class CartPackage extends Package implements CartPackageInterface
     }
 
     /**
-     * @return CartInterface
+     * @param Product $product
+     * @param string|null $orderCode
+     * @return Product|null
      */
-    public function getCart(): CartInterface
-    {
-        return $this->cart;
-    }
+    public function checkForExistingProduct(
+        Product $product,
+        ?string $orderCode = null
+    ): ?CartPackageItemInterface {
+        /**
+         * @var CartPackageItemInterface $cartPackageItem
+         */
+        foreach ($this->getCartPackageItems() as $cartPackageItem) {
+            if ($cartPackageItem->getProduct() === $product && $cartPackageItem->getOrderCode() == $orderCode) {
+                return $cartPackageItem;
+            }
+        }
 
-    /**
-     * @param CartInterface $cart
-     * @return CartPackage
-     */
-    public function setCart(CartInterface $cart): CartPackage
-    {
-        $this->cart = $cart;
-        return $this;
+        return null;
     }
 
     /**
@@ -299,6 +303,24 @@ abstract class CartPackage extends Package implements CartPackageInterface
     public function setCartCalculatorResult(?CartCalculatorResult $cartCalculatorResult): CartPackage
     {
         $this->cartCalculatorResult = $cartCalculatorResult;
+        return $this;
+    }
+
+    /**
+     * @return \LSB\OrderBundle\Entity\CartInterface|null
+     */
+    public function getCart(): ?\LSB\OrderBundle\Entity\CartInterface
+    {
+        return $this->cart;
+    }
+
+    /**
+     * @param \LSB\OrderBundle\Entity\CartInterface|null $cart
+     * @return CartPackage
+     */
+    public function setCart(?\LSB\OrderBundle\Entity\CartInterface $cart): CartPackage
+    {
+        $this->cart = $cart;
         return $this;
     }
 }

@@ -1,10 +1,13 @@
 <?php
+declare(strict_types=1);
 
 namespace LSB\OrderBundle\Interfaces;
 
-use LSB\CartBundle\Entity\CartPackage;
 use LSB\LocaleBundle\Entity\Country;
+use LSB\LocaleBundle\Entity\CountryInterface;
 use LSB\OrderBundle\Entity\CartPackageInterface;
+use LSB\ShippingBundle\Entity\Method;
+use Money\Money;
 
 /**
  * Interface ShippingFormCartCalculatorInterface
@@ -14,16 +17,16 @@ interface ShippingFormCartCalculatorInterface extends CartCalculatorInterface
 {
 
     /**
-     * @param $shippingForm
+     * @param Method|null $shippingMethod
      * @return ShippingFormCartCalculatorInterface
      */
-    public function setShippingForm($shippingForm):ShippingFormCartCalculatorInterface;
+    public function setShippingMethod(?Method $shippingMethod):ShippingFormCartCalculatorInterface;
 
     /**
      * @param Country|null $country
      * @return ShippingFormCartCalculatorInterface
      */
-    public function setCountry(?Country $country):ShippingFormCartCalculatorInterface;
+    public function setCountry(?CountryInterface $country):ShippingFormCartCalculatorInterface;
 
     /**
      * @param CartPackageInterface $cartPackage
@@ -32,14 +35,14 @@ interface ShippingFormCartCalculatorInterface extends CartCalculatorInterface
     public function setCartPackage(CartPackageInterface $cartPackage): ShippingFormCartCalculatorInterface;
 
     /**
-     * @param float|null $totalProductsNetto
+     * @param Money|null $totalProductsNetto
      * @return mixed
      */
-    public function setTotalProductsNetto(?float $totalProductsNetto);
+    public function setTotalProductsNetto(?Money $totalProductsNetto);
 
     /**
-     * @param float|null $totalProductsGross
+     * @param Money|null $totalProductsGross
      * @return mixed
      */
-    public function setTotalProductsGross(?float $totalProductsGross);
+    public function setTotalProductsGross(?Money $totalProductsGross);
 }

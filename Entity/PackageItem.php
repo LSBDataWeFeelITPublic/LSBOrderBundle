@@ -85,12 +85,32 @@ abstract class PackageItem implements PackageItemInterface
     protected bool $updateValues = false;
 
     /**
+     * @var int|null
+     * @ORM\Column(type="integer", nullable=true)
+     */
+    protected ?int $shippingDays = null;
+
+    /**
+     * @var ProductData
+     * @ORM\Embedded(class="LSB\OrderBundle\Entity\ProductData", columnPrefix="product_data_")
+     */
+    protected ProductData $productData;
+
+    /**
+     * @var ProductData
+     * @ORM\Embedded(class="LSB\OrderBundle\Entity\ProductData", columnPrefix="product_set_data_")
+     */
+    protected ProductData $productSetData;
+
+    /**
      * PackageItem constructor
      * @throws \Exception
      */
     public function __construct()
     {
         $this->generateUuid();
+        $this->productData = new ProductData();
+        $this->productSetData = new ProductData();
     }
 
     /**
@@ -346,6 +366,60 @@ abstract class PackageItem implements PackageItemInterface
     public function setBookingStorage(StorageInterface $bookingStorage): static
     {
         $this->bookingStorage = $bookingStorage;
+        return $this;
+    }
+
+    /**
+     * @return int|null
+     */
+    public function getShippingDays(): ?int
+    {
+        return $this->shippingDays;
+    }
+
+    /**
+     * @param int|null $shippingDays
+     * @return $this
+     */
+    public function setShippingDays(?int $shippingDays): static
+    {
+        $this->shippingDays = $shippingDays;
+        return $this;
+    }
+
+    /**
+     * @return ProductData
+     */
+    public function getProductData(): ProductData
+    {
+        return $this->productData;
+    }
+
+    /**
+     * @param ProductData $productData
+     * @return $this
+     */
+    public function setProductData(ProductData $productData): static
+    {
+        $this->productData = $productData;
+        return $this;
+    }
+
+    /**
+     * @return ProductData
+     */
+    public function getProductSetData(): ProductData
+    {
+        return $this->productSetData;
+    }
+
+    /**
+     * @param ProductData $productSetData
+     * @return $this
+     */
+    public function setProductSetData(ProductData $productSetData): static
+    {
+        $this->productSetData = $productSetData;
         return $this;
     }
 }

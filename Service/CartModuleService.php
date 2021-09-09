@@ -239,7 +239,7 @@ class CartModuleService
     /**
      * @param CartModuleInterface|string $module
      * @param CartInterface $cart
-     * @param Request $request
+     * @param Request|null $request
      * @param UserInterface|null $user
      * @param ContractorInterface|null $customer
      * @param int|null $step
@@ -249,16 +249,12 @@ class CartModuleService
     public function getModulesToRefresh(
         CartModuleInterface|string $module,
         CartInterface              $cart,
-        Request                    $request,
+        ?Request                   $request,
         ?UserInterface             $user = null,
         ?ContractorInterface       $customer = null,
         ?int                       $step = null
     ): array {
         $module = $this->getCartModule($module);
-
-        if (!$cart) {
-            $cart = $this->cartManager->getCart(false, $user, $customer);
-        }
 
         $modulesToRefresh = $module->getModulesToRefresh($cart, $request);
 
@@ -279,6 +275,7 @@ class CartModuleService
      * @param CartInterface $cart
      * @param int $step
      * @return bool
+     * @throws \Exception
      */
     public function isStepAccessible(CartInterface $cart, int $step): bool
     {
@@ -318,21 +315,16 @@ class CartModuleService
         bool                       $renderModulesToRefresh = false
     ): CartModuleRenderResponse {
         $module = $this->getCartModule($module);
-        if (!$cart) {
-            $cart = $this->cartManager->getCart(true, $user, $customer);
-        }
 
         $module->prepare($cart);
 
-        $response = new CartModuleRenderResponse(
+        return new CartModuleRenderResponse(
             $module->render($cart, $request, $blockDataRender),
             $module->getConfiguration($cart, $user, $customer, $request, $blockDataRender),
             $renderModulesToRefresh ? $this->renderModulesToRefresh($module, $cart, $request, $user, $customer, null) : [],
             $this->getModulesToRefresh($module, $cart, $request, $user, $customer),
             $module->getSerializationGroups($cart, $request)
         );
-
-        return $response;
     }
 
     /**

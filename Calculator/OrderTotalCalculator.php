@@ -22,7 +22,7 @@ class OrderTotalCalculator extends BaseTotalCalculator
     protected const SUPPORTED_POSITION_CLASS = OrderPackage::class;
 
     /**
-     * @param Order $subject
+     * @param $subject
      * @param array $options
      * @param string|null $applicationCode
      * @param bool $updateSubject
@@ -31,7 +31,7 @@ class OrderTotalCalculator extends BaseTotalCalculator
      * @return Result
      * @throws \Exception
      */
-    public function calculateTotal($subject, array $options, ?string $applicationCode, bool $updateSubject = true, bool $updatePositions = true, array &$calculationRes = []): Result
+    public function calculateTotal($subject, array $options = [], ?string $applicationCode = null, bool $updateSubject = true, bool $updatePositions = true, array &$calculationRes = []): Result
     {
         if (!$subject instanceof Order) {
             throw new \Exception('Subject must be Order');
