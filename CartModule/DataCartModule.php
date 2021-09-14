@@ -107,7 +107,6 @@ class DataCartModule extends BaseCartModule
      * @param bool $rebuildPackages
      * @return CartSummary|null
      * @throws \Exception
-     * @deprecated
      */
     public function getCartSummary(Cart $cart, bool $rebuildPackages = false): ?CartSummary
     {
@@ -120,8 +119,6 @@ class DataCartModule extends BaseCartModule
 
         $result = $calculator->calculateTotal($cart);
 
-        dump($result);
-
         if (!$result->getResultObject() instanceof CartSummary) {
             throw new \Exception('CartSummary is missing');
         }
@@ -129,6 +126,12 @@ class DataCartModule extends BaseCartModule
         return $result->getResultObject();
     }
 
+    /**
+     * @param CartInterface $cart
+     * @param Request|null $request
+     * @return CartSummary[]|null[]
+     * @throws \Exception
+     */
     public function getDataForRender(CartInterface $cart, ?Request $request = null): array
     {
         return ['cartSummary' => $this->getCartSummary($cart)];

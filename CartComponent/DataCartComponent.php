@@ -411,6 +411,7 @@ class DataCartComponent extends BaseCartComponent
      * @param CartItem $selectedCartItem
      * @return Price
      * @throws \Exception
+     * @deprecated
      */
     public function getActivePriceForCartItem(CartItemInterface $selectedCartItem): Price
     {

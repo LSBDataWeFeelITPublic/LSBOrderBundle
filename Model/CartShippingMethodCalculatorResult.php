@@ -12,6 +12,7 @@ use Money\Money;
  * Class CartShippingFormCalculatorResult
  * @package LSB\OrderBundle\Model
  */
+
 class CartShippingMethodCalculatorResult extends CartCalculatorResult
 {
     public function __construct(

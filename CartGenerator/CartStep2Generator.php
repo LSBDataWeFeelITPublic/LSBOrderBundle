@@ -10,11 +10,11 @@ use LSB\OrderBundle\CartModule\PackageSplitCartModule;
 use LSB\OrderBundle\CartModule\PaymentCartModule;
 use LSB\OrderBundle\Entity\CartInterface;
 
-class CartStep1Generator extends BaseCartStepGenerator
+class CartStep2Generator extends BaseCartStepGenerator
 {
-    const STEP = CartInterface::CART_STEP_1;
+    const STEP = CartInterface::CART_STEP_2;
 
-    const CODE = "items";
+    const CODE = "converter";
 
     /**
      * @var int|null
@@ -32,10 +32,6 @@ class CartStep1Generator extends BaseCartStepGenerator
     public function getModuleList(): array
     {
         return [
-            CartItemCartModule::NAME,
-            PackageSplitCartModule::NAME,
-            PackageShippingCartModule::NAME,
-            PaymentCartModule::NAME,
             DataCartModule::NAME
         ];
     }
@@ -58,7 +54,6 @@ class CartStep1Generator extends BaseCartStepGenerator
      */
     public function prepare(): void
     {
-        //Po 1 requescie - sprawdzenie ceny produktu
         //TODO przygotować mechanizm w ramach koszyka
         //$this->cartManager->rebuildCart($this->cart);
         parent::prepare();

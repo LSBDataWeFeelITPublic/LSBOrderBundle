@@ -46,6 +46,7 @@ services:
             - '@LSB\OrderBundle\CartComponent\DataCartComponent'
             - '@LSB\PricelistBundle\Manager\PricelistManager'
             - '@LSB\OrderBundle\Service\CartModuleService'
+            - '@LSB\OrderBundle\CartComponent\CartItemCartComponent'
         tags:
             - { name: calculator.total }
 

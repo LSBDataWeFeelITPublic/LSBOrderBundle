@@ -489,5 +489,4 @@ class CartService
         return $this->cartComponentService->getComponentByClass(DataCartComponent::class)->isViewable($cart);
     }
 
-
 }

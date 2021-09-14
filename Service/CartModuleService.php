@@ -110,22 +110,22 @@ class CartModuleService
 
 
     /**
+     * @param Request $request
      * @param CartInterface|null $cart
      * @param CartModuleInterface|string $module
-     * @param Request $request
-     * @param UserInterface|null $user
-     * @param ContractorInterface|null $customer
      * @param int|null $step
+     * @param UserInterface|null $user
+     * @param ContractorInterface|null $contractor
      * @return CartModuleProcessResponse
      * @throws \Exception
      */
     public function processModule(
+        Request                    $request,
         ?CartInterface             $cart,
         CartModuleInterface|string $module,
-        Request                    $request,
+        ?int                       $step = null,
         ?UserInterface             $user = null,
-        ?ContractorInterface       $customer = null,
-        ?int                       $step = null
+        ?ContractorInterface $contractor = null
     ): CartModuleProcessResponse {
         $processedModuleContent = null;
         $processedModuleStatus = Response::HTTP_OK;
@@ -135,23 +135,22 @@ class CartModuleService
         $module = $this->getCartModule($module);
 
         if (!$cart) {
-            $cart = $this->cartManager->getCart(false, $user, $customer);
+            $cart = $this->cartManager->getCart(false, $user, $contractor);
         }
 
-        //Dostęp do generatora kroków
         if ($step !== null) {
             $isAccessible = $this->isStepAccessible($cart, $step);
         }
 
-        if (!$module->isAccessible($cart, $user, $customer, $request)) {
+        if (!$module->isAccessible($cart, $user, $contractor, $request)) {
             $isAccessible = false;
         }
 
         if (!$isAccessible) {
-            //Jeżeli krok nie jest dostępny lub moduł  blokujemy możliwość przetworzenia danych modułu
+            //If the step in unavailable, empty result will be returned.
             return new CartModuleProcessResponse(
                 null,
-                $module->getConfiguration($cart, $user, $customer, $request),
+                $module->getConfiguration($cart, $user, $contractor, $request),
                 [],
                 [],
                 Response::HTTP_FORBIDDEN
@@ -174,19 +173,17 @@ class CartModuleService
         } else {
             $processedModuleContent = $response;
         }
-        $modulesToRefresh = $this->getModulesToRefresh($module, $cart, $request, $user, $customer, $step);
-        $renderedModules = $processedModuleStatus === Response::HTTP_OK ? $this->renderModulesToRefresh($module, $cart, $request, $user, $customer, $step) : [];
+        $modulesToRefresh = $this->getModulesToRefresh($module, $cart, $request, $user, $contractor, $step);
+        $renderedModules = $processedModuleStatus === Response::HTTP_OK ? $this->renderModulesToRefresh($module, $cart, $request, $user, $contractor, $step) : [];
 
-        $cartModuleResponse = new CartModuleProcessResponse(
+        return new CartModuleProcessResponse(
             $processedModuleContent,
-            $module->getConfiguration($cart, $user, $customer, $request),
+            $module->getConfiguration($cart, $user, $contractor, $request),
             $modulesToRefresh,
             $renderedModules,
             $processedModuleStatus,
             $module->getSerializationGroups($cart, $request)
         );
-
-        return $cartModuleResponse;
     }
 
     /**

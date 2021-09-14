@@ -214,7 +214,10 @@ class PackageShippingCartModule extends BaseCartModule
         $shippingPackagesCalculations = [];
 
         if ($cart->getCartPackages()->count() === 0) {
-            return [];
+            return [
+                [],
+                []
+            ];
         } else {
             $shippingFormsForPackages = $this->getShippingForms($cart);
             //Dla każdej paczki wyliczamy oddzielnie cenę dostawy

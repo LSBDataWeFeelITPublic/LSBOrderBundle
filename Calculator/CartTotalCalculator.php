@@ -5,6 +5,7 @@ namespace LSB\OrderBundle\Calculator;
 
 use Doctrine\ORM\EntityManagerInterface;
 use LSB\LocaleBundle\Manager\TaxManager;
+use LSB\OrderBundle\CartComponent\CartItemCartComponent;
 use LSB\OrderBundle\CartComponent\DataCartComponent;
 use LSB\OrderBundle\CartModule\PackageShippingCartModule;
 use LSB\OrderBundle\Entity\Cart;
@@ -53,7 +54,8 @@ class CartTotalCalculator extends BaseTotalCalculator
         protected CartCalculatorService $cartCalculatorService,
         protected DataCartComponent $dataCartComponent,
         protected PricelistManager $pricelistManager,
-        protected CartModuleService $cartModuleService
+        protected CartModuleService $cartModuleService,
+        protected CartItemCartComponent $cartItemCartComponent
     ) {
         parent::__construct($em, $eventDispatcher, $tokenStorage);
     }
@@ -182,7 +184,7 @@ class CartTotalCalculator extends BaseTotalCalculator
                 if ($selectedCartItem->getCartItemSummary()?->getCalculatedAt() && $selectedCartItem->getCartItemSummary()?->getActivePrice()) {
                     $activePrice = $selectedCartItem->getCartItemSummary()->getActivePrice();
                 } else {
-                    $activePrice = $this->dataCartComponent->getActivePriceForCartItem($selectedCartItem);
+                    $activePrice = $this->cartItemCartComponent->getPriceForCartItem($selectedCartItem);
                 }
 
                 $this->calculateActiveValues(

@@ -6,13 +6,14 @@ namespace LSB\OrderBundle\Model;
 use JMS\Serializer\Annotation\ExclusionPolicy;
 use JMS\Serializer\Annotation\Expose;
 use JMS\Serializer\Annotation\Groups;
+use LSB\UtilityBundle\Attributes\Serialize\Serialize;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Class CartModuleProcessResponse
  * @package LSB\CartBundle\Model
  */
-class CartModuleProcessResponse
+#[Serialize]class CartModuleProcessResponse
 {
 
     /**
@@ -36,7 +37,7 @@ class CartModuleProcessResponse
     protected array $renderedModules = [];
 
     /**
-     * @var integer
+     * @var integer|null
      */
     protected ?int $status = null;
 

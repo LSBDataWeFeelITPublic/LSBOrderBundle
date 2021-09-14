@@ -9,8 +9,6 @@ use JMS\Serializer\Annotation\SerializedName;
 /**
  * Class StepModulesListResponse
  * @package LSB\CartBundle\Model
- *
- * SerializedName dodane dla pewności, aby nazwy po serializacji pozostały w formacie camelCase
  */
 class StepModulesListResponse
 {

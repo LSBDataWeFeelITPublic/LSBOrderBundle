@@ -341,18 +341,18 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
     protected function prepareModules()
     {
         $modules = $this->getModules();
-        $renderedModules = [];
+        $preparedModules = [];
 
         if (count($modules)) {
             foreach ($modules as $module) {
-                $renderedModules[$module->getName()] = $this->prepareModule($this->cart, $module);
+                $preparedModules[$module->getName()] = $this->prepareModule($this->cart, $module);
             }
         }
 
         //UWAGA FLUSH!
         $this->em->flush();
 
-        return $renderedModules;
+        return $preparedModules;
     }
 
     /**
@@ -370,9 +370,11 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
         }
 
         $modules = $this->getModules();
-        $renderedModules = [];
 
         if (count($modules)) {
+            /**
+             * @var CartModuleInterface $module
+             */
             foreach ($modules as $module) {
                 $renderedModules[$module->getName()] = $this->renderModule($this->cart, $module, true, $request);
             }
