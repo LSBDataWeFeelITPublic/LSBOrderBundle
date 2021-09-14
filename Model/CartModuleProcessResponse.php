@@ -6,14 +6,14 @@ namespace LSB\OrderBundle\Model;
 use JMS\Serializer\Annotation\ExclusionPolicy;
 use JMS\Serializer\Annotation\Expose;
 use JMS\Serializer\Annotation\Groups;
-use LSB\UtilityBundle\Attributes\Serialize\Serialize;
+use LSB\UtilityBundle\Attribute\Serialize;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Class CartModuleProcessResponse
  * @package LSB\CartBundle\Model
  */
-#[Serialize]class CartModuleProcessResponse
+#[Serialize] class CartModuleProcessResponse
 {
 
     /**
