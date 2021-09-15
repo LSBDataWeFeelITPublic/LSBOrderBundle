@@ -1,10 +1,12 @@
 <?php
 declare(strict_types=1);
 
-namespace LSB\OrderBundle\Model;
+namespace LSB\OrderBundle\Model\CartItemModule;
 
 use Countable;
+use LSB\UtilityBundle\Attribute\Serialize;
 
+#[Serialize]
 class CartItemRequestProductDataCollection implements Countable
 {
     const ORDER_CODE_DEFAULT = 'default';

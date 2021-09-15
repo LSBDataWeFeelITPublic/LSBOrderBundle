@@ -4,9 +4,11 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\Model;
 
 use LSB\PaymentBundle\Entity\MethodInterface;
+use LSB\UtilityBundle\Attribute\Serialize;
 use LSB\UtilityBundle\Value\Value;
 use Money\Money;
 
+#[Serialize]
 class CartPaymentMethodCalculatorResult extends CartCalculatorResult
 {
     public function __construct(

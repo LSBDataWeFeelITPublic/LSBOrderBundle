@@ -1,10 +1,5 @@
 <?php
-/**
- * Created by PhpStorm.
- * User: krzychu
- * Date: 15.02.18
- * Time: 18:03
- */
+declare(strict_types=1);
 
 namespace LSB\OrderBundle\CartModule;
 
@@ -12,30 +7,19 @@ use Doctrine\ORM\UnitOfWork;
 use LSB\LocaleBundle\Manager\TaxManager;
 use LSB\OrderBundle\CartComponent\CartItemCartComponent;
 use LSB\OrderBundle\CartComponent\DataCartComponent;
-use LSB\OrderBundle\CartModule\BaseCartModule;
 use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartItem;
 use LSB\OrderBundle\Entity\CartItemInterface;
-use LSB\OrderBundle\Model\CartItemModule\CartItemProcessedData;
 use LSB\OrderBundle\Model\CartItemModule\CartItemUpdateResult;
-use LSB\OrderBundle\Model\CartItemModule\Notification;
-use LSB\OrderBundle\Model\CartItemRequestProductData;
-use LSB\OrderBundle\Model\CartItemRequestProductDataCollection;
+use LSB\OrderBundle\Model\CartItemModule\CartItemRequestProductData;
+use LSB\OrderBundle\Model\CartItemModule\CartItemRequestProductDataCollection;
 use LSB\PricelistBundle\Model\Price;
-use LSB\ProductBundle\Entity\Product;
 use LSB\ProductBundle\Entity\ProductInterface;
 use LSB\ProductBundle\Entity\ProductSetProduct;
-use LSB\ProductBundle\Entity\Storage;
-use LSB\UtilityBundle\Value\Value;
-use Money\Currency;
-use Money\Money;
+use LSB\UtilityBundle\Helper\ValueHelper;
 use Symfony\Component\HttpFoundation\Request;
 
-/**
- * Class BaseCartItemsModule
- * @package LSB\CartBundle\Module
- */
 class CartItemCartModule extends BaseCartModule
 {
     const NAME = 'cartItem';
@@ -454,10 +438,10 @@ class CartItemCartModule extends BaseCartModule
         bool                       $merge = false
     ): bool {
 
-        $quantity = $cartItemRequestProductData->getQuantity()?->getAmount() ?: 0;
+        $quantity = $cartItemRequestProductData->getQuantity() ?: ValueHelper::createValueZero();
         $isSelected = $cartItemRequestProductData->isSelected();
 
-        if ($quantity !== null && $quantity <= 0) {
+        if ($quantity !== null && $quantity->lessThanOrEqual(ValueHelper::createValueZero())) {
 
             //TODO refactor voters
 //            if (!$merge && !$this->dataCartComponent->getAuthorizationChecker()->isGranted(CartVoterInterface::ACTION_REMOVE_CART_ITEMS, $existingCartItem->getCart())) {
@@ -482,14 +466,14 @@ class CartItemCartModule extends BaseCartModule
                     'Cart'
                 ));
 
-        } elseif ($quantity !== null && $quantity > 0 && $increaseQuantity) {
+        } elseif ($quantity !== null && $quantity->greaterThan(ValueHelper::createValueZero()) && $increaseQuantity) {
 //            if (!$merge && !$this->dataCartComponent->getAuthorizationChecker()->isGranted(CartVoterInterface::ACTION_EDIT_CART_ITEMS, $existingCartItem->getCart())) {
 //                throw new \Symfony\Component\Security\Core\Exception\AccessDeniedException();
 //            }
 
             $existingCartItem->increaseQuantity($cartItemRequestProductData->getQuantity(true));
             $update = true;
-        } elseif ($quantity !== null && $quantity > 0) {
+        } elseif ($quantity !== null && $quantity->greaterThan(ValueHelper::createValueZero())) {
 //            if (!$merge && !$this->dataCartComponent->getAuthorizationChecker()->isGranted(CartVoter::ACTION_EDIT_CART_ITEMS, $existingCartItem->getCart())) {
 //                throw new \Symfony\Component\Security\Core\Exception\AccessDeniedException();
 //            }

@@ -5,8 +5,8 @@ namespace LSB\OrderBundle\Repository;
 
 use Doctrine\Persistence\ManagerRegistry;
 use LSB\OrderBundle\Entity\CartItem;
-use LSB\OrderBundle\Model\CartItemRequestProductData;
-use LSB\OrderBundle\Model\CartItemRequestProductDataCollection;
+use LSB\OrderBundle\Model\CartItemModule\CartItemRequestProductData;
+use LSB\OrderBundle\Model\CartItemModule\CartItemRequestProductDataCollection;
 use LSB\UtilityBundle\Repository\BaseRepository;
 use LSB\UtilityBundle\Repository\PaginationRepositoryTrait;
 

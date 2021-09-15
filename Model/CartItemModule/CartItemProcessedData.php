@@ -1,9 +1,11 @@
 <?php
+declare(strict_types=1);
 
 namespace LSB\OrderBundle\Model\CartItemModule;
 
-use LSB\OrderBundle\Model\CartItemRequestProductDataCollection;
+use LSB\UtilityBundle\Attribute\Serialize;
 
+#[Serialize]
 class CartItemProcessedData
 {
     /**

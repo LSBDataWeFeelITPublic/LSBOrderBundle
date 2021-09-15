@@ -138,12 +138,13 @@ class CartItem implements CartItemInterface
     /**
      * @param Value|int $quantity
      * @return $this
+     * @throws \Exception
      */
     public function increaseQuantity(Value|int $quantity): self
     {
         if ($this->id && $quantity) {
             if ($quantity instanceof Value) {
-                $this->quantity += (int) $quantity->getAmount();
+                $this->setQuantity($this->getQuantity(true)->add($quantity));
             } else {
                 $this->quantity += (int) $quantity;
             }

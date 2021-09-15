@@ -12,8 +12,8 @@ use LSB\OrderBundle\Manager\CartItemManager;
 use LSB\OrderBundle\Manager\CartManager;
 use LSB\OrderBundle\Model\CartItemModule\CartItemUpdateResult;
 use LSB\OrderBundle\Model\CartItemModule\Notification;
-use LSB\OrderBundle\Model\CartItemRequestProductData;
-use LSB\OrderBundle\Model\CartItemRequestProductDataCollection;
+use LSB\OrderBundle\Model\CartItemModule\CartItemRequestProductData;
+use LSB\OrderBundle\Model\CartItemModule\CartItemRequestProductDataCollection;
 use LSB\PricelistBundle\Manager\PricelistManager;
 use LSB\PricelistBundle\Model\Price;
 use LSB\ProductBundle\Entity\Product;
@@ -766,16 +766,16 @@ class CartItemCartComponent extends BaseCartComponent
             $remove = true;
         } elseif ($cartItem->getQuantity() <= $localQuantity && $localQuantity > 0) {
             //produkt dostępny w magazynie lokalnym w dostatecznej ilości
-            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableFromLocalStock', [], 'Cart'));
+            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableFromLocalStock', [], 'LSBOrderBundleCart'));
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_FROM_LOCAL_STOCK;
             $forceUpdateAvailability = true;
         } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) <= $remoteQuantity && (!$cart->getDeliveryVariant() || $cart->getDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)) {
             //produkt jest dostępny w zewnętrznym w odpowiedniej ilości
-            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableInRemoteStock', [], 'Cart'));
+            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableInRemoteStock', [], 'LSBOrderBundleCart'));
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_FROM_REMOTE_STOCK;
         } elseif ($backorderQuantity) {
             //niezależnie od wybranego sposobu podziału, produkt nie jest dostępny w odpowiedniej ilości, ale można go zamówić
-            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableForBackorder', [], 'Cart'));
+            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableForBackorder', [], 'LSBOrderBundleCart'));
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_FOR_BACKORDER;
         } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) <= $remoteQuantity && $cart->getDeliveryVariant() && $cart->getDeliveryVariant() == CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE) {
             //produkt jest dostępny w zewnętrznym w odpowiedniej ilości, klient wybrał sposób podziału na paczki, tylko z lokalnego magazynu
@@ -786,7 +786,7 @@ class CartItemCartComponent extends BaseCartComponent
                     '%originalQuantity%' => $cartItem->getQuantity(),
                     '%availableQuantity%' => $localQuantity,
                 ],
-                'Cart'
+                'LSBOrderBundleCart'
             ));
 
             $newQuantity = (float)$localQuantity;
@@ -794,7 +794,7 @@ class CartItemCartComponent extends BaseCartComponent
             //wylaczamy wymuszanie z lokalnego magazynu
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_FORCED_FROM_LOCAL_STOCK;
         } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) <= $futureQuantity && $futureQuantity > 0) && (!$cart->getDeliveryVariant() || $cart->getDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)) {
-            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableInNextShipping', [], 'Cart'));
+            $productDataRow->createDefaultNotification($this->translator->trans('Cart.Module.CartItems.AlertMessage.AvailableInNextShipping', [], 'LSBOrderBundleCart'));
             $newAvailability = CartItemInterface::ITEM_AVAILABLE_IN_THE_NEXT_SHIPPING;
             //nie modyfikujemy ilość zamówionych sztuk, zostawiamy to do decyzji zamawiającego
         } elseif ($cartItem->getQuantity() > $localQuantity && ($cartItem->getQuantity() - $localQuantity) > $remoteQuantity && (($cartItem->getQuantity() - $localQuantity - $remoteQuantity) > $futureQuantity && $futureQuantity > 0) && (!$cart->getDeliveryVariant() || $cart->getDeliveryVariant() != CartInterface::DELIVERY_VARIANT_ONLY_AVAILABLE)) {
@@ -805,7 +805,7 @@ class CartItemCartComponent extends BaseCartComponent
                     '%originalQuantity%' => $cartItem->getQuantity(),
                     '%availableQuantity%' => $newQuantity,
                 ],
-                'Cart'
+                'LSBOrderBundleCart'
             ));
 
             //produkt będzie dostępny w kolejnych dostawach, ale w mniejszej ilości, ograniczamy automatycznie ilość sztuk
@@ -821,7 +821,7 @@ class CartItemCartComponent extends BaseCartComponent
                     '%originalQuantity%' => $cartItem->getQuantity(),
                     '%availableQuantity%' => $newQuantity,
                 ],
-                'Cart'
+                'LSBOrderBundleCart'
             ));
 
             //wylaczamy wymuszanie z lokalnego magazynu

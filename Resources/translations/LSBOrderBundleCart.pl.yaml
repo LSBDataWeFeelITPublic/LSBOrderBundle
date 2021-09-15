@@ -1,0 +1,10 @@
+Cart:
+    Module:
+        CartItems:
+            AlertMessage:
+                AvailableFromLocalStock: 'Produkt dostępny z lokalnego magazynu'
+                AvailableInRemoteStock: 'Produkt dostępny z zewnętrznego magazynu'
+                AvailableForBackorder: 'Produkt dostępny na zamówienie'
+                AvailableInNextShipping: 'Produkt dostępny z następnej dostawy'
+                AvailableInRemoteStockButLocalSelected: 'Produkt dostępny z dostępny magazynu w odpowiedniej ilości. Wybrano dostawę z lokalnego magazynu.'
+                AvailableInNextShippingButNotEnough: 'LSBOrderBundleCart'

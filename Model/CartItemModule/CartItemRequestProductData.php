@@ -1,13 +1,13 @@
 <?php
 declare(strict_types=1);
 
-namespace LSB\OrderBundle\Model;
+namespace LSB\OrderBundle\Model\CartItemModule;
 
-use LSB\NotificationBundle\Entity\NotificationInterface;
 use LSB\OrderBundle\Entity\CartItemInterface;
-use LSB\OrderBundle\Model\CartItemModule\Notification;
+use LSB\UtilityBundle\Attribute\Serialize;
 use LSB\UtilityBundle\Value\Value;
 
+#[Serialize]
 class CartItemRequestProductData
 {
     const PROCESSING_TYPE_CREATED = 10;

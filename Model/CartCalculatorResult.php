@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Model;
 
+use LSB\UtilityBundle\Attribute\Serialize;
 use LSB\UtilityBundle\Value\Value;
 use Money\Money;
 
@@ -10,6 +11,7 @@ use Money\Money;
  * Class CartCalculatorResult
  * @package LSB\OrderBundle\Model
  */
+#[Serialize]
 class CartCalculatorResult
 {
     /**

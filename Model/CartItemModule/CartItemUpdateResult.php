@@ -3,6 +3,9 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Model\CartItemModule;
 
+use LSB\UtilityBundle\Attribute\Serialize;
+
+#[Serialize]
 class CartItemUpdateResult
 {
     /**
