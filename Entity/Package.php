@@ -4,8 +4,6 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use Doctrine\ORM\Mapping\MappedSuperclass;
-use LSB\ProductBundle\Entity\Product;
 use LSB\ProductBundle\Entity\SupplierInterface;
 use LSB\UtilityBundle\Traits\CreatedUpdatedTrait;
 use LSB\UtilityBundle\Traits\UuidTrait;
@@ -55,9 +53,9 @@ abstract class Package implements PackageInterface
 
     /**
      * @var int
-     * @ORM\Column(type="integer", nullable=false, options={"default": true})
+     * @ORM\Column(type="integer", nullable=false, options={"default": 10})
      */
-    protected int $type;
+    protected int $type = self::TYPE_FROM_LOCAL_STOCK;
 
     /**
      * @var string|null

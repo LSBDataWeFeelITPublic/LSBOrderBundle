@@ -9,6 +9,7 @@ use Doctrine\ORM\Mapping\MappedSuperclass;
 use LSB\ContractorBundle\Entity\ContractorInterface;
 use LSB\LocaleBundle\Entity\CurrencyInterface;
 use LSB\OrderBundle\Interfaces\OrderStatusInterface;
+use LSB\UserBundle\Entity\UserInterface;
 use LSB\UtilityBundle\Calculation\CalculationTypeTrait;
 use LSB\UtilityBundle\Token\ConfirmationTokenTrait;
 use LSB\UtilityBundle\Token\UnmaskTokenTrait;
@@ -39,6 +40,7 @@ abstract class Order implements OrderInterface
     use CalculationTypeTrait;
     use AddressTrait;
     use TermsTrait;
+    use StatusTrait;
 
     /**
      * @var string|null
@@ -112,13 +114,30 @@ abstract class Order implements OrderInterface
     protected int $packagesCnt = 0;
 
     /**
-     * Sposób przetwarzania
-     *
      * @var integer
      * @ORM\Column(type="integer", nullable=true, options={"default": 1})
-     * @Assert\NotBlank(groups={"EdiCartProcessing"})
      */
     protected int $processingType = self::PROCESSING_TYPE_DEFAULT;
+
+    /**
+     * @var UserInterface|null
+     * @ORM\ManyToOne(targetEntity="LSB\UserBundle\Entity\UserInterface")
+     * @ORM\JoinColumn(nullable=true, onDelete="SET NULL")
+     */
+    protected ?UserInterface $user = null;
+
+    /**
+     * @var string|null
+     * @ORM\Column(type="string", length=255, nullable=true);
+     */
+    protected ?string $clientOrderNumber = null;
+
+    /**
+     * @var CartInterface|null
+     * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\CartInterface")
+     * @ORM\JoinColumn(onDelete="SET NULL")
+     */
+    protected ?CartInterface $cart = null;
 
     /**
      * Constructor
@@ -444,6 +463,78 @@ abstract class Order implements OrderInterface
     public function setPackagesCnt(int $packagesCnt): static
     {
         $this->packagesCnt = $packagesCnt;
+        return $this;
+    }
+
+    /**
+     * @return UserInterface|null
+     */
+    public function getUser(): ?UserInterface
+    {
+        return $this->user;
+    }
+
+    /**
+     * @param UserInterface|null $user
+     * @return $this
+     */
+    public function setUser(?UserInterface $user): static
+    {
+        $this->user = $user;
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getClientOrderNumber(): ?string
+    {
+        return $this->clientOrderNumber;
+    }
+
+    /**
+     * @param string|null $clientOrderNumber
+     * @return $this
+     */
+    public function setClientOrderNumber(?string $clientOrderNumber): static
+    {
+        $this->clientOrderNumber = $clientOrderNumber;
+        return $this;
+    }
+
+    /**
+     * @return int
+     */
+    public function getProcessingType(): int
+    {
+        return $this->processingType;
+    }
+
+    /**
+     * @param int $processingType
+     * @return $this
+     */
+    public function setProcessingType(int $processingType): static
+    {
+        $this->processingType = $processingType;
+        return $this;
+    }
+
+    /**
+     * @return CartInterface|null
+     */
+    public function getCart(): ?CartInterface
+    {
+        return $this->cart;
+    }
+
+    /**
+     * @param CartInterface|null $cart
+     * @return $this
+     */
+    public function setCart(?CartInterface $cart): static
+    {
+        $this->cart = $cart;
         return $this;
     }
 }

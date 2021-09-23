@@ -173,6 +173,7 @@ class CartModuleService
         } else {
             $processedModuleContent = $response;
         }
+
         $modulesToRefresh = $this->getModulesToRefresh($module, $cart, $request, $user, $contractor, $step);
         $renderedModules = $processedModuleStatus === Response::HTTP_OK ? $this->renderModulesToRefresh($module, $cart, $request, $user, $contractor, $step) : [];
 

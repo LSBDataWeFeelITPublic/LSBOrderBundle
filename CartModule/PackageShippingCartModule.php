@@ -10,14 +10,15 @@ use LSB\OrderBundle\CartComponent\DataCartComponent;
 use LSB\OrderBundle\CartComponent\PackageShippingCartComponent;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartPackage;
+use LSB\OrderBundle\Form\CartModule\PackageShipping\CartPackagesType;
 use LSB\OrderBundle\Interfaces\ShippingFormCartCalculatorInterface;
+use LSB\OrderBundle\Manager\CartManager;
 use LSB\OrderBundle\Model\CartModuleProcessResult;
 use LSB\OrderBundle\Model\CartShippingMethodCalculatorResult;
 use LSB\ShippingBundle\Entity\Method;
 use LSB\ShippingBundle\Entity\MethodInterface;
 use LSB\UtilityBundle\Helper\ValueHelper;
 use LSB\UtilityBundle\Module\ModuleInterface;
-use LSB\UtilityBundle\Value\Value;
 use Money\Money;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -26,6 +27,8 @@ use Symfony\Component\HttpFoundation\Response;
 class PackageShippingCartModule extends BaseCartModule
 {
     const NAME = 'packageShipping';
+
+    const FORM_CLASS = CartPackagesType::class;
 
     /**
      * @var null|array
@@ -37,11 +40,12 @@ class PackageShippingCartModule extends BaseCartModule
     protected ?array $shippingForms = null;
 
     public function __construct(
+        CartManager $cartManager,
         DataCartComponent                      $dataCartComponent,
         protected PackageShippingCartComponent $packageShippingCartComponent,
         protected CartItemCartComponent        $cartItemCartComponent
     ) {
-        parent::__construct($dataCartComponent);
+        parent::__construct($cartManager, $dataCartComponent);
     }
 
     /**
@@ -114,7 +118,7 @@ class PackageShippingCartModule extends BaseCartModule
 
             if ($packageShippingFormValidated === false) {
                 $cartPackage->setShippingMethod(null);
-                $errors[] = $this->dataCartComponent->getTranslator()->trans('Cart.Module.PackageShipping.Validation.ShippingFormNotAllowed', [], 'Cart');
+                $errors[] = $this->dataCartComponent->getTranslator()->trans('Cart.Module.PackageShipping.Validation.ShippingFormNotAllowed', [], 'LSBOrderBundleCart');
             }
         }
 
@@ -138,7 +142,7 @@ class PackageShippingCartModule extends BaseCartModule
          */
         foreach ($cartPackages as $cartPackage) {
             if (!$cartPackage->getShippingMethod()) {
-                $errors[] = $this->dataCartComponent->getTranslator()->trans('Cart.Module.PackageShipping.Validation.MissingShippingForm', [], 'Cart');
+                $errors[] = $this->dataCartComponent->getTranslator()->trans('Cart.Module.PackageShipping.Validation.MissingShippingForm', [], 'LSBOrderBundleCart');
                 break;
             }
         }
@@ -203,8 +207,6 @@ class PackageShippingCartModule extends BaseCartModule
     }
 
     /**
-     * Pobranie dostępnych metod dostawy dla wszystkich paczek
-     *
      * @param CartInterface $cart
      * @return array
      * @throws \Exception
@@ -220,7 +222,6 @@ class PackageShippingCartModule extends BaseCartModule
             ];
         } else {
             $shippingFormsForPackages = $this->getShippingForms($cart);
-            //Dla każdej paczki wyliczamy oddzielnie cenę dostawy
             $availableShippingForms = $this->getShippingForms();
             $availableShippingFormsWithCalculations = [];
 
@@ -246,55 +247,6 @@ class PackageShippingCartModule extends BaseCartModule
     }
 
     /**
-     * Pobranie dostępnych metod dostawy dla wszystkich paczek
-     *
-     * @param CartInterface $cart
-     * @param array|null $shippingForms
-     * @return array
-     * @throws \Exception
-     */
-    public function getShippingFormsCalculationsForPackages(CartInterface $cart, ?array $shippingForms = null): array
-    {
-
-        if ($cart->getCartPackages()->count() === 0) {
-            return [];
-        } else {
-
-            if ($shippingForms === null) {
-                $shippingForms = $this->getShippingForms($cart);
-            }
-
-            $shippingFormsForPackages = $shippingForms;
-            //Dla każdej paczki wyliczamy oddzielnie cenę dostawy
-            $availableShippingForms = $shippingForms;
-
-            $availableShippingFormsWithCalculations = [];
-
-            /**
-             * @var CartPackage $package
-             */
-            foreach ($cart->getCartPackages() as $package) {
-                $calculations = $this->processShippingFormsCalculationsForPackage(
-                    $package,
-                    $shippingFormsForPackages
-                );
-
-                $package
-                    ->setAvailableShippingFormsCalculations($calculations)
-                    ->setAvailableShippingForms($availableShippingForms);
-
-                $availableShippingFormsWithCalculations[$package->getUuid()] = $calculations;
-            }
-
-            return $availableShippingFormsWithCalculations;
-        }
-    }
-
-    /*
-     * Pobranie dostępnych metod dostawy w zależności od konfiguracji koszyka
-     * TODO - do uporządkowania
-     */
-    /**
      * @param CartInterface|null $cart
      * @return array
      * @throws \Exception
@@ -311,8 +263,6 @@ class PackageShippingCartModule extends BaseCartModule
     }
 
     /**
-     * Metoda określająca dopuszczalne sposoby dostawy - jako baza wyjściowa do dalszego przetwarzania
-     *
      * @param CartInterface $cart
      * @return array
      */
@@ -325,9 +275,6 @@ class PackageShippingCartModule extends BaseCartModule
     }
 
     /**
-     * Metoda jest używana do wyliczenia kosztów dostawy podczas sumowania koszyka
-     * $calculatedTotalProducts - może być ceną netto lub brutto, w zależności od trybu pracy zliczania
-     *
      * @param CartPackage $package
      * @param bool $addVat
      * @param Money|null $calculatedTotalProducts
@@ -389,6 +336,22 @@ class PackageShippingCartModule extends BaseCartModule
     }
 
     /**
+     * @param CartInterface|null $cart
+     * @return array
+     * @throws \Exception
+     */
+    protected function getDefaultFormOptions(?CartInterface $cart): array
+    {
+        if (!$cart instanceof CartInterface) {
+            $cart = $this->dataCartComponent->getCart();
+        }
+
+        [$availableShippingForms, $calculations] = $this->getShippingFormsForPackagesWithCalculations($cart);
+
+        return ['available_shipping_forms' => $availableShippingForms];
+    }
+
+    /**
      * Pobiera cały słownik metod dostaw
      *
      * @param CartInterface $cart
@@ -415,27 +378,5 @@ class PackageShippingCartModule extends BaseCartModule
         ];
 
         return array_merge($parentData, $data);
-    }
-
-    /**
-     * @param CartInterface $cart
-     * @return array
-     */
-    protected function getResponse(CartInterface $cart): array
-    {
-//        /**
-//         * @var BaseCartDataModule $cartDataModule
-//         */
-//        $cartDataModule = $this->moduleManager->getModuleByName(BaseCartDataModule::NAME);
-//
-//        /**
-//         * @var BasePaymentModule $paymentModule
-//         */
-//        $paymentModule = $this->moduleManager->getModuleByName(BasePaymentModule::NAME);
-//
-//        return [
-//            'cart' => $cartDataModule->processCartToArray($cart),
-//            'payment' => $paymentModule->processPaymentsToArray($cart)
-//        ];
     }
 }

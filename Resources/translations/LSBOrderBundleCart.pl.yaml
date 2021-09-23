@@ -8,3 +8,10 @@ Cart:
                 AvailableInNextShipping: 'Produkt dostępny z następnej dostawy'
                 AvailableInRemoteStockButLocalSelected: 'Produkt dostępny z dostępny magazynu w odpowiedniej ilości. Wybrano dostawę z lokalnego magazynu.'
                 AvailableInNextShippingButNotEnough: 'LSBOrderBundleCart'
+        PackageShipping:
+            Validation:
+                ShippingFormNotAllowed: 'Wybrana metoda dostawy nie jest dostępna.'
+                MissingShippingForm: 'Brak wybranej metody dostawy.'
+        Payment:
+            Validation:
+                PaymentMethodNotSelected: 'Nie wybrano sposobu płatności.'

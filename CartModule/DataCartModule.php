@@ -13,6 +13,7 @@ use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartItem;
 use LSB\OrderBundle\Event\CartEvent;
 use LSB\OrderBundle\Event\CartEvents;
+use LSB\OrderBundle\Manager\CartManager;
 use LSB\OrderBundle\Model\CartModuleConfiguration;
 use LSB\OrderBundle\Model\CartSummary;
 use LSB\OrderBundle\Model\DataCartCalculatorResult;
@@ -33,9 +34,13 @@ class DataCartModule extends BaseCartModule
     const NAME = 'cartData';
 
     public function __construct(
-        protected DataCartComponent $dataCartComponent
+        CartManager $cartManager,
+        DataCartComponent $dataCartComponent
     ) {
-        parent::__construct($dataCartComponent);
+        parent::__construct(
+            $cartManager,
+            $dataCartComponent
+        );
     }
 
     /**
@@ -210,5 +215,14 @@ class DataCartModule extends BaseCartModule
 
 
         return [$notifications, $cart, $cartItemRemoved || $packagesUpdated];
+    }
+
+    /**
+     * @param CartInterface $cart
+     * @param bool $flush
+     */
+    public function closeCart(CartInterface $cart, bool $flush = true): void
+    {
+        $this->dataCartComponent->closeCart($cart, $flush);
     }
 }

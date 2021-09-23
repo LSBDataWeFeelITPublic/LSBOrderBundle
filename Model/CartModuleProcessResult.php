@@ -4,13 +4,14 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\Model;
 
 use JMS\Serializer\Annotation\Groups;
+use LSB\UtilityBundle\Attribute\Serialize;
 use Symfony\Component\HttpFoundation\Response;
 
 /**
  * Class CartModuleProcessResult
  * @package LSB\CartBundle\Model
  */
-class CartModuleProcessResult
+#[Serialize] class CartModuleProcessResult
 {
     /**
      * @var mixed

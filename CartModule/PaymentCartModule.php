@@ -7,14 +7,13 @@ use LSB\LocaleBundle\Manager\TaxManager;
 use LSB\OrderBundle\CartComponent\DataCartComponent;
 use LSB\OrderBundle\CartComponent\PaymentCartComponent;
 use LSB\OrderBundle\Entity\CartInterface;
-use LSB\OrderBundle\Entity\CartPackage;
 use LSB\OrderBundle\Event\CartEvent;
 use LSB\OrderBundle\Event\CartEvents;
+use LSB\OrderBundle\Form\CartModule\Payment\PaymentType;
 use LSB\OrderBundle\Interfaces\PaymentMethodCartCalculatorInterface;
-use LSB\OrderBundle\Interfaces\ShippingFormCartCalculatorInterface;
+use LSB\OrderBundle\Manager\CartManager;
 use LSB\OrderBundle\Model\CartModuleProcessResult;
 use LSB\OrderBundle\Model\CartPaymentMethodCalculatorResult;
-use LSB\OrderBundle\Model\CartShippingMethodCalculatorResult;
 use LSB\OrderBundle\Model\FormSubmitResult;
 use LSB\PaymentBundle\Entity\Method;
 use LSB\UserBundle\Entity\UserInterface;
@@ -30,11 +29,14 @@ class PaymentCartModule extends BaseCartModule
 {
     const NAME = 'payment';
 
+    const FORM_CLASS = PaymentType::class;
+
     public function __construct(
+        CartManager                    $cartManager,
         DataCartComponent              $dataCartComponent,
         protected PaymentCartComponent $paymentCartComponent
     ) {
-        parent::__construct($dataCartComponent,);
+        parent::__construct($cartManager, $dataCartComponent,);
     }
 
     /**
@@ -149,7 +151,7 @@ class PaymentCartModule extends BaseCartModule
         if ($defaultPaymentMethod) {
             $cart->setPaymentMethod($defaultPaymentMethod);
         } else {
-            $errors[] = $this->dataCartComponent->getTranslator()->trans('Cart.Module.Payment.Validation.PaymentMethodSelected', [], 'Cart');
+            $errors[] = $this->dataCartComponent->getTranslator()->trans('Cart.Module.Payment.Validation.PaymentMethodNotSelected', [], 'LSBOrderBundleCart');
         }
 
         return $errors;
@@ -164,13 +166,10 @@ class PaymentCartModule extends BaseCartModule
     {
         parent::prepare($cart);
 
-        //Walidujemy dostępność metody płatności przed przygotowaniem listy
         $this->validate($cart);
 
         if (!$cart->getPaymentMethod() instanceof PaymentMethod) {
             $paymentMethods = $this->getPaymentMethods($cart);
-
-            //Próbujemy w takiej sytuacji ustalić domyślną płatność
             $defaultPaymentMethod = $this->determineDefaultPaymentMethod($paymentMethods, $cart->getUser());
 
             if ($defaultPaymentMethod) {
@@ -218,8 +217,6 @@ class PaymentCartModule extends BaseCartModule
     }
 
     /**
-     * Pobiera wszystkie metody płatności dostępne dla koszyka
-     *
      * @return array
      */
     public function getAllPaymentMethods(): array
@@ -240,10 +237,10 @@ class PaymentCartModule extends BaseCartModule
 
     public function calculatePaymentCost(
         CartInterface $cart,
-        Method $method,
-        bool        $addVat = true,
-        ?Money       $calculatedTotalProducts = null,
-        array       &$paymentCostRes = null
+        Method        $method,
+        bool          $addVat = true,
+        ?Money        $calculatedTotalProducts = null,
+        array         &$paymentCostRes = null
     ): CartPaymentMethodCalculatorResult {
 
         /**
@@ -292,8 +289,7 @@ class PaymentCartModule extends BaseCartModule
         /**
          * @var PaymentMethod $paymentMethod
          */
-        foreach ($paymentMethods as $paymentMethod)
-        {
+        foreach ($paymentMethods as $paymentMethod) {
             $calculation = $this->calculatePaymentCost(
                 $cart,
                 $paymentMethod,
@@ -305,6 +301,21 @@ class PaymentCartModule extends BaseCartModule
         }
 
         return $calculations;
+    }
+
+    /**
+     * @param CartInterface|null $cart
+     * @return array
+     * @throws \Exception
+     */
+    protected function getDefaultFormOptions(?CartInterface $cart): array
+    {
+        if (!$cart instanceof CartInterface) {
+            $cart = $this->dataCartComponent->getCart();
+        }
+
+        $availablePaymentMethods = $this->getPaymentMethods($cart);
+        return ['availablePaymentMethods' => $availablePaymentMethods];
     }
 
     /**

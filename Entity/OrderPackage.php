@@ -54,6 +54,62 @@ abstract class OrderPackage extends Package implements OrderPackageInterface
     }
 
     /**
+     * @param null $num
+     * @return array
+     */
+    public function generateOrderPackageNumber($num = null)
+    {
+        $orderNumber = $this->getOrder()?->getNumber();
+
+        // nie nadpisujemy istniejącego już numeru
+        if (!$this->getNumber() && $orderNumber) {
+
+            // jeżeli nie został przekazany argument $num, ustal wartość atomu P na podstawie istniejących paczek w zamówieniu
+            if (!$num) {
+                $num = $this->getNextPackageCountNumber();
+            }
+
+            $orderPackageNumber = $orderNumber . '/P' . $num;
+            $this->setNumber($orderPackageNumber);
+        }
+
+        return ['packageNumber' => $this->getNumber(), 'number' => $num];
+    }
+
+    /**
+     * TODO move to service
+     * @return int
+     */
+    public function getNextPackageCountNumber(): int
+    {
+        $max_number = null;
+        $num = 1;
+
+        $packages = $this->getOrder()->getOrderPackages();
+        if ($packages->count()) {
+
+            /**
+             * @var OrderPackageInterface $package
+             */
+            foreach ($packages as $package) {
+                $packageNumber = $package->getNumber();
+                if ($packageNumber) {
+                    $max_number = $packageNumber;
+                }
+            }
+
+            if ($max_number) {
+                $tmpNumArray = explode('/P', trim($max_number));
+                if (!empty($tmpNumArray) && array_key_exists(1, $tmpNumArray)) {
+                    $num = (int)$tmpNumArray[1] + 1;
+                }
+            }
+        }
+
+        return $num;
+    }
+
+    /**
      * @return Collection
      */
     public function getShippingTypeOrderPackageItems(): Collection

@@ -7,6 +7,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use LSB\LocaleBundle\Manager\TaxManager;
 use LSB\OrderBundle\CartComponent\CartItemCartComponent;
 use LSB\OrderBundle\CartComponent\DataCartComponent;
+use LSB\OrderBundle\CartHelper\PriceHelper;
 use LSB\OrderBundle\CartModule\PackageShippingCartModule;
 use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
@@ -55,7 +56,8 @@ class CartTotalCalculator extends BaseTotalCalculator
         protected DataCartComponent $dataCartComponent,
         protected PricelistManager $pricelistManager,
         protected CartModuleService $cartModuleService,
-        protected CartItemCartComponent $cartItemCartComponent
+        protected CartItemCartComponent $cartItemCartComponent,
+        protected PriceHelper $priceHelper
     ) {
         parent::__construct($em, $eventDispatcher, $tokenStorage);
     }
@@ -87,8 +89,8 @@ class CartTotalCalculator extends BaseTotalCalculator
         return new Result(
             true,
             $subject->getCurrency(),
-            0,
-            0,
+            ValueHelper::createMoneyZero($subject->getCurrencyIsoCode()),
+            ValueHelper::createMoneyZero($subject->getCurrencyIsoCode()),
             $subject,
             $calculationRes,
             $calculationProductRes,
@@ -184,7 +186,7 @@ class CartTotalCalculator extends BaseTotalCalculator
                 if ($selectedCartItem->getCartItemSummary()?->getCalculatedAt() && $selectedCartItem->getCartItemSummary()?->getActivePrice()) {
                     $activePrice = $selectedCartItem->getCartItemSummary()->getActivePrice();
                 } else {
-                    $activePrice = $this->cartItemCartComponent->getPriceForCartItem($selectedCartItem);
+                    $activePrice = $this->priceHelper->getPriceForCartItem($selectedCartItem);
                 }
 
                 $this->calculateActiveValues(
@@ -292,7 +294,14 @@ class CartTotalCalculator extends BaseTotalCalculator
     public function calculatePositions($subject, array $options, ?string $applicationCode, bool $updatePositions = true): Result
     {
         $res = [];
-        return new Result(false, $subject->getCurrency(), 0, 0, $subject, $res);
+        return new Result(
+            false,
+            $subject->getCurrency(),
+            ValueHelper::createMoneyZero($subject->getCurrencyIsoCode()),
+            ValueHelper::createMoneyZero($subject->getCurrencyIsoCode()),
+            $subject,
+            $res
+        );
     }
 
     /**
@@ -308,22 +317,22 @@ class CartTotalCalculator extends BaseTotalCalculator
         }
 
         if ($this->ps->get('cart.calculation.gross')) {
-            $catalogueValueNetto = $this->dataCartComponent->calculateMoneyNetValueFromGrossPrice(
+            $catalogueValueNetto = $this->priceHelper->calculateMoneyNetValueFromGrossPrice(
                 $cataloguePrice->getGrossPrice(true),
                 $selectedCartItem->getQuantity(true),
                 $cataloguePrice->getVat(true)
             );
-            $catalogueValueGross = $this->dataCartComponent->calculateMoneyGrossValue(
+            $catalogueValueGross = $this->priceHelper->calculateMoneyGrossValue(
                 $cataloguePrice->getGrossPrice(true),
                 $selectedCartItem->getQuantity(true)
             );
         } else {
-            $catalogueValueNetto = $this->dataCartComponent->calculateMOneyNetValue(
+            $catalogueValueNetto = $this->priceHelper->calculateMOneyNetValue(
                 $cataloguePrice->getNetPrice(true),
                 $selectedCartItem->getQuantity(true)
             );
 
-            $catalogueValueGross = $this->dataCartComponent->calculateMOneyGrossValueFromNetPrice(
+            $catalogueValueGross = $this->priceHelper->calculateMOneyGrossValueFromNetPrice(
                 $cataloguePrice->getNetPrice(true),
                 $selectedCartItem->getQuantity(),
                 $cataloguePrice->getVat()
@@ -354,16 +363,16 @@ class CartTotalCalculator extends BaseTotalCalculator
 
         if ($this->ps->get('cart.calculation.gross')) {
 
-            $valueNetto = $this->dataCartComponent->calculateMoneyNetValueFromGrossPrice($activePrice->getGrossPrice(true), $selectedCartItem->getQuantity(true), $activePrice->getVat(true));
-            $valueGross = $this->dataCartComponent->calculateMoneyGrossValue($activePrice->getGrossPrice(true), $selectedCartItem->getQuantity(true));
+            $valueNetto = $this->priceHelper->calculateMoneyNetValueFromGrossPrice($activePrice->getGrossPrice(true), $selectedCartItem->getQuantity(true), $activePrice->getVat(true));
+            $valueGross = $this->priceHelper->calculateMoneyGrossValue($activePrice->getGrossPrice(true), $selectedCartItem->getQuantity(true));
             TaxManager::addMoneyValueToGrossRes($taxRate, $valueGross, $totalRes);
 
             if ($catalogueValueGross !== null) {
                 TaxManager::addValueToGrossRes($taxRate, ($valueGross->lessThan($catalogueValueGross)) ? $catalogueValueGross->subtract($valueGross) : 0, $spreadRes);
             }
         } else {
-            $valueNetto = $this->dataCartComponent->calculateMoneyNetValue($activePrice->getNetPrice(true), $selectedCartItem->getQuantity(true));
-            $valueGross = $this->dataCartComponent->calculateMoneyGrossValueFromNetPrice($activePrice->getNetPrice(true), $selectedCartItem->getQuantity(true), $activePrice->getVat(true));
+            $valueNetto = $this->priceHelper->calculateMoneyNetValue($activePrice->getNetPrice(true), $selectedCartItem->getQuantity(true));
+            $valueGross = $this->priceHelper->calculateMoneyGrossValueFromNetPrice($activePrice->getNetPrice(true), $selectedCartItem->getQuantity(true), $activePrice->getVat(true));
 
             TaxManager::addMoneyValueToNettoRes($taxRate, $valueNetto, $totalRes);
             if ($catalogueValueNetto !== null) {
@@ -394,16 +403,16 @@ class CartTotalCalculator extends BaseTotalCalculator
         $taxRate = $activePrice->getVat();
 
         if ($this->ps->get('cart.calculation.gross')) {
-            $valueNetto = $this->dataCartComponent->calculateMoneyNetValueFromGrossPrice($activePrice->getGrossPrice(true), $quantity, $activePrice->getVat());
-            $valueGross = $this->dataCartComponent->calculateMoneyGrossValue($activePrice->getGrossPrice(), $quantity);
+            $valueNetto = $this->priceHelper->calculateMoneyNetValueFromGrossPrice($activePrice->getGrossPrice(true), $quantity, $activePrice->getVat());
+            $valueGross = $this->priceHelper->calculateMoneyGrossValue($activePrice->getGrossPrice(), $quantity);
 
             TaxManager::addMoneyValueToGrossRes($taxRate, $valueGross, $totalRes);
             if ($catalogueValueGross !== null) {
                 TaxManager::addMoneyValueToGrossRes($taxRate, ($catalogueValueGross->greaterThan($valueGross)) ? $catalogueValueGross->subtract($valueGross) : ValueHelper::createMoneyZero($activePrice->getCurrencyIsoCode()), $spreadRes);
             }
         } else {
-            $valueNetto = $this->dataCartComponent->calculateMoneyNetValue($activePrice->getNetPrice(true), $quantity);
-            $valueGross = $this->dataCartComponent->calculateMoneyGrossValueFromNetPrice($activePrice->getNetPrice(true), $quantity, $activePrice->getVat());
+            $valueNetto = $this->priceHelper->calculateMoneyNetValue($activePrice->getNetPrice(true), $quantity);
+            $valueGross = $this->priceHelper->calculateMoneyGrossValueFromNetPrice($activePrice->getNetPrice(true), $quantity, $activePrice->getVat());
 
             TaxManager::addMoneyValueToNettoRes($taxRate, $valueNetto, $totalRes);
             if ($catalogueValueNetto !== null) {

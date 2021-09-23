@@ -5,14 +5,15 @@ namespace LSB\OrderBundle\Model;
 
 use LSB\LocaleBundle\Entity\CurrencyInterface;
 use LSB\PricelistBundle\Calculator\Result;
+use Money\Money;
 
 class CartTotalResult extends Result
 {
     /**
      * @param bool $isSuccess
      * @param CurrencyInterface|null $currency
-     * @param float $totalNet
-     * @param float $totalGross
+     * @param Money|null $totalNet
+     * @param Money|null $totalGross
      * @param null $subject
      * @param array $calculationRes
      * @param array $calculationProductRes
@@ -23,8 +24,8 @@ class CartTotalResult extends Result
     public function __construct(
         bool $isSuccess,
         ?CurrencyInterface $currency,
-        float $totalNet,
-        float $totalGross,
+        ?Money $totalNet,
+        ?Money $totalGross,
         $subject = null,
         array &$calculationRes = [],
         array &$calculationProductRes = [],

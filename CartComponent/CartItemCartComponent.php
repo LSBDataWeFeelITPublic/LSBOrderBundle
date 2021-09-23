@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\CartComponent;
 
 use JetBrains\PhpStorm\Pure;
+use LSB\OrderBundle\CartHelper\PriceHelper;
 use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartItem;
@@ -60,7 +61,8 @@ class CartItemCartComponent extends BaseCartComponent
         protected PricelistManager      $pricelistManager,
         protected TranslatorInterface   $translator,
         protected StorageManager        $storageManager,
-        protected StorageService        $storageService
+        protected StorageService        $storageService,
+        protected PriceHelper $priceHelper
     ) {
         parent::__construct($tokenStorage);
     }
@@ -303,7 +305,7 @@ class CartItemCartComponent extends BaseCartComponent
         }
 
         //Weryfikacja cen
-        $activePrice = $this->getPriceForProduct($cart, $product, $productSet, $quantity);
+        $activePrice = $this->priceHelper->getPriceForProduct($cart, $product, $productSet, $quantity);
 
         if (!$this->isZeroPriceAllowed() && (
                 !$activePrice instanceof Price
@@ -642,7 +644,7 @@ class CartItemCartComponent extends BaseCartComponent
         if ($cartItem->getCartItemSummary() && $cartItem->getCartItemSummary()->getCalculatedAt() && $cartItem->getCartItemSummary()->getActivePrice()) {
             $activePrice = $cartItem->getCartItemSummary()->getActivePrice();
         } else {
-            $activePrice = $this->getPriceForCartItem($cartItem);
+            $activePrice = $this->priceHelper->getPriceForCartItem($cartItem);
         }
 
         if (!$this->isZeroPriceAllowed() && (!$activePrice instanceof Price || $activePrice->getNetPrice() === null || $activePrice->getNetPrice() <= 0)) {
@@ -956,50 +958,5 @@ class CartItemCartComponent extends BaseCartComponent
         }
 
         return $cartItem;
-    }
-
-    /**
-     * @param CartItemInterface $cartItem
-     * @return Price|null
-     * @throws \Exception
-     */
-    public function getPriceForCartItem(CartItemInterface $cartItem): ?Price
-    {
-        if (!$cartItem->getCart()) {
-            return null;
-        }
-
-        return $this->pricelistManager->getPriceForProduct(
-            $cartItem->getProduct(),
-            null,
-            null,
-            $cartItem->getCart()->getCurrency(),
-            $cartItem->getCart()->getBillingContractor(),
-            $cartItem->getQuantity(true)
-        );
-    }
-
-    /**
-     * @param Cart $cart
-     * @param Product $product
-     * @param Product|null $productSet
-     * @param Value $quantity
-     * @return Price|null
-     * @throws \Exception
-     */
-    public function getPriceForProduct(
-        Cart     $cart,
-        Product  $product,
-        ?Product $productSet,
-        Value    $quantity
-    ): ?Price {
-        return $this->pricelistManager->getPriceForProduct(
-            $product,
-            null,
-            null,
-            $cart->getCurrency(),
-            $cart->getBillingContractor(),
-            $quantity
-        );
     }
 }

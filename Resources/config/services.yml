@@ -1,7 +1,26 @@
 parameters:
     choice_list.cart.auth:
 services:
-    LSB\OrderBundle\Service\CartConverterService: ~
+    LSB\OrderBundle\Service\CartConverterService:
+        arguments:
+            - '@doctrine.orm.entity_manager'
+            - '@security.token_storage'
+            - '@workflow.registry'
+            - '@translator'
+            - '@event_dispatcher'
+            - '@request_stack'
+            - '@LSB\OrderBundle\Service\CartService'
+            - '@LSB\PricelistBundle\Manager\PricelistManager'
+            - '@parameter_bag'
+            - '@LSB\PricelistBundle\Service\TotalCalculatorManager'
+            - '@LSB\PaymentBundle\Manager\PaymentManager'
+            - '@LSB\OrderBundle\Manager\CartPackageItemManager'
+            - '@LSB\OrderBundle\Manager\CartItemManager'
+            - '@LSB\OrderBundle\Manager\OrderPackageManager'
+            - '@LSB\OrderBundle\Manager\OrderManager'
+            - '@LSB\OrderBundle\Manager\OrderPackageItemManager'
+            - '@LSB\OrderBundle\CartHelper\PriceHelper'
+            - '@LSB\OrderBundle\CartHelper\QuantityHelper'
 
     ### Generator services
     LSB\OrderBundle\Service\CartStepGeneratorService:
@@ -12,6 +31,16 @@ services:
 
     LSB\OrderBundle\CartGenerator\CartStep1Generator:
         tags: [ { name: cart.step.generator, step: 1 } ]
+        arguments:
+            - '@LSB\OrderBundle\Service\CartModuleService'
+            - '@LSB\OrderBundle\Service\CartService'
+            - '@doctrine.orm.entity_manager'
+            - '@LSB\OrderBundle\Service\CartConverterService'
+            - '@request_stack'
+            - '@event_dispatcher'
+
+    LSB\OrderBundle\CartGenerator\CartStep2Generator:
+        tags: [ { name: cart.step.generator, step: 2 } ]
         arguments:
             - '@LSB\OrderBundle\Service\CartModuleService'
             - '@LSB\OrderBundle\Service\CartService'
@@ -47,6 +76,7 @@ services:
             - '@LSB\PricelistBundle\Manager\PricelistManager'
             - '@LSB\OrderBundle\Service\CartModuleService'
             - '@LSB\OrderBundle\CartComponent\CartItemCartComponent'
+            - '@LSB\OrderBundle\CartHelper\PriceHelper'
         tags:
             - { name: calculator.total }
 
@@ -65,6 +95,7 @@ services:
             - '@event_dispatcher'
             - '@request_stack'
             - '@LSB\OrderBundle\Service\CartComponentService'
+            - '@LSB\ProductBundle\Service\StorageService'
 
     LSB\OrderBundle\Service\CartModuleService:
         lazy: true
@@ -120,27 +151,36 @@ services:
     #modules
     LSB\OrderBundle\CartModule\DataCartModule:
         arguments:
+            - '@LSB\OrderBundle\Manager\CartManager'
             - '@LSB\OrderBundle\CartComponent\DataCartComponent'
         tags:
             -   name: cart.module
 
     LSB\OrderBundle\CartModule\CartItemCartModule:
         arguments:
+            - '@LSB\OrderBundle\Manager\CartManager'
             - '@LSB\OrderBundle\CartComponent\DataCartComponent'
             - '@LSB\OrderBundle\CartComponent\CartItemCartComponent'
+            - '@LSB\OrderBundle\CartComponent\PackageSplitCartComponent'
+            - '@LSB\OrderBundle\CartHelper\PriceHelper'
+            - '@parameter_bag'
         tags:
             -   name: cart.module
 
     LSB\OrderBundle\CartModule\PackageSplitCartModule:
         arguments:
+            - '@LSB\OrderBundle\Manager\CartManager'
             - '@LSB\OrderBundle\CartComponent\DataCartComponent'
             - '@LSB\OrderBundle\CartComponent\PackageSplitCartComponent'
             - '@LSB\OrderBundle\CartComponent\CartItemCartComponent'
+            - '@LSB\OrderBundle\CartHelper\QuantityHelper'
+            - '@LSB\OrderBundle\CartHelper\PriceHelper'
         tags:
             -   name: cart.module
 
     LSB\OrderBundle\CartModule\PackageShippingCartModule:
         arguments:
+            - '@LSB\OrderBundle\Manager\CartManager'
             - '@LSB\OrderBundle\CartComponent\DataCartComponent'
             - '@LSB\OrderBundle\CartComponent\PackageShippingCartComponent'
             - '@LSB\OrderBundle\CartComponent\CartItemCartComponent'
@@ -149,6 +189,7 @@ services:
 
     LSB\OrderBundle\CartModule\PaymentCartModule:
         arguments:
+            - '@LSB\OrderBundle\Manager\CartManager'
             - '@LSB\OrderBundle\CartComponent\DataCartComponent'
             - '@LSB\OrderBundle\CartComponent\PaymentCartComponent'
         tags:
@@ -178,6 +219,7 @@ services:
             - '@LSB\ProductBundle\Manager\ProductSetProductManager'
             - '@LSB\OrderBundle\Service\CartCalculatorService'
             - '@LSB\PricelistBundle\Service\TotalCalculatorManager'
+            - '@LSB\OrderBundle\CartHelper\QuantityHelper'
         tags:
             -   name: cart.component
 
@@ -193,6 +235,7 @@ services:
             - '@translator'
             - '@LSB\ProductBundle\Manager\StorageManager'
             - '@LSB\ProductBundle\Service\StorageService'
+            - '@LSB\OrderBundle\CartHelper\PriceHelper'
         tags:
             -   name: cart.component
 
@@ -206,6 +249,8 @@ services:
             - '@LSB\OrderBundle\Manager\CartPackageItemManager'
             - '@LSB\ProductBundle\Service\StorageService'
             - '@parameter_bag'
+            - '@LSB\OrderBundle\CartHelper\PriceHelper'
+            - '@LSB\OrderBundle\CartHelper\QuantityHelper'
         tags:
             -   name: cart.component
 
@@ -229,7 +274,18 @@ services:
             - '@LSB\OrderBundle\Manager\CartManager'
         tags:
             -   name: cart.component
+    #helpers
+    LSB\OrderBundle\CartHelper\QuantityHelper:
+        arguments:
+            - '@LSB\ProductBundle\Service\StorageService'
+            - '@parameter_bag'
 
+    LSB\OrderBundle\CartHelper\PriceHelper:
+        arguments:
+            - '@LSB\PricelistBundle\Manager\PricelistManager'
+
+
+    #calculators
     LSB\OrderBundle\Calculator\DefaultShippingMethodCalculator:
         tags: [ { name: cart.calculator } ]
 

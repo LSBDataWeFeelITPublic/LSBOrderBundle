@@ -31,3 +31,23 @@ services:
     LSB\OrderBundle\Form\CartPackageType:
         tags:
             - name: form.type
+
+    ### Package Shipping
+    LSB\OrderBundle\Form\CartModule\PackageShipping\CartPackageShippingType:
+        arguments:
+            - '@LSB\OrderBundle\Manager\CartPackageManager'
+        tags:
+            - name: form.type
+
+    LSB\OrderBundle\Form\CartModule\PackageShipping\CartPackagesType:
+        arguments:
+            - '@LSB\OrderBundle\Manager\CartManager'
+        tags:
+            - name: form.type
+
+    ### Payment
+    LSB\OrderBundle\Form\CartModule\Payment\PaymentType:
+        arguments:
+            - '@LSB\OrderBundle\Manager\CartManager'
+        tags:
+            -   name: form.type

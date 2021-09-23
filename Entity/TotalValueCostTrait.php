@@ -269,10 +269,10 @@ trait TotalValueCostTrait
     }
 
     /**
-     * @param int|null $paymentCostGross
+     * @param Money|int|null $paymentCostGross
      * @return TotalValueCostTrait
      */
-    public function setPaymentCostGross(?int $paymentCostGross): static
+    public function setPaymentCostGross(Money|int|null $paymentCostGross): static
     {
         if ($paymentCostGross instanceof Money) {
             [$amount, $currency] = ValueHelper::moneyToIntCurrency($paymentCostGross);
@@ -298,8 +298,15 @@ trait TotalValueCostTrait
      * @param int|null $productsValueNet
      * @return TotalValueCostTrait
      */
-    public function setProductsValueNet(?int $productsValueNet): static
+    public function setProductsValueNet(Money|int|null $productsValueNet): static
     {
+        if ($productsValueNet instanceof Money) {
+            [$amount, $currency] = ValueHelper::moneyToIntCurrency($productsValueNet);
+            $this->productsValueNet = $amount;
+            $this->currencyIsoCode = $currency;
+            return $this;
+        }
+
         $this->productsValueNet = $productsValueNet;
         return $this;
     }

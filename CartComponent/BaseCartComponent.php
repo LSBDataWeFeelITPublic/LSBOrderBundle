@@ -2,7 +2,10 @@
 
 namespace LSB\OrderBundle\CartComponent;
 
+use Money\Money;
 use LSB\UserBundle\Entity\UserInterface;
+use LSB\UtilityBundle\Helper\ValueHelper;
+use LSB\UtilityBundle\Value\Value;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 abstract class BaseCartComponent implements CartComponentInterface

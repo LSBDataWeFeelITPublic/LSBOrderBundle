@@ -9,6 +9,7 @@ use LSB\ContractorBundle\Entity\ContractorInterface;
 use LSB\OrderBundle\CartModule\CartModuleInterface;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\Order;
+use LSB\OrderBundle\Entity\OrderInterface;
 use LSB\OrderBundle\Interfaces\CartStepGeneratorInterface;
 use LSB\OrderBundle\Service\CartConverterService;
 use LSB\OrderBundle\Service\CartModuleService;
@@ -231,7 +232,7 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
         if ($this->isCartConverterStep) {
             $order = $this->cartConverter->convertCartIntoOrder($this->cart);
 
-            if ($order instanceof Order) {
+            if ($order instanceof OrderInterface) {
                 $orderData = [
                     'order' => [
                         'uuid' => (string)$order->getUuid(),

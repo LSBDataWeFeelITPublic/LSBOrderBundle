@@ -7,6 +7,7 @@ use LSB\ContractorBundle\Entity\ContractorInterface;
 use LSB\OrderBundle\CartComponent\DataCartComponent;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Event\CartEvent;
+use LSB\OrderBundle\Manager\CartManager;
 use LSB\OrderBundle\Model\CartModuleConfiguration;
 use LSB\OrderBundle\Model\CartModuleProcessResult;
 use LSB\OrderBundle\Model\FormSubmitResult;
@@ -31,7 +32,10 @@ abstract class BaseCartModule extends BaseModuleInventory implements CartModuleI
 
     protected mixed $nameConverter = null;
 
-    public function __construct(protected DataCartComponent $dataCartComponent)
+    public function __construct(
+        protected CartManager $cartManager,
+        protected DataCartComponent $dataCartComponent
+    )
     {
         $this->isConfigured = true;
         $this->nameConverter = new CamelCaseToSnakeCaseNameConverter();

@@ -3,12 +3,14 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\CartGenerator;
 
-use LSB\OrderBundle\CartModule\CartItemCartModule;
+use Doctrine\ORM\EntityManagerInterface;
 use LSB\OrderBundle\CartModule\DataCartModule;
-use LSB\OrderBundle\CartModule\PackageShippingCartModule;
-use LSB\OrderBundle\CartModule\PackageSplitCartModule;
-use LSB\OrderBundle\CartModule\PaymentCartModule;
 use LSB\OrderBundle\Entity\CartInterface;
+use LSB\OrderBundle\Service\CartConverterService;
+use LSB\OrderBundle\Service\CartModuleService;
+use LSB\OrderBundle\Service\CartService;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 class CartStep2Generator extends BaseCartStepGenerator
 {
@@ -16,15 +18,19 @@ class CartStep2Generator extends BaseCartStepGenerator
 
     const CODE = "converter";
 
-    /**
-     * @var int|null
-     */
-    protected ?int $nextStep = null;
+    public function __construct(
+        CartModuleService $moduleService,
+        CartService $cartManager,
+        EntityManagerInterface $em,
+        CartConverterService $cartConverter,
+        RequestStack $requestStack,
+        EventDispatcherInterface $eventDispatcher
+    ) {
+        parent::__construct($moduleService, $cartManager, $em, $cartConverter, $requestStack, $eventDispatcher);
 
-    /**
-     * @var int|null
-     */
-    protected ?int $previousStep = null;
+        $this->isCartConverterStep = true;
+        $this->previousStep = CartStep1Generator::STEP;
+    }
 
     /**
      * @inheritDoc
@@ -55,7 +61,7 @@ class CartStep2Generator extends BaseCartStepGenerator
     public function prepare(): void
     {
         //TODO przygotować mechanizm w ramach koszyka
-        //$this->cartManager->rebuildCart($this->cart);
+        $this->cartManager->rebuildCart($this->cart);
         parent::prepare();
     }
 }

@@ -1,4 +1,5 @@
 <?php
+declare(strict_types=1);
 
 namespace LSB\OrderBundle\Service;
 
@@ -6,23 +7,21 @@ use Doctrine\ORM\EntityManager;
 use Doctrine\ORM\EntityManagerInterface;
 use LSB\ContractorBundle\Entity\ContractorInterface;
 use LSB\LocaleBundle\Manager\TaxManager;
+use LSB\OrderBundle\CartException\CartConverterException;
+use LSB\OrderBundle\CartHelper\PriceHelper;
+use LSB\OrderBundle\CartHelper\QuantityHelper;
 use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartItem;
 use LSB\OrderBundle\Entity\CartPackage;
-use LSB\OrderBundle\Entity\CartPackageInterface;
 use LSB\OrderBundle\Entity\CartPackageItem;
 use LSB\OrderBundle\Entity\Order;
 use LSB\OrderBundle\Entity\OrderInterface;
-use LSB\OrderBundle\Entity\OrderNote;
 use LSB\OrderBundle\Entity\OrderPackageInterface;
 use LSB\OrderBundle\Entity\OrderPackageItem;
 use LSB\OrderBundle\Entity\PackageItem;
 use LSB\OrderBundle\Entity\PackageItemInterface;
-use LSB\OrderBundle\Event\OrderEvent;
-use LSB\OrderBundle\Event\OrderEvents;
 use LSB\OrderBundle\Manager\CartItemManager;
-use LSB\OrderBundle\Manager\CartManager;
 use LSB\OrderBundle\Manager\CartPackageItemManager;
 use LSB\OrderBundle\Manager\OrderManager;
 use LSB\OrderBundle\Manager\OrderPackageItemManager;
@@ -33,8 +32,9 @@ use LSB\PaymentBundle\Manager\PaymentManager;
 use LSB\PricelistBundle\Manager\PricelistManager;
 use LSB\PricelistBundle\Service\TotalCalculatorManager;
 use LSB\ProductBundle\Entity\Product;
-use LSB\ProductBundle\Entity\ProductSetProduct;
 use LSB\OrderBundle\Entity\OrderPackage;
+use LSB\ProductBundle\Entity\ProductInterface;
+use LSB\ProductBundle\Entity\ProductSetProduct;
 use LSB\UserBundle\Entity\UserInterface;
 use LSB\UtilityBundle\Helper\ValueHelper;
 use LSB\UtilityBundle\Repository\RepositoryInterface;
@@ -59,101 +59,30 @@ class CartConverterService
 
     const EXTENDED_DATA_CART_TOTAL_GROSS = 'cartTotalGross';
 
-    //podstawowe serwisy
+    public function __construct(
+        protected EntityManagerInterface $manager,
+        protected TokenStorageInterface $tokenStorage,
+        protected Registry $workflowRegistry,
+        protected TranslatorInterface $translator,
+        protected EventDispatcherInterface $dispatcher,
+        protected RequestStack $requestStack,
+        protected CartService $cartService,
+        protected PriceListManager $priceListManager,
+        protected ParameterBagInterface $ps,
+        protected TotalCalculatorManager $totalCalculatorManager,
+        protected PaymentManager $paymentManager,
+        protected CartPackageItemManager $cartPackageItemManager,
+        protected CartItemManager $cartItemManager,
+        protected OrderPackageManager $orderPackageManager,
+        protected OrderManager $orderManager,
+        protected OrderPackageItemManager $orderPackageItemManager,
+        protected PriceHelper $priceHelper,
+        protected QuantityHelper $quantityHelper
+    )
+    {
 
-    protected EntityManagerInterface $manager;
-
-    protected TokenStorageInterface $tokenStorage;
-
-    /** @var Registry */
-    protected Registry $workflowRegistry;
-
-    protected TranslatorInterface $translator;
-
-    /** @var EventDispatcherInterface */
-    protected EventDispatcherInterface $eventDispatcher;
-
-    protected CartManager $cartManager;
-
-    protected PricelistManager $pricelistManager;
-
-    protected PaymentManager $paymentManager;
-
-    protected ParameterBagInterface $ps;
-
-    protected TotalCalculatorManager $totalCalculatorManager;
-
-    /**
-     * @var RequestStack
-     */
-    protected RequestStack $requestStack;
-
-    protected CartPackageItemManager $cartPackageItemManager;
-
-    protected CartItemManager $cartItemManager;
-
-    protected OrderPackageManager $orderPackageManager;
-
-    protected OrderPackageItemManager $orderPackageItemManager;
-
-    protected OrderManager $orderManager;
-
-    /**
-     * @param EntityManager $manager
-     * @param TokenStorageInterface $tokenStorage
-     * @param Registry $workflowRegistry
-     * @param TranslatorInterface $translator
-     * @param EventDispatcherInterface $dispatcher
-     * @param RequestStack $requestStack
-     */
-    public function setCoreServices(
-        EntityManager $manager,
-        TokenStorageInterface $tokenStorage,
-        Registry $workflowRegistry,
-        TranslatorInterface $translator,
-        EventDispatcherInterface $dispatcher,
-        RequestStack $requestStack
-    ): void {
-        $this->manager = $manager;
-        $this->tokenStorage = $tokenStorage;
-        $this->workflowRegistry = $workflowRegistry;
-        $this->translator = $translator;
-        $this->eventDispatcher = $dispatcher;
-        $this->requestStack = $requestStack;
     }
 
-    /**
-     * @param CartManager $cartManager
-     * @param PricelistManager $priceListManager
-     * @param ParameterBagInterface $ps
-     * @param TotalCalculatorManager $totalCalculatorManager
-     * @param PaymentManager $paymentManager
-     * @param CartPackageItemManager $cartPackageItemManager
-     * @param CartItemManager $cartItemManager
-     * @param OrderPackageManager $orderPackageManager
-     * @param OrderManager $orderManager
-     */
-    public function setAdditionalServices(
-        CartManager $cartManager,
-        PriceListManager $priceListManager,
-        ParameterBagInterface $ps,
-        TotalCalculatorManager $totalCalculatorManager,
-        PaymentManager $paymentManager,
-        CartPackageItemManager $cartPackageItemManager,
-        CartItemManager $cartItemManager,
-        OrderPackageManager $orderPackageManager,
-        OrderManager $orderManager
-    ): void {
-        $this->cartManager = $cartManager;
-        $this->pricelistManager = $priceListManager;
-        $this->ps = $ps;
-        $this->totalCalculatorManager = $totalCalculatorManager;
-        $this->paymentManager = $paymentManager;
-        $this->cartPackageItemManager = $cartPackageItemManager;
-        $this->cartItemManager = $cartItemManager;
-        $this->orderPackageManager = $orderPackageManager;
-        $this->orderManager = $orderManager;
-    }
 
     /**
      * @return CartPackageRepositoryInterface
@@ -178,15 +107,227 @@ class CartConverterService
      * @param ContractorInterface|null $customerDelivery
      * @param bool $finalizeCart
      * @return Order|null
+     * @throws \Exception
      */
     public function convertCartIntoOrder(
-        CartInterface $cart,
+        Cart $cart,
         Order $order = null,
         ContractorInterface $customerDelivery = null,
         bool $finalizeCart = true
     ): ?Order {
-        //TODO
-        return null;
+        $user = $cart->getUser();
+        $convertedProductSets = [];
+
+        $cartTotalGrossBeforeProductSetSplit = null;
+
+        //Odświeżamy wyliczenie koszyka
+        $this->cartService->getCartSummary($cart, true);
+        //Pobieramy wartość koszyka przed rozbiciem produktów na składowe, wartośc po konwersji nie powinna posiadać różnicy
+        $cartTotalGrossBeforeProductSetSplit = $cart->getCartSummary()->getTotalGross(true);
+
+        // Konwersja pozycji w koszyku na elementy składowe zestawu
+        /**
+         * @var \LSB\OrderBundle\Entity\CartItem $cartItem
+         */
+        foreach ($cart->getCartItems() as $key => $cartItem) {
+            if (!$cartItem->isSelected()) {
+                continue;
+            }
+
+            //Jeżeli mamy do czynienia z zestawem i jest on wybrany do konwersji, dokonujemy jego rozbicia na elementy składowe
+            $productSet = $this->convertProductSetCartItemIntoCartItems($cart, $cartItem);
+
+            if ($productSet instanceof Product) {
+                $convertedProductSets[$productSet->getUuid()] = [
+                    'productSet' => $productSet,
+                    'quantity' => $cartItem->getQuantity()
+                ];
+            }
+        }
+
+
+
+        //Czyścimy kolekcję pozycji
+        $cart->getCartItems()->setInitialized(false);
+        //Pobieramy pozycje na nowo
+
+        $cartItemsConvertedIntoOrder = [];
+
+
+        //Przed rozbicie paczek na dostawców należy uwzględnić koszt dostawy
+        //$this->cartService->splitPackagesForSuppliers($cart, true);
+
+        if (!$order) {
+            $order = $this->orderManager->createNew();
+            $order->setNumber('randomNumber'.microtime()); //TODO use numbering bundle
+        }
+
+        /**
+         * @var Order $order
+         */
+        $order
+            ->setUser($cart->getUser())
+            ->setBillingContractor($cart->getBillingContractor());
+
+        // Sprawdzamy czy produkty są na pewno dostępne do konwersji
+        /**
+         * @var CartItem $cartItem
+         */
+        foreach ($cart->getCartItems() as $key => $cartItem) {
+            if (!$cartItem->isSelected()) {
+                continue;
+            }
+
+            if (!$cartItem->getProduct() instanceof Product) {
+                throw new CartConverterException("CartItem does not have relation to product. Please clear cart. CartItem ID: {$cartItem->getId()}");
+            }
+
+            //zapisujemy pozycje, które nie zostały pominięte
+            $cartItemsConvertedIntoOrder[$cartItem->getId()] = $cartItem;
+        }
+
+        //Odświeżamy wyliczenie koszyka
+        $cart->clearCartSummary();
+        $this->cartService->getCartSummary($cart, true);
+
+        //Weryfikujemy wartość koszyka
+        if (abs((int) $cartTotalGrossBeforeProductSetSplit->getAmount() - (int) $cart->getCartSummary()->getTotalGross(true)->getAmount()) > 0.01) {
+            //W przypadku wykrycia różnic czyścimy pozycje, pozostawiając resztę danych
+            $this->cartService->closeCart($cart);
+            $this->cartService->updateCart($cart);
+
+            throw new CartConverterException("Wrong cart total gross after product set split. Check product set configuration. Cart ID: {$cart->getId()}");
+        }
+
+        //Podsumowanie
+        $order
+            //->setCart($cart)
+            ->setTotalValueNet($cart->getCartSummary()->getTotalNet(true))
+            ->setTotalValueGross($cart->getCartSummary()->getTotalGross(true))
+            ->setProductsValueNet($cart->getCartSummary()->getTotalProductsNet(true))
+            ->setProductsValueGross($cart->getCartSummary()->getTotalProductsGross(true))
+            ->setShippingCostNet($cart->getCartSummary()->getShippingCostNet(true))
+            ->setShippingCostGross($cart->getCartSummary()->getShippingCostGross(true))
+            ->setPaymentCostNet($cart->getCartSummary()->getPaymentCostNet(true))
+            ->setPaymentCostGross($cart->getCartSummary()->getPaymentCostGross(true))
+            ->setCurrency($cart->getCurrency())
+            ->setCurrencyIsoCode($cart->getCurrencyIsoCode())
+            //TODO check
+            ->setBillingContractorVatStatus(null)
+            ->setCalculationType($cart->getCalculationType())
+            ->setRealisationAt($cart->getRealisationAt())
+            ->setClientOrderNumber($cart->getClientOrderNumber())
+            ->setProcessingType($cart->getProcessingType())
+        ;
+
+
+//            ->setOrderVerificationNotes($cart->getOrderVerificationNotes())
+//            ->setInvoiceNotes($cart->getInvoiceNotes())
+//            ->setShowPrices(true)
+//            ->setInvoiceEmail($cart->getUseCustomerRecipient() && $cart->getCustomerRecipientEinvoiceEmail() ? $cart->getCustomerRecipientEinvoiceEmail() : $cart->getInvoiceEmail())
+//            ->setEmailInvoiceAgree($cart->getEmailInvoiceAgree())
+//            ->setEmailInvoiceAgreeDate($cart->getEmailInvoiceAgreeDate())
+//            ->setTermsAgree($cart->getTermsAgree())
+//            ->setTermsAgreeDate($cart->getTermsAgreeDate())
+//            ->setPersonalDataOrderProcessingAgree($cart->getPersonalDataOrderProcessingAgree())
+//            ->setPersonalDataOrderProcessingAgreeDate($cart->getPersonalDataOrderProcessingAgreeDate())
+//            ->setPrivacyPolicyAgree($cart->getPrivacyPolicyAgree())
+//            ->setPrivacyPolicyAgreeDate($order->getPrivacyPolicyAgreeDate())
+//            ->setPaymentMethod($cart->getPaymentMethod())
+//            ->setIsOrderVerificationRequested($cart->getIsOrderVerificationRequested())
+//            ->setSuggestedCustomer($cart->getSuggestedCustomer())
+//            ->setIsCustomerBillingDataChanged($cart->getIsCustomerBillingDataChanged())
+//        ;
+
+        //Zapis danych historycznych
+
+//        $this->createOrderNotes($cart, $order, $user);
+//        $this->createOrderNoteWithConvertedProductSets($order, $convertedProductSets);
+//        $this->rewriteCustomerContactPerson($cart, $order);
+//        $this->rewriteAndVerifyCustomerRecipient($cart, $order);
+//        $this->rewriteCustomerData($cart);
+//        $this->rewriteShopUserData($cart);
+
+        $i = 1;
+
+
+        /**
+         * @var CartPackage $package
+         */
+        foreach ($cart->getCartPackages() as $package) {
+            $orderPackage = $this->createOrderPackageFromCartPackage(
+                $order,
+                $package
+            );
+
+            $orderPackage->generateOrderPackageNumber($i);
+            $order->addOrderPackage($orderPackage);
+            $i++;
+        }
+
+        $this->totalCalculatorManager->calculateTotal($order);
+
+        //TODO FIX
+        dump($order->getTotalValueGross(true));
+        dump($cart->getCartSummary()->getTotalGross(true));
+        die();
+
+        if (abs((int)$cartTotalGrossBeforeProductSetSplit->getAmount() - (int) $order->getTotalValueGross(true)->getAmount()) > 1) {
+            $order->setStatus(OrderInterface::STATUS_CANCELED);
+            $this->cartService->closeCart($cart);
+            $this->manager->flush();
+            throw new CartConverterException("Wrong order total gross after cart to order conversion. Check product set configuration. Cart ID: {$cart->getId()}, {}");
+        }
+
+//        switch ($cart->getInvoiceDeliveryType()) {
+//            case \LSB\CartBundle\Entity\Cart::INVOICE_DELIVERY_USE_NEW_ADDRESS:
+//                $order
+//                    ->setInvoiceDeliveryName($cart->getInvoiceDeliveryName())
+//                    ->setInvoiceDeliveryAddress($cart->getInvoiceDeliveryAddress())
+//                    ->setInvoiceDeliveryHouseNumber($cart->getInvoiceDeliveryHouseNumber())
+//                    ->setInvoiceDeliveryZipCode($cart->getInvoiceDeliveryZipCode())
+//                    ->setInvoiceDeliveryCity($cart->getInvoiceDeliveryCity());
+//                break;
+//            case Cart::INVOICE_DELIVERY_USE_CUSTOMER_DATA:
+//                $order
+//                    ->setInvoiceDeliveryName($order->getCustomerName())
+//                    ->setInvoiceDeliveryAddress($order->getCustomerAddress())
+//                    ->setInvoiceDeliveryHouseNumber($order->getCustomerHouseNumber())
+//                    ->setInvoiceDeliveryZipCode($order->getCustomerZipCode())
+//                    ->setInvoiceDeliveryCity($order->getCustomerCity());
+//                break;
+//        }
+
+        $this->manager->persist($order);
+        //$orderWorkflow = $this->workflowRegistry->get($order, "shop_order_processing");
+
+        try {
+//            if ($orderWorkflow->can($order, 'configure')) {
+//                $orderWorkflow->apply($order, 'configure');
+//            }
+
+            //Wymagany po utworzeniu zamówienia
+            $this->cartService->updateCart($cart);
+
+            $cart->addOrder($order);
+        } catch (\Exception $e) {
+            $order = null;
+        }
+
+        if ($cart->getAuthType() === CartInterface::AUTH_TYPE_REGISTRATION) {
+            //Jeżeli w trakcie składania zamówienia wybrano utworzenie konta generuje email z linkiem potwierdzającym założenie konta
+//            $this->sendAccountConfirmation($user);
+        }
+
+        if ($finalizeCart && $order instanceof Order) {
+            $this->finalizeCart($cart, $cartItemsConvertedIntoOrder);
+        }
+
+        if ($order instanceof Order) {
+            $this->orderManager->update($order);
+        }
+
+        return $order;
     }
 
 
@@ -223,12 +364,14 @@ class CartConverterService
 
         //zaokrąglamy na samym końcu
         if ($this->ps->get('cart.calculation.gross')) {
-            [$totalProductsNetto, $totalProductsGross] = TaxManager::calculateTotalNettoAndGrossFromGrossRes(
+            [$totalProductsNetto, $totalProductsGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromGrossRes(
+                $order->getCurrencyIsoCode(),
                 $totalRes,
                 true//TODO $this->cartManager->addTax($cartPackage->getCart())
             );
         } else {
-            [$totalProductsNetto, $totalProductsGross] = TaxManager::calculateTotalNettoAndGrossFromNettoRes(
+            [$totalProductsNetto, $totalProductsGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromNettoRes(
+                $order->getCurrencyIsoCode(),
                 $totalRes,
                 true//TODO $this->cartManager->addTax($cartPackage->getCart())
             );
@@ -240,13 +383,16 @@ class CartConverterService
 //        );
 
         $orderPackage
-            ->setTotalNet($totalProductsNetto)
-            ->setTotalGross($totalProductsGross)
-            ->setTotalProductsNet($totalProductsNetto)
-            ->setTotalProductsGross($totalProductsGross)
-            ->setDeliveryWithInvoice($cartPackage->getDeliveryWithInvoice())
-            ->setCustomerShippingForm($cartPackage->getCustomerShippingForm())
-            ->setCustomerDelivery($cartPackage->getCustomerDelivery(), true)
+            ->setTotalValueNet($totalProductsNetto)
+            ->setTotalValueGross($totalProductsGross)
+            ->setProductsValueNet($totalProductsNetto)
+            ->setProductsValueGross($totalProductsGross)
+            ->setShippingMethod($cartPackage->getShippingMethod())
+            ->setShippingDays($cartPackage->getShippingDays())
+            ->setShippingCostNet($cartPackage->getShippingCostNet(true))
+//            ->setDeliveryWithInvoice($cartPackage->getDeliveryWithInvoice())
+//            ->setCustomerShippingForm($cartPackage->getCustomerShippingForm())
+//            ->setCustomerDelivery($cartPackage->getCustomerDelivery(), true)
             //->setTotalShipping($calculation->getPriceNetto())
             //->setTotalShippingGross($calculation->getPriceGross(true))
             //->setShippingTaxPercentage(round($calculation->getTaxPercentage()))
@@ -305,8 +451,9 @@ class CartConverterService
         Cart $cart,
         array $cartItemsConvertedIntoOrder = []
     ): ?Cart {
+
         if (!$cart) {
-            $cart = $this->cartManager->getCart();
+            $cart = $this->cartService->getCart();
         }
 
         if ($this->ps->get('cart.finalize.allow_cart_clone')
@@ -385,6 +532,7 @@ class CartConverterService
      * @param $position
      * @param array $totalRes
      * @return PackageItem
+     * @throws \Exception
      */
     protected function createOrderPackageItemFromPackageItem(
         CartPackageItem $cartPackageItem,
@@ -399,54 +547,62 @@ class CartConverterService
         $orderPackageItem = $this->orderPackageItemManager->createNew();
 
         $orderPackageItem
+            ->setCurrency($cartPackageItem->getCurrency())
+            ->setCurrencyIsoCode($cartPackageItem->getCurrencyIsoCode())
             ->setOrderPackage($orderPackage)
             ->setPosition($position)
-            ->setCatalogPriceNet($cartPackageItem->getCartItem()->getCartItemSummary()->getBasePriceNetto())
+            ->setCatalogPriceNet($cartPackageItem->getCartItem()->getCartItemSummary()->getBasePriceNet())
             ->setCatalogPriceGross($cartPackageItem->getCartItem()->getCartItemSummary()->getBasePriceGross())
-            ->setPriceNet($cartPackageItem->getCartItem()->getCartItemSummary()->getPriceNetto())
+            ->setPriceNet($cartPackageItem->getCartItem()->getCartItemSummary()->getPriceNet())
             ->setPriceGross($cartPackageItem->getCartItem()->getCartItemSummary()->getPriceGross())
-            ->setValueNet($cartPackageItem->getCartItem()->getCartItemSummary()->getValueNetto())
+            ->setValueNet($cartPackageItem->getCartItem()->getCartItemSummary()->getValueNet())
             ->setValueGross($cartPackageItem->getCartItem()->getCartItemSummary()->getValueGross())
-            ->setTaxRate($cartPackageItem->getCartItem()->getCartItemSummary()->getTax())
+            ->setTaxRate($cartPackageItem->getCartItem()->getCartItemSummary()->getTaxRate() ?? ValueHelper::convertToValue(23)) //TODO fixed
             ->setProduct($cartPackageItem->getProduct())
-            ->setProductName($cartPackageItem->getProduct()?->getName())
-            ->setProductNumber($cartPackageItem->getProduct()?->getNumber())
-            ->setProductType($cartPackageItem->getProduct()?->getNumber())
-            ->setType($cartPackageItem->getType())
-            ->recalculateDiscount()
+            ->setQuantity($cartPackageItem->getQuantity(true))
+        ;
+
+        $orderPackageItem->getProductData()->setName($cartPackageItem->getProduct()?->getName());
+        $orderPackageItem->getProductData()->setNumber($cartPackageItem->getProduct()?->getNumber());
+        $orderPackageItem->getProductData()->setType($cartPackageItem->getProduct()?->getType());
+
+
+        $orderPackageItem
+            ->setType($cartPackageItem->getType());
+            //->recalculateDiscount()
         ;
 
         $orderPackage->addOrderPackageItem($orderPackageItem);
 
         //TODO move to configuration tree builder
         if ($this->ps->get('cart.calculation.gross')) {
-            $valueNetto = $this->cartManager->calculateNettoValueFromGross(
-                (int) $orderPackageItem->getPriceGross(true)?->getAmount(),
-                (int) $orderPackageItem->getQuantity(true)?->getAmount(),
-                $orderPackageItem->getTaxRate(true)?->getFloatAmount()
+            $valueNetto = $this->priceHelper->calculateMoneyNetValueFromGrossPrice(
+                $orderPackageItem->getPriceGross(true),
+                $orderPackageItem->getQuantity(true),
+                $orderPackageItem->getTaxRate(true)
             );
-            $valueGross = $this->cartManager->calculateGrossValue(
-                (int) $orderPackageItem->getPriceGross(true)?->getAmount(),
-                (int) $orderPackageItem->getQuantity(true)?->getAmount()
+            $valueGross = $this->priceHelper->calculateMoneyGrossValue(
+                $orderPackageItem->getPriceGross(true),
+                $orderPackageItem->getQuantity(true)
             );
-            TaxManager::addValueToGrossRes($orderPackageItem?->getTaxRate()->getFloatAmount(), $valueGross, $totalRes);
+            TaxManager::addMoneyValueToGrossRes($orderPackageItem->getTaxRate(true), $valueGross, $totalRes);
         } else {
-            $valueNetto = $this->cartManager->calculateNettoValue(
-                (int) $orderPackageItem->getPriceNet(true)->getAmount(),
-                (int) $orderPackageItem->getQuantity()
+            $valueNetto = $this->priceHelper->calculateMoneyNetValue(
+                $orderPackageItem->getPriceNet(true),
+                $orderPackageItem->getQuantity(true)
             );
-            $valueGross = $this->cartManager->calculateGrossValueFromNetto(
-                $orderPackageItem->getPriceNet(true)?->getAmount(),
-                $orderPackageItem->getQuantity(true)?->getAmount(),
-                $orderPackageItem->getTaxRate(true)?->getFloatAmount()
+            $valueGross = $this->priceHelper->calculateMoneyGrossValueFromNetPrice(
+                $orderPackageItem->getPriceNet(true),
+                $orderPackageItem->getQuantity(true),
+                $orderPackageItem->getTaxRate(true)
             );
-            TaxManager::addValueToNettoRes($orderPackageItem?->getTaxRate()->getFloatAmount(), $valueNetto, $totalRes);
+            TaxManager::addMoneyValueToNettoRes($orderPackageItem->getTaxRate(true), $valueNetto, $totalRes);
         }
 
         //Saved values for
         $cartPackageItem
-            ->setValueNet(ValueHelper::intToMoney($valueNetto, $cartPackageItem->getCurrencyIsoCode()))
-            ->setValueGross(ValueHelper::intToMoney($valueGross, $cartPackageItem->getCurrencyIsoCode()));
+            ->setValueNet($valueNetto)
+            ->setValueGross($valueGross);
 
         return $orderPackageItem;
     }
@@ -463,15 +619,53 @@ class CartConverterService
     }
 
     /**
-     * TODO?
-     *
      * @param Cart $cart
      * @param CartItem $cartItem
-     * @return Product|null
+     * @return ProductInterface|null
+     * @throws \Exception
      */
-    protected function convertProductSetCartItemIntoCartItems(Cart $cart, CartItem $cartItem): ?Product
+    protected function convertProductSetCartItemIntoCartItems(Cart $cart, CartItem $cartItem): ?ProductInterface
     {
-        return null;
+        if (!$cartItem->getProduct() || !$cartItem->getProduct()->isProductSet()) {
+            return null;
+        }
+
+        //Usumamy zestaw z produktu
+        $productSet = $cartItem->getProduct();
+        $productSetQuantity = $cartItem->getQuantity();
+
+        $productSetProducts = $productSet->getProductSetProducts();
+
+        $updateData = [];
+
+        $updateData[] = [
+            'uuid' => $cartItem->getProduct()->getUuid(),
+            'quantity' => 0
+        ];
+
+        /**
+         * @var ProductSetProduct $productSetProduct
+         */
+        foreach ($productSetProducts as $productSetProduct) {
+            if (!$productSetProduct->getProduct() || !$productSetProduct->getProductSet()) {
+                continue;
+            }
+
+            $product = $productSetProduct->getProduct();
+            $productSet = $productSetProduct->getProductSet();
+
+            $updateData[] = [
+                'uuid' => $product->getUuid(),
+                'quantity' => $productSetProduct->getQuantity() ? $productSetQuantity * $productSetProduct->getQuantity() : $productSetQuantity,
+                'ordercode' => $this->prepareOrderCodeForProductSet($cartItem, $productSetProduct->getProductSet()),
+                'productSetUuid' => $productSet->getUuid(),
+                'productSetQuantity' => $productSetQuantity
+            ];
+        }
+
+        $this->cartService->updateCartItems($cart, $updateData, false);
+
+        return $productSet;
     }
 
     /**

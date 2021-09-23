@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace LSB\OrderBundle\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
+use LSB\CartBundle\Module\BaseCartItemsModule;
 use LSB\ContractorBundle\Entity\Contractor;
 use LSB\LocaleBundle\Manager\TaxManager;
 use LSB\OrderBundle\CartComponent\DataCartComponent;
@@ -15,14 +16,18 @@ use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartItem;
 use LSB\OrderBundle\Manager\CartManager;
+use LSB\OrderBundle\Model\CartItemModule\CartItemRequestProductData;
 use LSB\OrderBundle\Model\CartItemModule\CartItemUpdateResult;
 use LSB\OrderBundle\Model\CartSummary;
 use LSB\PricelistBundle\Manager\PricelistManager;
 use LSB\ProductBundle\Entity\Product;
 use LSB\ProductBundle\Manager\ProductManager;
 use LSB\ProductBundle\Manager\StorageManager;
+use LSB\ProductBundle\Service\StorageService;
 use LSB\UserBundle\Entity\User;
 use LSB\UserBundle\Entity\UserInterface;
+use LSB\UtilityBundle\Helper\ValueHelper;
+use LSB\UtilityBundle\Value\Value;
 use Money\Money;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 use Symfony\Component\EventDispatcher\EventDispatcherInterface;
@@ -75,6 +80,7 @@ class CartService
      * @param EventDispatcherInterface $eventDispatcher
      * @param RequestStack $requestStack
      * @param CartComponentService $cartComponentService
+     * @param StorageService $storageService
      */
     public function __construct(
         protected CartManager              $cartManager,
@@ -89,7 +95,8 @@ class CartService
         protected CartModuleService        $moduleManager,
         protected EventDispatcherInterface $eventDispatcher,
         protected RequestStack             $requestStack,
-        protected CartComponentService     $cartComponentService
+        protected CartComponentService     $cartComponentService,
+        protected StorageService           $storageService
     ) {
     }
 
@@ -245,9 +252,91 @@ class CartService
         return $content;
     }
 
-    public function rebuildCart(CartInterface $cart)
+    /**
+     * @param CartItem $cartItem
+     * @param CartItemRequestProductData|null $productDataRow
+     * @return CartItem
+     * @throws \Exception
+     */
+    public function checkQuantityAndPriceForCartItem(
+        CartItem                    $cartItem,
+        ?CartItemRequestProductData $productDataRow = null
+    ): CartItem {
+        /**
+         * @var CartItemCartModule $cartItemsModule
+         */
+        $cartItemsModule = $this->moduleManager->getModuleByName(CartItemCartModule::NAME);
+
+        if (!$productDataRow) {
+            $productDataRow = new CartItemRequestProductData(
+                null,
+                null,
+                null,
+                null,
+                null
+            );
+        }
+
+        return $cartItemsModule->checkQuantityAndPriceForCartItem($cartItem, $productDataRow);
+    }
+
+    /**
+     * @throws \Exception
+     */
+    public function rebuildCart(CartInterface $cart, bool $flush = true, bool $getCartSummary = true)
     {
-        //TODO
+        $cartItemRemoved = false;
+
+        //pobieramy koszyk
+        if (!$cart) {
+            $cart = $this->getCart(true);
+        }
+
+        //Metoda weryfikuje dostępność produktów w koszyku i usuwa produkty, jeżeli przestały być dostępne
+        //Usunięcie niedostępnych produktów powinno odbywać się przed wyliczeniem CartSummary, tak aby proces nie odbywał się dwa razy
+        $removedUnavailableProducts = $this->removeUnavailableProducts($cart);
+
+        //Pobieramy wartość koszyka i ustalamy wartości pozycji
+        //Do weryfikacji czy tutaj powinno się to odbywać każdorazowo
+        if ($getCartSummary) {
+            $this->getCartSummary($cart, true);
+        }
+
+
+        $cartItems = $cart->getCartItems();
+        $this->storageService->clearReservedQuantityArray();
+
+        /**
+         * @var \LSB\CartBundle\Entity\CartItem $cartItem
+         */
+        foreach ($cartItems as $cartItem) {
+            $this->checkQuantityAndPriceForCartItem($cartItem);
+
+            if ($cartItem->getId() === null) {
+                $cartItemRemoved = true;
+            }
+        }
+
+        //sprawdzenie domyślnego typu podziału paczek
+        $this->checkForDefaultCartOverSaleType($cart);
+
+        $packagesUpdated = $this->updatePackages($cart);
+
+        if ($packagesUpdated) {
+            $cart->setValidatedStep(null);
+        }
+
+        //Jeżeli z koszyka usunięte zostały jakieś produkty, wówczas
+        if ($removedUnavailableProducts || $cartItemRemoved || $packagesUpdated) {
+            $cart->clearCartSummary();
+        }
+
+        if ($flush) {
+            $this->em->flush();
+        }
+
+
+        return [$cart, $cartItemRemoved || $packagesUpdated];
     }
 
     /**
@@ -256,7 +345,7 @@ class CartService
      * @throws \Exception
      */
     public function rebuildCartItems(
-        Cart  $cart
+        Cart $cart
     ): CartItemUpdateResult {
         $cartItemModule = $this->moduleManager->getModuleByName(CartItemCartModule::NAME);
         return $cartItemModule->rebuildAndProcessCartItems($cart);
@@ -278,33 +367,14 @@ class CartService
 
     /**
      * @param $cart
-     * @return mixed
+     * @return bool
      * @throws \Exception
-     * @see \LSB\CartBundle\Module\BasePackageSplitModule::checkForDefaultCartOverSaleType()
-     * @deprecated
      */
     public function checkForDefaultCartOverSaleType($cart): bool
     {
-        /** @var BasePackageSplitModule $packageSplitModule */
-        $packageSplitModule = $this->moduleManager->getModuleByName(BasePackageSplitModule::NAME);
+        /** @var PackageSplitCartModule $packageSplitModule */
+        $packageSplitModule = $this->moduleManager->getModuleByName(PackageSplitCartModule::NAME);
         return $packageSplitModule->checkForDefaultCartOverSaleType($cart);
-    }
-
-    /**
-     * Sprawdzamy dostępność pozycji z koszyka
-     *
-     * @param CartItem $cartItem
-     * @param array $notifications
-     * @return CartItem
-     * @throws \Exception
-     */
-    public function checkQuantityAndPriceForCartItem(CartItem $cartItem, array &$notifications): CartItem
-    {
-        /**
-         * @var CartItemCartModule $cartItemsModule
-         */
-        $cartItemsModule = $this->moduleManager->getModuleByName(CartItemCartModule::NAME);
-        return $cartItemsModule->checkQuantityAndPriceForCartItem($cartItem, $notifications);
     }
 
     /**
@@ -339,36 +409,6 @@ class CartService
 
         $cartDataModule = $this->moduleManager->getModuleByName(DataCartModule::NAME);
         return $cartDataModule->getCartSummary($cart, $rebuildItems && ($itemsCount > 0 || $skipItemsCountCheck));
-    }
-
-    /**
-     * Oblicza cenę dostawy dla paczek, bazując na wybranym sposobie dostawy, wartości zamówienia i progu darmowej wysyłki
-     *
-     * @param Cart $cart
-     * @param bool $addVat
-     * @param mixed $calculatedTotalProductsNetto
-     * @param array $shippingCostRes
-     * @return array
-     * @throws \Exception
-     * @deprecated
-     */
-    public function calculateShippingCost(
-        Cart  $cart,
-        bool  $addVat,
-        Money $calculatedTotalProductsNetto,
-        array &$shippingCostRes
-    ): array {
-        /**
-         * @var BaseCartDataModule $cartDataModule
-         */
-        $cartDataModule = $this->moduleManager->getModuleByName(BaseCartDataModule::NAME);
-
-        return $cartDataModule->calculateShippingCost(
-            $cart,
-            $addVat,
-            $calculatedTotalProductsNetto,
-            $shippingCostRes
-        );
     }
 
     /**
@@ -427,9 +467,9 @@ class CartService
     public function splitPackagesForSuppliers(Cart $cart, bool $flush = true): void
     {
         /**
-         * @var BasePackageSplitModule $packageSplitModule
+         * @var PackageSplitCartModule $packageSplitModule
          */
-        $packageSplitModule = $this->moduleManager->getModuleByName(BasePackageSplitModule::NAME);
+        $packageSplitModule = $this->moduleManager->getModuleByName(PackageSplitCartModule::NAME);
         $packageSplitModule->splitPackagesForSupplier($cart, $flush);
     }
 
@@ -461,6 +501,20 @@ class CartService
     }
 
     /**
+     * @param CartInterface $cart
+     * @param bool $flush
+     * @throws \Exception
+     */
+    public function closeCart(CartInterface $cart, bool $flush = true): void
+    {
+        /**
+         * @var DataCartModule $cartDataModule
+         */
+        $cartDataModule = $this->moduleManager->getModuleByName(DataCartModule::NAME);
+        $cartDataModule->closeCart($cart, $flush);
+    }
+
+    /**
      * @param Cart $cart
      * @throws \Exception
      */
@@ -484,9 +538,8 @@ class CartService
      * @return bool
      * @throws \Exception
      */
-    public function isViewable(?Cart $cart = null)
+    public function isViewable(?CartInterface $cart = null)
     {
         return $this->cartComponentService->getComponentByClass(DataCartComponent::class)->isViewable($cart);
     }
-
 }

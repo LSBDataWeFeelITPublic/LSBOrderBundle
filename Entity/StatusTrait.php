@@ -6,6 +6,7 @@ namespace LSB\OrderBundle\Entity;
 use Doctrine\ORM\Mapping as ORM;
 use LSB\OrderBundle\Interfaces\OrderStatusInterface;
 use JMS\Serializer\Annotation\Groups;
+use LSB\OrderBundle\Interfaces\StatusInterface;
 
 /**
  * Trait StatusTrait
@@ -18,21 +19,21 @@ trait StatusTrait
      * @var array
      */
     public static array $statusList = [
-        OrderStatusInterface::STATUS_CANCELED => 'Order.Status.Canceled',
-        OrderStatusInterface::STATUS_OPEN => 'Order.Status.Open',
-        OrderStatusInterface::STATUS_WAITING_FOR_CONFIRMATION => 'Order.Status.WaitingForConfirmation',
-        OrderStatusInterface::STATUS_WAITING_FOR_VERIFICATION => 'Order.Status.WaitingForVerification',
-        OrderStatusInterface::STATUS_CONFIRMED => 'Order.Status.Confirmed',
-        OrderStatusInterface::STATUS_VERIFIED => 'Order.Status.Verified',
-        OrderStatusInterface::STATUS_WAITING_FOR_PAYMENT => 'Product.Edi.Order.Status.WaitingForPayment',
-        OrderStatusInterface::STATUS_PAID => 'Product.Edi.Order.Status.Paid',
-        OrderStatusInterface::STATUS_PLACED => 'Product.Edi.Order.Status.Placed',
-        OrderStatusInterface::STATUS_PROCESSING => 'Product.Edi.Order.Status.InProgress',
-        OrderStatusInterface::STATUS_SHIPPING_PREPARE => 'Product.Edi.Order.Status.ShippingPrepare',
-        OrderStatusInterface::STATUS_SHIPPING_PREPARED => 'Product.Edi.Order.Status.ShippingPrepared',
-        OrderStatusInterface::STATUS_SHIPPED => 'Product.Edi.Order.Status.Shipped',
-        OrderStatusInterface::STATUS_COMPLETED => 'Product.Edi.Order.Status.Completed',
-        OrderStatusInterface::STATUS_REJECTED => 'Product.Edi.Order.Status.Rejected'
+        StatusInterface::STATUS_CANCELED => 'Order.Status.Canceled',
+        StatusInterface::STATUS_OPEN => 'Order.Status.Open',
+        StatusInterface::STATUS_WAITING_FOR_CONFIRMATION => 'Order.Status.WaitingForConfirmation',
+        StatusInterface::STATUS_WAITING_FOR_VERIFICATION => 'Order.Status.WaitingForVerification',
+        StatusInterface::STATUS_CONFIRMED => 'Order.Status.Confirmed',
+        StatusInterface::STATUS_VERIFIED => 'Order.Status.Verified',
+        StatusInterface::STATUS_WAITING_FOR_PAYMENT => 'Order.Status.WaitingForPayment',
+        StatusInterface::STATUS_PAID => 'Order.Status.Paid',
+        StatusInterface::STATUS_PLACED => 'Order.Status.Placed',
+        StatusInterface::STATUS_PROCESSING => 'Order.Status.InProgress',
+        StatusInterface::STATUS_SHIPPING_PREPARE => 'Order.Status.ShippingPrepare',
+        StatusInterface::STATUS_SHIPPING_PREPARED => 'Order.Status.ShippingPrepared',
+        StatusInterface::STATUS_SHIPPED => 'Order.Status.Shipped',
+        StatusInterface::STATUS_COMPLETED => 'Order.Status.Completed',
+        StatusInterface::STATUS_REJECTED => 'Order.Status.Rejected'
     ];
     /**
      * @var array
@@ -49,16 +50,12 @@ trait StatusTrait
     ];
 
     /**
-     * @Groups({"Default", "EDI_User", "EDI_Moderator", "SHOP_Public"})
-     *
-     * @var integer
-     * @ORM\Column(type="integer", nullable=false)
+     * @var integer|null
+     * @ORM\Column(type="integer", nullable=true)
      */
-    protected int $status = OrderStatusInterface::STATUS_OPEN;
+    protected ?int $status = StatusInterface::STATUS_OPEN;
 
     /**
-     * @Groups({"Default", "SHOP_Public"})
-     *
      * @var integer|null
      * @ORM\Column(type="integer", nullable=true)
      */
@@ -71,7 +68,7 @@ trait StatusTrait
     protected ?array $state = null;
 
     /**
-     * @var int
+     * @var int|null
      *
      * @ORM\Column(type="integer", nullable=true)
      */
@@ -277,6 +274,4 @@ trait StatusTrait
         $this->translatedPaymentStatus = $translatedPaymentStatus;
         return $this;
     }
-
-
 }
