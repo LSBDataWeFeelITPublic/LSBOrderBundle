@@ -37,6 +37,8 @@ class CartItemSummary
 
     protected ?int $quantity = null;
 
+    protected ?string $unit = null;
+
     /**
      * @var array
      */
@@ -389,7 +391,7 @@ class CartItemSummary
      */
     public function getQuantity(bool $useValue = false): Value|int|null
     {
-        return $this->quantity;
+        return $useValue ? ValueHelper::intToValue($this->quantity, $this->unit) : $this->quantity;
     }
 
     /**
@@ -398,6 +400,13 @@ class CartItemSummary
      */
     public function setQuantity(Value|int|null $quantity): CartItemSummary
     {
+        if ($quantity instanceof Value) {
+            [$amount, $unit] = ValueHelper::valueToIntUnit($quantity);
+            $this->quantity = $amount;
+            $this->unit = $unit;
+            return $this;
+        }
+
         $this->quantity = $quantity;
         return $this;
     }
@@ -559,6 +568,24 @@ class CartItemSummary
     public function setActivePrice(?Price $activePrice): CartItemSummary
     {
         $this->activePrice = $activePrice;
+        return $this;
+    }
+
+    /**
+     * @return string|null
+     */
+    public function getUnit(): ?string
+    {
+        return $this->unit;
+    }
+
+    /**
+     * @param string|null $unit
+     * @return CartItemSummary
+     */
+    public function setUnit(?string $unit): CartItemSummary
+    {
+        $this->unit = $unit;
         return $this;
     }
 }

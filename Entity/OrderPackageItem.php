@@ -53,7 +53,7 @@ abstract class OrderPackageItem extends PackageItem implements OrderPackageItemI
      * @var OrderPackageInterface|null
      * @ORM\ManyToOne(targetEntity="LSB\OrderBundle\Entity\OrderPackageInterface", inversedBy="items")
      */
-    protected ?OrderPackageInterface $orderPackage;
+    protected ?OrderPackageInterface $orderPackage = null;
 
     /**
      * @return OrderPackageInterface|null

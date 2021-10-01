@@ -161,6 +161,7 @@ class CartItemCartModule extends BaseCartModule
 
     /**
      * Fetch, calculate and inject prices to cart item
+     * TODO move to cart calulator?
      *
      * @param CartItemInterface $cartItem
      * @param bool $setActivePrice
@@ -168,12 +169,16 @@ class CartItemCartModule extends BaseCartModule
      */
     public function injectPriceToCartItem(CartItemInterface $cartItem, bool $setActivePrice = true): void
     {
+
         $activePrice = $this->priceHelper->getPriceForCartItem($cartItem);
         $isProductSet = $cartItem->getProduct()->isProductSet() ?? false;
         $productSetProductActivePrices = [];
 
+        if (!$activePrice instanceof Price) {
+            return;
+        }
+
         if (!$isProductSet) {
-            //Wartość pozycji koszyka liczona jest na tym etapie. Bazując na jednostkowych cenach
             if ($this->dataCartComponent->getPs()->get('cart.calculation.gross')) {
 
                 //Money
@@ -261,9 +266,9 @@ class CartItemCartModule extends BaseCartModule
                         $calculatedQuantity
                     );
 
-                    TaxManager::addValueToGrossRes(
-                        $productActivePrice->getVat(true)->getRealFloatAmount(),
-                        (int)$productSetProductValueGross->getAmount(),
+                    TaxManager::addMoneyValueToGrossRes(
+                        $productActivePrice->getVat(true),
+                        $productSetProductValueGross,
                         $cartItemTotalRes
                     );
 
@@ -314,12 +319,12 @@ class CartItemCartModule extends BaseCartModule
             //zaokrąglamy na samym końcu
             if ($this->dataCartComponent->getPs()->get('cart.calculation.gross')) {
                 //TODO przerobić na money
-                [$valueNet, $valueGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromGrossRes($cart->getCurrencyIsoCode(), $cartItemTotalRes, $this->dataCartComponent->addTax($cartItem->getCart()));
-                [$baseValueNetto, $baseValueGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromGrossRes($cart->getCurrencyIsoCode(), $this->dataCartComponent->addTax($cartItem->getCart()));
+                [$valueNet, $valueGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromGrossRes($cartItem->getCart()->getCurrencyIsoCode(), $cartItemTotalRes, $this->dataCartComponent->addTax($cartItem->getCart()));
+                [$baseValueNetto, $baseValueGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromGrossRes($cartItem->getCart()->getCurrencyIsoCode(), $cartItemTotalRes, $this->dataCartComponent->addTax($cartItem->getCart()));
             } else {
                 //TODO przerobić na money
-                [$valueNet, $valueGross] = TaxManager::calculateTotalNettoAndGrossFromNettoRes($cartItemTotalRes, $this->dataCartComponent->addTax($cartItem->getCart()));
-                [$baseValueNetto, $baseValueGross] = TaxManager::calculateTotalNettoAndGrossFromNettoRes($cartItemBaseTotalRes, $this->dataCartComponent->addTax($cartItem->getCart()));
+                [$valueNet, $valueGross] = TaxManager::calculateMOneyTotalNettoAndGrossFromNettoRes($cartItem->getCart()->getCurrencyIsoCode(), $cartItemTotalRes, $this->dataCartComponent->addTax($cartItem->getCart()));
+                [$baseValueNetto, $baseValueGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromNettoRes($cartItem->getCart()->getCurrencyIsoCode(), $cartItemTotalRes, $this->dataCartComponent->addTax($cartItem->getCart()));
             }
         }
 
@@ -336,9 +341,7 @@ class CartItemCartModule extends BaseCartModule
             ->setBaseValueNet($baseValueNetto)
             ->setBaseValueGross($baseValueGross)
             ->setTaxValue($taxValue)
-            //->setTax($this->dataCartComponent->addTax($cart) ? $activePrice->getVat() : null)
-            //->setRes($activePrice->getProcedureResult())
-            ->setQuantity($cartItem->getQuantity())
+            ->setQuantity($cartItem->getQuantity(true))
             ->setCalculatedAt(new \DateTime('now'))
             ->setActivePrice($setActivePrice ? $activePrice : null)
             ->setCurrencyIsoCode((string)$activePrice->getCurrencyIsoCode())
@@ -736,7 +739,6 @@ class CartItemCartModule extends BaseCartModule
         if ($updateAllCartItems) {
             //Przeliczenie wszystkich pozycji i konwersja do tablicy -
             $processedItemsData = $this->rebuildAndProcessCartItems($cart);
-            dump($processedItemsData);
         }
 
         //Flush jest niezbędny

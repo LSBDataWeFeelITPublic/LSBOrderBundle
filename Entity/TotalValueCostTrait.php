@@ -7,6 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 use LSB\LocaleBundle\Entity\CurrencyInterface;
 use LSB\UtilityBundle\Calculation\CalculationTypeTrait;
 use LSB\UtilityBundle\Helper\ValueHelper;
+use LSB\UtilityBundle\Value\Value;
 use Money\Currency;
 use Money\Money;
 use Symfony\Component\Validator\Constraints as Assert;
@@ -198,37 +199,53 @@ trait TotalValueCostTrait
     }
 
     /**
-     * @return int|null
+     * @param bool $useValue
+     * @return Value|int|null
      */
-    public function getShippingCostTaxRate(): ?int
+    public function getShippingCostTaxRate(bool $useValue = false): Value|int|null
     {
-        return $this->shippingCostTaxRate;
+        return $useValue ? ValueHelper::intToValue($this->paymentCostTaxRate, Value::UNIT_PERCENTAGE) : $this->paymentCostTaxRate;
     }
 
     /**
-     * @param int|null $shippingCostTaxRate
+     * @param Value|int|null $shippingCostTaxRate
      * @return TotalValueCostTrait
      */
-    public function setShippingCostTaxRate(?int $shippingCostTaxRate): static
+    public function setShippingCostTaxRate(Value|int|null $shippingCostTaxRate): static
     {
+        if ($shippingCostTaxRate instanceof Value)
+        {
+            [$amount, $unit] = ValueHelper::valueToIntUnit($shippingCostTaxRate);
+            $this->shippingCostTaxRate = $amount;
+            return $this;
+        }
+
         $this->shippingCostTaxRate = $shippingCostTaxRate;
         return $this;
     }
 
     /**
-     * @return int|null
+     * @param bool $useValue
+     * @return Value|int|null
      */
-    public function getPaymentCostTaxRate(): ?int
+    public function getPaymentCostTaxRate(bool $useValue = false): Value|int|null
     {
-        return $this->paymentCostTaxRate;
+        return $useValue ? ValueHelper::intToValue($this->paymentCostTaxRate, Value::UNIT_PERCENTAGE) : $this->paymentCostTaxRate;
     }
 
     /**
-     * @param int|null $paymentCostTaxRate
+     * @param Value|int|null $paymentCostTaxRate
      * @return TotalValueCostTrait
      */
-    public function setPaymentCostTaxRate(?int $paymentCostTaxRate): static
+    public function setPaymentCostTaxRate(Value|int|null $paymentCostTaxRate): static
     {
+        if ($paymentCostTaxRate instanceof Value)
+        {
+            [$amount, $unit] = ValueHelper::valueToIntUnit($paymentCostTaxRate);
+            $this->paymentCostTaxRate = $amount;
+            return $this;
+        }
+
         $this->paymentCostTaxRate = $paymentCostTaxRate;
         return $this;
     }

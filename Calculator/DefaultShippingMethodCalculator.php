@@ -3,12 +3,15 @@ declare(strict_types=1);
 
 namespace LSB\OrderBundle\Calculator;
 
-use LSB\LocaleBundle\Entity\Country;
 use LSB\LocaleBundle\Entity\CountryInterface;
+use LSB\OrderBundle\CartHelper\PriceHelper;
+use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartPackageInterface;
 use LSB\OrderBundle\Interfaces\ShippingFormCartCalculatorInterface;
 use LSB\OrderBundle\Model\CartCalculatorResult;
 use LSB\OrderBundle\Model\CartShippingMethodCalculatorResult;
+use LSB\PricelistBundle\Model\Price;
+use LSB\ProductBundle\Entity\ProductInterface;
 use LSB\ShippingBundle\Entity\Method;
 use LSB\UtilityBundle\Helper\ValueHelper;
 use Money\Money;
@@ -28,6 +31,13 @@ class DefaultShippingMethodCalculator extends BaseCartCalculator implements Ship
     protected ?Money $totalProductsNetto = null;
 
     protected ?Money $totalProductsGross = null;
+
+    /**
+     * @param PriceHelper $priceHelper
+     */
+    public function __construct(protected PriceHelper $priceHelper)
+    {
+    }
 
     public function getModule(): string
     {
@@ -130,20 +140,63 @@ class DefaultShippingMethodCalculator extends BaseCartCalculator implements Ship
      */
     public function calculate(): ?CartCalculatorResult
     {
-        $cart = $this->getCart();
 
-        //TODO custom logic here
+        $cart = $this->getCart();
+        $cartPackage = $this->getCartPackage();
+
+        if (!$this->getShippingMethod() instanceof Method) {
+            $this->shippingMethod = $cartPackage->getShippingMethod();
+        }
+
+        [$totalNet, $totalGross, $price] = $this->calculateShippingCost($cart, $this->shippingMethod, true);
+
         return new CartShippingMethodCalculatorResult(
-            ValueHelper::convertToMoney(100, 'PLN'),
-            ValueHelper::convertToMoney(123, 'PLN'),
+            $totalNet,
+            $totalGross,
+            $price?->getVat(true),
+            ValueHelper::convertToValue(1),
+            $totalNet,
+            $totalGross,
             null,
             null,
-            null,
-            null,
-            null,
-            null,
-            $this->shippingMethod,
-            $this->cartPackage
+            $this->shippingMethod
         );
+    }
+
+    /**
+     * @param CartInterface $cart
+     * @param Method|null $method
+     * @param bool $addVat
+     * @return array
+     * @throws \Exception
+     */
+    public function calculateShippingCost(
+        CartInterface $cart,
+        ?Method       $method,
+        bool          $addVat = true
+    ): array {
+        $totalNetto = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
+        $totalGross = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
+        $price = null;
+
+        if ($method instanceof Method
+            && $method->getProduct() instanceof ProductInterface
+            && $method->getProduct()->getType() === ProductInterface::TYPE_SHIPPING
+        ) {
+            $price = $this->priceHelper->getPriceForProduct(
+                $cart,
+                $method->getProduct(),
+                null,
+                ValueHelper::convertToValue(1)
+            );
+
+            if ($price instanceof Price) {
+                $totalNetto = $totalNetto->add($price->getNetPrice(true));
+                $totalGross = $totalGross->add($price->getGrossPrice(true));
+            }
+
+        }
+
+        return [$totalNetto, $totalGross, $price];
     }
 }

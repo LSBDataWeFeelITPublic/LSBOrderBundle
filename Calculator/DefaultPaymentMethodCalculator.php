@@ -5,6 +5,7 @@ namespace LSB\OrderBundle\Calculator;
 
 use LSB\LocaleBundle\Entity\CountryInterface;
 use LSB\LocaleBundle\Manager\TaxManager;
+use LSB\OrderBundle\CartHelper\PriceHelper;
 use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Interfaces\PaymentMethodCartCalculatorInterface;
@@ -13,6 +14,8 @@ use LSB\OrderBundle\Model\CartPaymentMethodCalculatorResult;
 use LSB\OrderBundle\Model\CartShippingMethodCalculatorResult;
 use LSB\PaymentBundle\Entity\Method;
 use LSB\PaymentBundle\Entity\Method as PaymentMethod;
+use LSB\PricelistBundle\Model\Price;
+use LSB\ProductBundle\Entity\ProductInterface;
 use LSB\UtilityBundle\Helper\ValueHelper;
 use Money\Money;
 
@@ -29,6 +32,13 @@ class DefaultPaymentMethodCalculator extends BaseCartCalculator implements Payme
     protected ?Money $totalProductsNetto = null;
 
     protected ?Money $totalProductsGross = null;
+
+    /**
+     * @param PriceHelper $priceHelper
+     */
+    public function __construct(protected PriceHelper $priceHelper)
+    {
+    }
 
     public function getModule(): string
     {
@@ -52,7 +62,6 @@ class DefaultPaymentMethodCalculator extends BaseCartCalculator implements Payme
         $this->paymentMethod = $paymentMethod;
         return $this;
     }
-
 
 
     /**
@@ -103,7 +112,7 @@ class DefaultPaymentMethodCalculator extends BaseCartCalculator implements Payme
             $totalNet,
             $totalGross,
             null,
-            null,
+            ValueHelper::convertToValue(1),
             $this->paymentMethod
         );
     }
@@ -120,15 +129,22 @@ class DefaultPaymentMethodCalculator extends BaseCartCalculator implements Payme
         $totalNetto = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
         $totalGross = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
 
-        //TODO do modyfikacji, należy używać produktu specjalnego powiązanego z metodą płatności
-        $taxRate = ValueHelper::convertToValue(23);
+        if ($method instanceof PaymentMethod
+            && $method->getProduct() instanceof ProductInterface
+            && $method->getProduct()->getType() === ProductInterface::TYPE_PAYMENT
+        ) {
+            $price = $this->priceHelper->getPriceForProduct(
+                $cart,
+                $method->getProduct(),
+                null,
+                ValueHelper::convertToValue(1)
+            );
 
-        if ($method instanceof PaymentMethod) {
-            $paymentCostNetto = ValueHelper::convertToMoney(1.00, $cart->getCurrencyIsoCode());
-            $paymentCostGross = ValueHelper::convertToMoney(1.23, $cart->getCurrencyIsoCode());
+            if ($price instanceof Price) {
+                $totalNetto = $totalNetto->add($price->getNetPrice(true));
+                $totalGross = $totalGross->add($price->getGrossPrice(true));
+            }
 
-            $totalNetto = $totalNetto->add($paymentCostNetto);
-            $totalGross = $totalGross->add($paymentCostGross);
         }
 
         return [$totalNetto, $totalGross];

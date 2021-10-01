@@ -235,9 +235,18 @@ class PaymentCartModule extends BaseCartModule
         return $formattedPaymentMethods;
     }
 
+    /**
+     * @param CartInterface $cart
+     * @param PaymentMethod|null $method
+     * @param bool $addVat
+     * @param Money|null $calculatedTotalProducts
+     * @param array|null $paymentCostRes
+     * @return CartPaymentMethodCalculatorResult
+     * @throws \Exception
+     */
     public function calculatePaymentCost(
         CartInterface $cart,
-        Method        $method,
+        ?Method        $method,
         bool          $addVat = true,
         ?Money        $calculatedTotalProducts = null,
         array         &$paymentCostRes = null
@@ -294,7 +303,7 @@ class PaymentCartModule extends BaseCartModule
                 $cart,
                 $paymentMethod,
                 $this->dataCartComponent->addTax($cart),
-                $this->dataCartComponent->getPs()->get('cart.calculation.gross') ? $cart->getCartSummary()?->getTotalProductsGross(true) : $cart->getCartSummary()?->getTotalProductsNet()
+                $this->dataCartComponent->getPs()->get('cart.calculation.gross') ? $cart->getCartSummary()?->getTotalProductsGross(true) : $cart->getCartSummary()?->getTotalProductsNet(true)
             );
 
             $calculations[$paymentMethod->getUuid()] = $calculation;

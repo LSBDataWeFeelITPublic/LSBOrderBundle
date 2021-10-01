@@ -55,11 +55,8 @@ class CartStep1Generator extends BaseCartStepGenerator
      */
     public function isAccessible(?CartInterface $cart = null): array
     {
-        //FIXED
-        return [true, null];
-
         $cart = $cart ?? $this->cart;
-        return [$cart ? true : false, null];
+        return [$cart ? $cart->getCartItems()->count() > 0 : true, null];
     }
 
     /**

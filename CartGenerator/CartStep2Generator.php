@@ -26,10 +26,18 @@ class CartStep2Generator extends BaseCartStepGenerator
         RequestStack $requestStack,
         EventDispatcherInterface $eventDispatcher
     ) {
-        parent::__construct($moduleService, $cartManager, $em, $cartConverter, $requestStack, $eventDispatcher);
+        parent::__construct(
+            $moduleService,
+            $cartManager,
+            $em,
+            $cartConverter,
+            $requestStack,
+            $eventDispatcher
+        );
 
         $this->isCartConverterStep = true;
         $this->previousStep = CartStep1Generator::STEP;
+        $this->nextStep = null;
     }
 
     /**
@@ -43,24 +51,10 @@ class CartStep2Generator extends BaseCartStepGenerator
     }
 
     /**
-     * @param CartInterface|null $cart
-     * @return array
-     */
-    public function isAccessible(?CartInterface $cart = null): array
-    {
-        //FIXED
-        return [true, null];
-
-        $cart = $cart ?? $this->cart;
-        return [$cart ? true : false, null];
-    }
-
-    /**
      * @inheritdoc
      */
     public function prepare(): void
     {
-        //TODO przygotować mechanizm w ramach koszyka
         $this->cartManager->rebuildCart($this->cart);
         parent::prepare();
     }

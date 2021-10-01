@@ -35,7 +35,8 @@ class CartCalculatorService
         protected PricelistManager         $pricelistManager,
         protected RequestStack             $requestStack,
         protected SerializerInterface      $serializer,
-        protected CartCalculatorInventory  $calculatorInventory
+        protected CartCalculatorInventory  $calculatorInventory,
+        protected CartService $cartService
     ) {
     }
 
@@ -115,7 +116,7 @@ class CartCalculatorService
 
         $calculator->setCalculationData($calculationData);
         if (!$cart) {
-            $cart = $this->cartManager->getCart();
+            $cart = $this->cartService->getCart();
         }
 
         $calculator->setCart($cart);

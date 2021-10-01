@@ -257,7 +257,9 @@ class CartConverterService
         foreach ($cart->getCartPackages() as $package) {
             $orderPackage = $this->createOrderPackageFromCartPackage(
                 $order,
-                $package
+                $package,
+                true,
+                true
             );
 
             $orderPackage->generateOrderPackageNumber($i);
@@ -268,9 +270,21 @@ class CartConverterService
         $this->totalCalculatorManager->calculateTotal($order);
 
         //TODO FIX
-        dump($order->getTotalValueGross(true));
-        dump($cart->getCartSummary()->getTotalGross(true));
-        die();
+
+//        dump("Cart:");
+//        dump($cart->getCartSummary()->getTotalNet(true));
+//        dump($cart->getCartSummary()->getTotalGross(true));
+//        dump($cart->getCartSummary()->getPaymentCostNet(true));
+//        dump($cart->getCartSummary()->getShippingCostNet(true));
+//
+//
+//        dump("Order:");
+//        dump($order->getTotalValueNet(true));
+//        dump($order->getTotalValueGross(true));
+//        dump($order->getPaymentCostNet(true));
+//        dump($order->getShippingCostNet(true));
+//
+//        die("X");
 
         if (abs((int)$cartTotalGrossBeforeProductSetSplit->getAmount() - (int) $order->getTotalValueGross(true)->getAmount()) > 1) {
             $order->setStatus(OrderInterface::STATUS_CANCELED);
@@ -334,20 +348,22 @@ class CartConverterService
     /**
      * @param OrderInterface $order
      * @param CartPackage $cartPackage
+     * @param bool $addShippingProductItem
+     * @param bool $addPaymentProductItem
      * @return OrderPackageInterface
      * @throws \Exception
      */
     public function createOrderPackageFromCartPackage(
         OrderInterface $order,
-        CartPackage $cartPackage
+        CartPackage $cartPackage,
+        bool $addShippingProductItem = true,
+        bool $addPaymentProductItem = true
     ): OrderPackageInterface {
         $orderPackage = $this->orderPackageManager->createNew();
         $orderPackage->setOrder($order);
 
         $position = PackageItemInterface::FIRST_POSITION;
-
         $totalRes = [];
-
         $this->rewriteDeliveryDataFromCartPackage($orderPackage, $cartPackage);
 
         $orderPackage
@@ -376,26 +392,82 @@ class CartConverterService
                 true//TODO $this->cartManager->addTax($cartPackage->getCart())
             );
         }
-// TODO shipping calculation
-//        $calculation = $this->cartManager->calculatePackageShippingCost(
-//            $cartPackage,
-//            $order->getTotalProducts()
-//        );
+
+        if ($addShippingProductItem) {
+            // Shipping product package item
+            $calculation = $this->cartService->calculatePackageShippingCost(
+                $cartPackage,
+                true,
+                $this->ps->get('cart.calculation.gross') ? $order->getProductsValueGross(true) : $order->getProductsValueNet(true)
+            );
+
+            //Add shipping product
+            $shippingPackageItem = $this->orderPackageItemManager->createNew();
+            $shippingPackageItem
+                ->setType(PackageItemInterface::TYPE_SHIPPING)
+                ->setProduct($calculation->getShippingMethod()->getProduct())
+                ->setProductName($calculation->getShippingMethod()->getProduct()?->getName())
+                ->setProductNumber($calculation->getShippingMethod()->getProduct()?->getNumber())
+                ->setProductType($calculation->getShippingMethod()->getProduct()?->getType())
+                ->setPriceNet($calculation->getPriceNet())
+                ->setPriceGross($calculation->getPriceGross())
+                ->setValueNet($calculation->getPriceNet())
+                ->setValueGross($calculation->getPriceGross())
+                ->setTaxRate($calculation->getTaxPercentage())
+                ->setQuantity($calculation->getCalculationQuantity());
+
+            $orderPackage->addOrderPackageItem($shippingPackageItem);
+
+            $orderPackage
+                ->setPaymentCostNet($calculation?->getPriceNet())
+                ->setPaymentCostGross($calculation?->getPriceGross())
+                ->setPaymentCostTaxRate($calculation?->getTaxPercentage());
+        }
+
+        //Payment
+
+        if ($addPaymentProductItem) {
+            // Shipping product package item
+            $calculation = $this->cartService->calculateCartPaymentCost(
+                $cartPackage->getCart(),
+                true,
+                $this->ps->get('cart.calculation.gross') ? $order->getProductsValueGross(true) : $order->getProductsValueNet(true)
+            );
+
+            //Add shipping product
+            $paymentPackageItem = $this->orderPackageItemManager->createNew();
+            $paymentPackageItem
+                ->setType(PackageItemInterface::TYPE_PAYMENT)
+                ->setProduct($calculation->getPaymentMethod()->getProduct())
+                ->setProductName($calculation->getPaymentMethod()->getProduct()?->getName())
+                ->setProductNumber($calculation->getPaymentMethod()->getProduct()?->getNumber())
+                ->setProductType($calculation->getPaymentMethod()->getProduct()?->getType())
+                ->setPriceNet($calculation->getPriceNet())
+                ->setPriceGross($calculation->getPriceGross())
+                ->setValueNet($calculation->getPriceNet())
+                ->setValueGross($calculation->getPriceGross())
+                ->setTaxRate($calculation->getTaxPercentage())
+                ->setQuantity($calculation->getCalculationQuantity());
+
+            $orderPackage->addOrderPackageItem($paymentPackageItem);
+
+            $orderPackage
+                ->setShippingCostNet($calculation?->getPriceNet())
+                ->setShippingCostGross($calculation?->getPriceGross())
+                ->setShippingCostTaxRate($calculation?->getTaxPercentage());
+        }
+
+        //There is no need to rewrite prices at this moment
+        //Order total calculator will recalculate exact value of the order packages at the end of the cart->order conversion process
+
 
         $orderPackage
-            ->setTotalValueNet($totalProductsNetto)
-            ->setTotalValueGross($totalProductsGross)
+            //->setTotalValueNet($totalProductsNetto)
+            //->setTotalValueGross($totalProductsGross)
             ->setProductsValueNet($totalProductsNetto)
             ->setProductsValueGross($totalProductsGross)
             ->setShippingMethod($cartPackage->getShippingMethod())
             ->setShippingDays($cartPackage->getShippingDays())
-            ->setShippingCostNet($cartPackage->getShippingCostNet(true))
-//            ->setDeliveryWithInvoice($cartPackage->getDeliveryWithInvoice())
-//            ->setCustomerShippingForm($cartPackage->getCustomerShippingForm())
-//            ->setCustomerDelivery($cartPackage->getCustomerDelivery(), true)
-            //->setTotalShipping($calculation->getPriceNetto())
-            //->setTotalShippingGross($calculation->getPriceGross(true))
-            //->setShippingTaxPercentage(round($calculation->getTaxPercentage()))
         ;
 
         return $orderPackage;
@@ -446,6 +518,7 @@ class CartConverterService
      * @param Cart $cart
      * @param array $cartItemsConvertedIntoOrder
      * @return Cart|null
+     * @throws \Exception
      */
     public function finalizeCart(
         Cart $cart,

@@ -6,6 +6,8 @@ namespace LSB\OrderBundle\Interfaces;
 use LSB\ContractorBundle\Entity\ContractorInterface;
 use LSB\OrderBundle\CartModule\CartModuleInterface;
 use LSB\OrderBundle\Entity\CartInterface;
+use LSB\OrderBundle\Model\StepNavigationResult;
+use LSB\OrderBundle\Model\StepValidationResponse;
 use LSB\UserBundle\Entity\UserInterface;
 use LSB\UtilityBundle\Module\ModuleInterface;
 use Symfony\Component\HttpFoundation\Request;
@@ -13,25 +15,21 @@ use Symfony\Component\HttpFoundation\Request;
 interface CartStepGeneratorInterface extends ModuleInterface
 {
     /**
-     * Zwraca identyfikator kroku (int)
-     *
+     * Returns the id of the step (int)
      * @return int
      */
     public function getStep(): int;
 
     /**
-     * Zwraca identyfikator kroku (string)
-     *
+     * Returns step identifier (string)
      * @return string
      */
     public function getCode(): string;
 
     /**
-     * Metoda walidującą poprawność wypełnienia danego kroku
-     * Wszelka walidacja powinna bazować właśnie na tej metodzie!
-     * Niezależnie od tego czy korzystamy z walidacji w enities
+     * @return StepValidationResponse
      */
-    public function validate();
+    public function validate(): StepValidationResponse;
 
     /**
      * @param CartInterface|null $cart
@@ -40,26 +38,25 @@ interface CartStepGeneratorInterface extends ModuleInterface
     public function isAccessible(?CartInterface $cart = null): array;
 
     /**
-     * Metoda przygotowuje koszyk do wykonania danego kroku
-     * Może uruchomić walidację poprzednich kroków lub sprawdzić spójność danych
-     *
-     * @return
+     * The method prepares the basket to perform a given step. It can run validation of previous steps or check data consistency.
      */
     public function prepare();
 
     /**
-     * Zwraca posortowaną listę modułów do renderowania
+     * Returns a sorted list of rendering modules
+     * @return array
      */
     public function getModules(): array;
 
     /**
-     * Zwraca listę modułów dla danego kroku
+     * Returns a list of modules for the given step
+     *
      * @return array
      */
     public function getModuleList(): array;
 
     /**
-     * Metoda wyświetlająca dany modułów
+     * Method for displaying the given modules
      *
      * @param Request|null $request
      * @param bool $doPrepare
@@ -84,16 +81,15 @@ interface CartStepGeneratorInterface extends ModuleInterface
 
 
     /**
-     * Metoda sprawdza, czy krok nie generuje przekierowania
-     * Jeżeli krok generuje przekierowanie należy bewzględnie z tego skorzystać
+     * The method checks if the step is generating a redirect. If the step generates a redirect, be sure to use it.
      *
      * @param bool $doPrepare
-     * @return string
+     * @return string|null
      */
     public function getRedirect(bool $doPrepare = true): ?string;
 
     /**
-     * Metoda konfiguruje generator w kontekście użytkownika i klienta
+     * The method configures the generator in the context of the user and the client
      *
      * @param UserInterface|null $user
      * @param ContractorInterface|null $customer
@@ -103,9 +99,7 @@ interface CartStepGeneratorInterface extends ModuleInterface
     public function configure(?UserInterface $user = null, ?ContractorInterface $customer = null, ?CartInterface $cart = null);
 
     /**
-     * Metoda nawigacyjna zwraca następny i poprzedni krok generatora
-     *
-     * @return array
+     * @return StepNavigationResult
      */
-    public function getNavigation(): array;
+    public function getNavigation(): StepNavigationResult;
 }

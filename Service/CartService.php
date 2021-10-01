@@ -6,18 +6,24 @@ namespace LSB\OrderBundle\Service;
 use Doctrine\ORM\EntityManagerInterface;
 use LSB\CartBundle\Module\BaseCartItemsModule;
 use LSB\ContractorBundle\Entity\Contractor;
+use LSB\ContractorBundle\Entity\ContractorInterface;
 use LSB\LocaleBundle\Manager\TaxManager;
 use LSB\OrderBundle\CartComponent\DataCartComponent;
 use LSB\OrderBundle\CartModule\CartItemCartModule;
 use LSB\OrderBundle\CartModule\CartModuleInterface;
 use LSB\OrderBundle\CartModule\DataCartModule;
+use LSB\OrderBundle\CartModule\PackageShippingCartModule;
 use LSB\OrderBundle\CartModule\PackageSplitCartModule;
+use LSB\OrderBundle\CartModule\PaymentCartModule;
 use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartItem;
+use LSB\OrderBundle\Entity\CartPackageInterface;
 use LSB\OrderBundle\Manager\CartManager;
 use LSB\OrderBundle\Model\CartItemModule\CartItemRequestProductData;
 use LSB\OrderBundle\Model\CartItemModule\CartItemUpdateResult;
+use LSB\OrderBundle\Model\CartPaymentMethodCalculatorResult;
+use LSB\OrderBundle\Model\CartShippingMethodCalculatorResult;
 use LSB\OrderBundle\Model\CartSummary;
 use LSB\PricelistBundle\Manager\PricelistManager;
 use LSB\ProductBundle\Entity\Product;
@@ -120,12 +126,12 @@ class CartService
      * @throws \Exception
      */
     public function getCart(
-        ?bool       $forceReload = false,
-        ?User       $user = null,
-        ?Contractor $contractor = null,
-        bool        $requireCreate = true,
-        ?string     $cartSessionId = null,
-        ?string     $cartTransactionId = null
+        ?bool                $forceReload = false,
+        ?UserInterface       $user = null,
+        ?ContractorInterface $contractor = null,
+        bool                 $requireCreate = true,
+        ?string              $cartSessionId = null,
+        ?string              $cartTransactionId = null
     ): ?Cart {
         return $this->cartComponentService->getComponentByClass(DataCartComponent::class)->getCart(
             $forceReload,
@@ -474,29 +480,57 @@ class CartService
     }
 
     /**
-     * @param CartPackage $package
+     * @param CartPackageInterface $package
      * @param bool $addVat
-     * @param null $calculatedTotalProducts
-     * @param null $shippingCostRes
+     * @param Money|null $calculatedTotalProducts
+     * @param array|null $shippingCostRes
      * @return mixed
      * @throws \Exception
      */
     public function calculatePackageShippingCost(
-        CartPackage $package,
-                    $addVat = true,
-                    $calculatedTotalProducts = null,
-                    &$shippingCostRes = null
-    ): CartShippingFormCalculatorResult {
+        CartPackageInterface $package,
+        bool                 $addVat = true,
+        ?Money               $calculatedTotalProducts = null,
+        array                &$shippingCostRes = null
+    ): CartShippingMethodCalculatorResult {
         /**
-         * @var BasePackageShippingModule $packageShippingModule
+         * @var PackageShippingCartModule $packageShippingModule
          */
-        $packageShippingModule = $this->moduleManager->getModuleByName(BasePackageShippingModule::NAME);
+        $packageShippingModule = $this->moduleManager->getModuleByName(PackageShippingCartModule::NAME);
 
         return $packageShippingModule->calculatePackageShippingCost(
             $package,
             $addVat,
             $calculatedTotalProducts,
             $shippingCostRes
+        );
+    }
+
+    /**
+     * @param CartInterface $cart
+     * @param bool $addVat
+     * @param Money|null $calculatedTotalProducts
+     * @param array|null $paymentCostRes
+     * @return CartPaymentMethodCalculatorResult
+     * @throws \Exception
+     */
+    public function calculateCartPaymentCost(
+        CartInterface $cart,
+        bool          $addVat = true,
+        ?Money        $calculatedTotalProducts = null,
+        array         &$paymentCostRes = null
+    ): CartPaymentMethodCalculatorResult {
+        /**
+         * @var PaymentCartModule $paymentModule
+         */
+        $paymentModule = $this->moduleManager->getModuleByName(PaymentCartModule::NAME);
+
+        return $paymentModule->calculatePaymentCost(
+            $cart,
+            $cart->getPaymentMethod(),
+            $addVat,
+            $calculatedTotalProducts,
+            $paymentCostRes
         );
     }
 

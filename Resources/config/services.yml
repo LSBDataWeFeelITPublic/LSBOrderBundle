@@ -136,6 +136,7 @@ services:
             - '@request_stack'
             - '@jms_serializer.serializer'
             - '@LSB\OrderBundle\Service\CartCalculatorInventory'
+            - '@LSB\OrderBundle\Service\CartService'
 
 
     LSB\OrderBundle\Service\CartComponentService:
@@ -288,9 +289,13 @@ services:
     #calculators
     LSB\OrderBundle\Calculator\DefaultShippingMethodCalculator:
         tags: [ { name: cart.calculator } ]
+        arguments:
+            - '@LSB\OrderBundle\CartHelper\PriceHelper'
 
     LSB\OrderBundle\Calculator\DefaultPaymentMethodCalculator:
         tags: [ { name: cart.calculator } ]
+        arguments:
+            - '@LSB\OrderBundle\CartHelper\PriceHelper'
 
     LSB\OrderBundle\Calculator\DefaultDataCartCalculator:
         tags: [ { name: cart.calculator } ]

@@ -9,6 +9,7 @@ use LSB\OrderBundle\CartComponent\CartItemCartComponent;
 use LSB\OrderBundle\CartComponent\DataCartComponent;
 use LSB\OrderBundle\CartHelper\PriceHelper;
 use LSB\OrderBundle\CartModule\PackageShippingCartModule;
+use LSB\OrderBundle\CartModule\PaymentCartModule;
 use LSB\OrderBundle\Entity\Cart;
 use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartItem;
@@ -119,6 +120,7 @@ class CartTotalCalculator extends BaseTotalCalculator
         $totalRes = [];
         $spreadRes = [];
         $shippingCostRes = [];
+        $paymentCostRes = [];
 
         $totalNet = new Money(0, new MoneyCurrency($cart->getCurrencyIsoCode()));
         $totalGross = new Money(0, new MoneyCurrency($cart->getCurrencyIsoCode()));
@@ -189,14 +191,18 @@ class CartTotalCalculator extends BaseTotalCalculator
                     $activePrice = $this->priceHelper->getPriceForCartItem($selectedCartItem);
                 }
 
-                $this->calculateActiveValues(
-                    $selectedCartItem,
-                    $activePrice,
-                    $totalRes,
-                    $spreadRes,
-                    $catalogueValueNetto,
-                    $catalogueValueGross
-                );
+                if ($activePrice) {
+                    $this->calculateActiveValues(
+                        $selectedCartItem,
+                        $activePrice,
+                        $totalRes,
+                        $spreadRes,
+                        $catalogueValueNetto,
+                        $catalogueValueGross
+                    );
+                }
+
+
             }
         }
 
@@ -207,6 +213,10 @@ class CartTotalCalculator extends BaseTotalCalculator
             [$totalProductsNet, $totalProductsGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromNettoRes($cart->getCurrencyIsoCode(), $totalRes, $this->dataCartComponent->addTax($cart));
         }
 
+        //Additional costs
+
+
+        //Shipping costs
         [
             $shippingTotalNetto,
             $shippingTotalGrossRounded,
@@ -222,17 +232,33 @@ class CartTotalCalculator extends BaseTotalCalculator
             $shippingCostRes
         );
 
-        [$paymentCostNetto, $paymentCostGross] = $this->calculatePaymentCost($cart, $this->dataCartComponent->addTax($cart), $totalRes);
 
         if ($this->ps->get('cart.calculation.gross')) {
             [$shippingCostNetto, $shippingCostGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromGrossRes($cart->getCurrencyIsoCode(), $shippingCostRes, $this->dataCartComponent->addTax($cart));
         } else {
             [$shippingCostNetto, $shippingCostGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromNettoRes($cart->getCurrencyIsoCode(), $shippingCostRes, $this->dataCartComponent->addTax($cart));
         }
+        //---------------------------------
 
+
+        [$paymentTotalNetto, $paymentTotalGross] = $this->calculatePaymentCost(
+            $cart,
+            $this->dataCartComponent->addTax($cart),
+            $this->ps->get('cart.calculation.gross') ? $totalProductsGross : $totalProductsNet,
+            $paymentCostRes
+        );
+
+        if ($this->ps->get('cart.calculation.gross')) {
+            [$paymentCostNetto, $paymentCostGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromGrossRes($cart->getCurrencyIsoCode(), $paymentCostRes, $this->dataCartComponent->addTax($cart));
+        } else {
+            [$paymentCostNetto, $paymentCostGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromNettoRes($cart->getCurrencyIsoCode(), $paymentCostRes, $this->dataCartComponent->addTax($cart));
+        }
+
+        //TOTAL summary
 
         //sumaryczna wartość produktów z kosztami dostawy
-        $totalWithShippingNettoRes = TaxManager::mergeMoneyRes($shippingCostRes, $totalRes);
+        $additionalCostsRes = TaxManager::mergeMoneyRes($paymentCostRes, $shippingCostRes);
+        $totalWithShippingNettoRes = TaxManager::mergeMoneyRes($additionalCostsRes, $totalRes);
 
         if ($this->ps->get('cart.calculation.gross')) {
             [$totalWithShippingNetto, $totalWithShippingGross] = TaxManager::calculateMoneyTotalNettoAndGrossFromGrossRes(
@@ -250,7 +276,6 @@ class CartTotalCalculator extends BaseTotalCalculator
 
         [$shippingCostFromNetto, $shippingCostFromGross] = $this->dataCartComponent->getShippingCostFrom($cart, $shippingCostNetto);
 
-
         $cartSummary = (new CartSummary)
             ->setCnt($cnt)
             ->setSelectedCnt($cntSelected)
@@ -266,8 +291,8 @@ class CartTotalCalculator extends BaseTotalCalculator
             ->setSpreadGross($spreadGross)
             ->setCalculatedAt(new \DateTime('NOW'))
             ->setShowVatViesWarning($this->dataCartComponent->showVatViesWarning($cart))
-            ->setFreeShippingThresholdNet(ValueHelper::convertToMoney($freeDeliveryThresholdNetto, $cart->getCurrencyIsoCode()))
-            ->setFreeShippingThresholdGross(ValueHelper::convertToMoney($freeDeliveryThresholdGross, $cart->getCurrencyIsoCode()))
+            ->setFreeShippingThresholdNet($freeDeliveryThresholdNetto)
+            ->setFreeShippingThresholdGross($freeDeliveryThresholdGross)
             ->setShippingCostFromNet($shippingCostFromNetto)
             ->setShippingCostFromGross($shippingCostFromGross)
             ->setCalculationType($this->ps->get('cart.calculation.gross') ? CartSummary::CALCULATION_TYPE_GROSS : CartSummary::CALCULATION_TYPE_NET)
@@ -505,7 +530,7 @@ class CartTotalCalculator extends BaseTotalCalculator
     /**
      * @param Cart $cart
      * @param bool $addVat
-     * @param null $calculatedTotalProducts
+     * @param Money|null $calculatedTotalProducts
      * @param array $shippingCostRes
      * @return array
      * @throws \Exception
@@ -513,7 +538,7 @@ class CartTotalCalculator extends BaseTotalCalculator
     public function calculateShippingCost(
         Cart  $cart,
         bool  $addVat,
-              $calculatedTotalProducts,
+        ?Money $calculatedTotalProducts,
         array &$shippingCostRes
     ): array {
 
@@ -562,35 +587,40 @@ class CartTotalCalculator extends BaseTotalCalculator
     /**
      * @param Cart $cart
      * @param bool $addVat
-     * @param array $totalRes
+     * @param Money|null $calculatedTotalProducts
+     * @param array $paymentCostRes
      * @return array
      * @throws \Exception
      */
-    public function calculatePaymentCost(Cart $cart, bool $addVat, array &$totalRes): array
-    {
-        $totalNetto = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
+    public function calculatePaymentCost(
+        Cart $cart,
+        bool $addVat,
+        ?Money $calculatedTotalProducts,
+        array &$paymentCostRes
+    ): array {
+        $totalNet = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
         $totalGross = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
 
-        //TODO do modyfikacji, należy używać produktu specjalnego powiązanego z metodą płatności
-        $paymentMethod = $cart->getPaymentMethod();
-
-        $taxRate = ValueHelper::convertToValue(23);
-
-        if ($paymentMethod instanceof PaymentMethod) {
-            $paymentCostNetto = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
-            $paymentCostGross = ValueHelper::convertToMoney(0, $cart->getCurrencyIsoCode());
-
-            $totalNetto->add($paymentCostNetto);
-            $totalGross->add($paymentCostGross);
-
-            //Uzupełniamy tablicę netto o koszty dostawy
-            TaxManager::addMoneyValueToNettoRes(
-                $taxRate,
-                $this->ps->get('cart.calculation.gross') ? $paymentCostGross : $paymentCostNetto,
-                $totalRes
-            );
+        if (!$cart->getPaymentMethod()) {
+            return [$totalNet, $totalGross];
         }
 
-        return [$totalNetto, $totalGross];
+        /**
+         * @var PaymentCartModule $cartPaymentModule
+         */
+        $cartPaymentModule = $this->cartModuleService->getCartModule(PaymentCartModule::NAME);
+
+        $calculation = $cartPaymentModule->calculatePaymentCost(
+            $cart,
+            $cart->getPaymentMethod(),
+            $addVat,
+            $calculatedTotalProducts,
+            $paymentCostRes
+        );
+
+        $totalNet = $totalNet->add($calculation->getPriceNet());
+        $totalGross = $totalGross->add($calculation->getPriceGross());
+
+        return [$totalNet, $totalGross];
     }
 }

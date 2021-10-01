@@ -10,7 +10,6 @@ use Doctrine\ORM\Mapping as ORM;
 use Doctrine\ORM\Mapping\MappedSuperclass;
 use Exception;
 use JetBrains\PhpStorm\Pure;
-use LSB\CartBundle\Entity\CartItem;
 use LSB\ContractorBundle\Entity\ContractorInterface;
 use LSB\LocaleBundle\Entity\CountryInterface;
 use LSB\LocaleBundle\Entity\CurrencyInterface;
@@ -245,7 +244,7 @@ class Cart implements CartInterface
      * @var DateTime|null
      * @ORM\Column(type="datetime", nullable=true)
      */
-    protected ?DateTime $realisationAt;
+    protected ?DateTime $realisationAt = null;
 
     /**
      * @var boolean
@@ -264,7 +263,7 @@ class Cart implements CartInterface
      * @ORM\ManyToOne(targetEntity="LSB\ContractorBundle\Entity\ContractorInterface")
      * @ORM\JoinColumn(nullable=true, onDelete="SET NULL")
      */
-    protected ?ContractorInterface $recipientContractor;
+    protected ?ContractorInterface $recipientContractor = null;
 
     /**
      * @var CountryInterface|null
@@ -272,7 +271,7 @@ class Cart implements CartInterface
      * @ORM\ManyToOne(targetEntity="LSB\LocaleBundle\Entity\CountryInterface")
      * @ORM\JoinColumn(nullable=true, onDelete="SET NULL")
      */
-    protected ?CountryInterface $recipientContractorCountry;
+    protected ?CountryInterface $recipientContractorCountry = null;
 
     /**
      * @var boolean
@@ -287,21 +286,21 @@ class Cart implements CartInterface
      * @Groups({"Default"})
      * @ORM\Column(type="datetime", nullable=true)
      */
-    protected ?DateTime $abandonmentNotificationSentAt;
+    protected ?DateTime $abandonmentNotificationSentAt = null;
 
     /**
      * @var string|null
      *
      * @ORM\Column(type="string", length=80, nullable=true)
      */
-    protected ?string $abandonmentToken;
+    protected ?string $abandonmentToken = null;
 
     /**
      * @var DateTime|null
      *
      * @ORM\Column(type="datetime", nullable=true)
      */
-    protected ?DateTime $usedAsAbandonedCartAt;
+    protected ?DateTime $usedAsAbandonedCartAt = null;
 
     /**
      * @var ContractorInterface|null
@@ -331,19 +330,19 @@ class Cart implements CartInterface
      * @var string|null
      * @ORM\Column(type="string", length=255, nullable=true)
      */
-    protected ?string $transactionId;
+    protected ?string $transactionId = null;
 
     /**
      * @var DateTime|null
      * @ORM\Column(type="datetime", nullable=true)
      */
-    protected ?DateTime $transactionIdUpdatedAt;
+    protected ?DateTime $transactionIdUpdatedAt = null;
 
     /**
      * @var DateTime|null
      * @ORM\Column(type="datetime", nullable=true)
      */
-    protected ?DateTime $transactionIdUsedAt;
+    protected ?DateTime $transactionIdUsedAt = null;
 
     /**
      * @var CartSummary|null

@@ -17,7 +17,7 @@ use Money\Money;
 class CartShippingMethodCalculatorResult extends CartCalculatorResult
 {
     public function __construct(
-        ?Money                          $priceNetto = null,
+        ?Money                          $priceNet = null,
         ?Money                          $priceGross = null,
         ?Value                          $taxPercentage = null,
         ?Value                          $calculationQuantity = null,
@@ -29,7 +29,7 @@ class CartShippingMethodCalculatorResult extends CartCalculatorResult
         protected ?CartPackageInterface $cartPackage = null
     ) {
         parent::__construct(
-            $priceNetto,
+            $priceNet,
             $priceGross,
             $taxPercentage,
             $calculationQuantity
@@ -46,9 +46,9 @@ class CartShippingMethodCalculatorResult extends CartCalculatorResult
 
     /**
      * @param Money|null $freeDeliveryThresholdValueNet
-     * @return CartShippingMethodCalculatorResult
+     * @return $this
      */
-    public function setFreeDeliveryThresholdValueNet(?Money $freeDeliveryThresholdValueNet): CartShippingMethodCalculatorResult
+    public function setFreeDeliveryThresholdValueNet(?Money $freeDeliveryThresholdValueNet): static
     {
         $this->freeDeliveryThresholdValueNet = $freeDeliveryThresholdValueNet;
         return $this;
@@ -64,9 +64,9 @@ class CartShippingMethodCalculatorResult extends CartCalculatorResult
 
     /**
      * @param Money|null $freeDeliveryThresholdValueGross
-     * @return CartShippingMethodCalculatorResult
+     * @return $this
      */
-    public function setFreeDeliveryThresholdValueGross(?Money $freeDeliveryThresholdValueGross): CartShippingMethodCalculatorResult
+    public function setFreeDeliveryThresholdValueGross(?Money $freeDeliveryThresholdValueGross): static
     {
         $this->freeDeliveryThresholdValueGross = $freeDeliveryThresholdValueGross;
         return $this;
@@ -82,9 +82,9 @@ class CartShippingMethodCalculatorResult extends CartCalculatorResult
 
     /**
      * @param Money|null $averageUnitPriceNet
-     * @return CartShippingMethodCalculatorResult
+     * @return $this
      */
-    public function setAverageUnitPriceNet(?Money $averageUnitPriceNet): CartShippingMethodCalculatorResult
+    public function setAverageUnitPriceNet(?Money $averageUnitPriceNet): static
     {
         $this->averageUnitPriceNet = $averageUnitPriceNet;
         return $this;
@@ -100,11 +100,47 @@ class CartShippingMethodCalculatorResult extends CartCalculatorResult
 
     /**
      * @param Money|null $averageUnitPriceGross
-     * @return CartShippingMethodCalculatorResult
+     * @return $this
      */
-    public function setAverageUnitPriceGross(?Money $averageUnitPriceGross): CartShippingMethodCalculatorResult
+    public function setAverageUnitPriceGross(?Money $averageUnitPriceGross): static
     {
         $this->averageUnitPriceGross = $averageUnitPriceGross;
+        return $this;
+    }
+
+    /**
+     * @return MethodInterface|null
+     */
+    public function getShippingMethod(): ?MethodInterface
+    {
+        return $this->shippingMethod;
+    }
+
+    /**
+     * @param MethodInterface|null $shippingMethod
+     * @return $this
+     */
+    public function setShippingMethod(?MethodInterface $shippingMethod): static
+    {
+        $this->shippingMethod = $shippingMethod;
+        return $this;
+    }
+
+    /**
+     * @return CartPackageInterface|null
+     */
+    public function getCartPackage(): ?CartPackageInterface
+    {
+        return $this->cartPackage;
+    }
+
+    /**
+     * @param CartPackageInterface|null $cartPackage
+     * @return $this
+     */
+    public function setCartPackage(?CartPackageInterface $cartPackage): static
+    {
+        $this->cartPackage = $cartPackage;
         return $this;
     }
 }

@@ -3,10 +3,12 @@
 namespace LSB\OrderBundle\CartHelper;
 
 use LSB\OrderBundle\Entity\Cart;
+use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\CartItemInterface;
 use LSB\PricelistBundle\Manager\PricelistManager;
 use LSB\PricelistBundle\Model\Price;
 use LSB\ProductBundle\Entity\Product;
+use LSB\ProductBundle\Entity\ProductInterface;
 use LSB\UtilityBundle\Helper\ValueHelper;
 use LSB\UtilityBundle\Value\Value;
 use Money\Money;
@@ -73,7 +75,7 @@ class PriceHelper
         Value $taxPercentage
     ): Money {
         $precision = ValueHelper::getCurrencyPrecision($grossPrice->getCurrency()->getCode());
-        $grossValue = $grossPrice->multiply($quantity->getAmount());
+        $grossValue = $grossPrice->multiply($quantity->getRealStringAmount());
         return $grossValue->divide((string)((ValueHelper::get100Percents($precision) + (int)$taxPercentage->getAmount()) / ValueHelper::get100Percents($precision)));
     }
 
@@ -137,8 +139,8 @@ class PriceHelper
         Value $taxPercentage
     ): Money {
         $precision = ValueHelper::getCurrencyPrecision($netPrice->getCurrency()->getCode());
-        $grossValue = $netPrice->multiply($quantity->getAmount());
-        return $grossValue->multiply(((ValueHelper::get100Percents($precision) + (int)$taxPercentage->getRealStringAmount()) / ValueHelper::get100Percents($precision)));
+        $grossValue = $netPrice->multiply($quantity->getRealStringAmount());
+        return $grossValue->multiply((string) ((ValueHelper::get100Percents($precision) + (int)$taxPercentage->getAmount()) / ValueHelper::get100Percents($precision)));
     }
 
     /**
@@ -163,17 +165,17 @@ class PriceHelper
     }
 
     /**
-     * @param Cart $cart
-     * @param Product $product
-     * @param Product|null $productSet
+     * @param CartInterface $cart
+     * @param ProductInterface $product
+     * @param ProductInterface|null $productSet
      * @param Value $quantity
      * @return Price|null
      * @throws \Exception
      */
     public function getPriceForProduct(
-        Cart     $cart,
-        Product  $product,
-        ?Product $productSet,
+        CartInterface     $cart,
+        ProductInterface  $product,
+        ?ProductInterface $productSet,
         Value    $quantity
     ): ?Price {
         return $this->pricelistManager->getPriceForProduct(

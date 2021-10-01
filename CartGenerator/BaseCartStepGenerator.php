@@ -11,6 +11,9 @@ use LSB\OrderBundle\Entity\CartInterface;
 use LSB\OrderBundle\Entity\Order;
 use LSB\OrderBundle\Entity\OrderInterface;
 use LSB\OrderBundle\Interfaces\CartStepGeneratorInterface;
+use LSB\OrderBundle\Model\StepNavigationResult;
+use LSB\OrderBundle\Model\StepValidationResponse;
+use LSB\OrderBundle\Model\StepValidationResult;
 use LSB\OrderBundle\Service\CartConverterService;
 use LSB\OrderBundle\Service\CartModuleService;
 use LSB\OrderBundle\Service\CartService;
@@ -90,7 +93,7 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
      */
     public function getName(): string
     {
-        return (string) static::STEP;
+        return (string)static::STEP;
     }
 
     /**
@@ -98,7 +101,7 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
      */
     public function getAdditionalName(): string
     {
-        return (string) static::ADDITIONAL_NAME_DEFAULT;
+        return (string)static::ADDITIONAL_NAME_DEFAULT;
     }
 
     /**
@@ -158,15 +161,14 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
         }
     }
 
-
     /**
      * Walidacja poszczególnego kroku pod kątem
      * TODO zamienić na obiekt
      *
-     * @return array
+     * @return StepValidationResponse
      * @throws \Exception
      */
-    public function validate(): array
+    public function validate(): StepValidationResponse
     {
         $response = [];
         $processResponse = null;
@@ -175,25 +177,22 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
         [$canAccess, $goToStep] = $this->isAccessible();
 
         if (!$canAccess) {
-            return [
-                'validation' => $this->getValidationResponse(['isAccessible' => false], 1),
-                'navigation' => [
-                    'nextStep' => $goToStep,
-                    'previousStep' => $goToStep,
-                ],
-                'process' => null,
-                'isCartFinalized' => $isCartFinalized
-            ];
+            return new StepValidationResponse(
+                $this->getValidationResponse(['isAccessible' => false], 1),
+                new StepNavigationResult($this->previousStep, null, $goToStep, null),
+                null,
+                $isCartFinalized
+            );
         }
 
-        //Walidacja
+        //Validation
         [$errors, $totalErrorsCnt] = $this->validateModules($this->cart);
         $validationResponse = $this->getValidationResponse($errors, $totalErrorsCnt);
 
-        //Nawigacja
+        //Navigation
         $navigationResponse = $this->getNavigation();
 
-        //W przypadku braku błędów uruchamiana jest czynność po kroku
+        //Run processing if no errors are found
         if (!$totalErrorsCnt) {
             $processResponse = $this->process();
         }
@@ -206,14 +205,12 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
             $isCartFinalized = true;
         }
 
-
-        $response = [
-            'validation' => $validationResponse,
-            'navigation' => $navigationResponse,
-            'process' => $processResponse,
-            'isCartFinalized' => $isCartFinalized
-        ];
-
+        $response = new StepValidationResponse(
+            $validationResponse,
+            $navigationResponse,
+            $processResponse,
+            $isCartFinalized
+        );
         //UWAGA FLUSH!
         $this->em->flush();
 
@@ -291,17 +288,16 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
 
     /**
      * @param array $errors
-     * @param int $totalErrorsCnt
-     * @return array
+     * @param int $errorsCnt
+     * @return StepValidationResult
      */
-    protected function getValidationResponse(array $errors, int $totalErrorsCnt = 0): array
+    protected function getValidationResponse(array $errors, int $errorsCnt = 0): StepValidationResult
     {
-        $response = [];
-        $response['errors'] = $errors;
-        $response['success'] = $totalErrorsCnt === 0 ? true : false;
-        $response['totalErrorsCnt'] = $totalErrorsCnt;
-
-        return $response;
+        return new StepValidationResult(
+            $errors,
+            $errorsCnt === 0 ? true : false,
+            $errorsCnt
+        );
     }
 
     /**
@@ -493,13 +489,35 @@ abstract class BaseCartStepGenerator extends BaseModuleInventory implements Cart
     }
 
     /**
+     * @return StepNavigationResult
+     */
+    public function getNavigation(): StepNavigationResult
+    {
+        return new StepNavigationResult(
+            $this->previousStep,
+            null,
+            $this->nextStep,
+            null
+        );
+    }
+
+    /**
+     * @param CartInterface|null $cart
      * @return array
      */
-    public function getNavigation(): array
+    public function isAccessible(?CartInterface $cart = null): array
     {
-        return [
-            'nextStep' => $this->nextStep,
-            'previousStep' => $this->previousStep,
-        ];
+        $cart = $cart ?? $this->cart;
+        $isAccessible = false;
+
+        $gotoStep = null;
+        if ($cart && $cart->getValidatedStep() >= $this->previousStep) {
+            $isAccessible = true;
+        } else {
+            $gotoStep = $this->previousStep;
+        }
+
+
+        return [$isAccessible, $gotoStep];
     }
 }
