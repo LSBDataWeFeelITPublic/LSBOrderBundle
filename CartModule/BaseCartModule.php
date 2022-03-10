@@ -22,7 +22,7 @@ use Symfony\Component\HttpFoundation\Request;
  * Class BaseModule
  * @package LSB\CartBundle\Module
  */
-abstract class BaseCartModule extends BaseModuleInventory implements CartModuleInterface
+abstract class BaseCartModule implements CartModuleInterface
 {
     const NAME = 'abstract_module';
 
